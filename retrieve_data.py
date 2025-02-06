@@ -72,9 +72,12 @@ def concatenate_acous_csv_by_hour(folder_path: str, output_subdir='hourly', conc
     into an output subfolder. It also tracks which CSV files have already been processed
     using a tracking file located in the current directory.
     """
+    print(folder_path)
+    
     pattern = re.compile(r'^\d{8}_\d{6}\.csv$')
 
     concatenated_list_file = os.path.join(os.getcwd(), concatenated_list)
+    print(concatenated_list_file)
     already_concatenated = set()
     if os.path.exists(concatenated_list_file):
         with open(concatenated_list_file, 'r') as f:
@@ -90,6 +93,8 @@ def concatenate_acous_csv_by_hour(folder_path: str, output_subdir='hourly', conc
                 full_path = os.path.join(root, file)
                 # relative path for tracking purposes
                 rel_path = os.path.relpath(full_path, folder_path)
+                print(rel_path)
+                exit()
                 # skip files that have been processed before
                 if rel_path in already_concatenated:
                     print(f"Skipping already concatenated CSV: {rel_path}")
@@ -121,10 +126,12 @@ def concatenate_acous_csv_by_hour(folder_path: str, output_subdir='hourly', conc
     
     
     output_dir = os.path.join(folder_path, output_subdir)
+    print(output_dir)
     os.makedirs(output_dir, exist_ok=True)
 
     # floor timestamp to the hour 
-    all_data['Hour'] = all_data['Timestamp'].dt.floor('H')
+    all_data['Hour'] = all_data['Timestamp'].dt.floor('h')
+
     for hour, group in all_data.groupby('Hour'):
         group = group.sort_values(by='Timestamp')
         
@@ -133,9 +140,11 @@ def concatenate_acous_csv_by_hour(folder_path: str, output_subdir='hourly', conc
         output_file = os.path.join(output_dir, filename)
         print(f"Writing {len(group)} records to {output_file}")
         
+        # remove the 'Hour' column before saving
+        group = group.drop(columns=['Hour'])
         group.to_csv(output_file, index=False)
 
-    # ppdate tracking file
+    # update tracking file
     if new_files:
         with open(concatenated_list_file, 'a') as f:
             for file in new_files:
