@@ -1,7 +1,9 @@
 import json
 import mysql.connector
 import paho.mqtt.client as mqtt
-
+import os
+import re
+import pandas as pd
 
 
 HOST = "localhost"
@@ -134,6 +136,26 @@ def main():
     resultados_folder = os.path.join(home_dir, "RESULTADOS")
 
     print(resultados_folder)
+    
+    pattern = re.compile(r'^\d{8}_\d{6}\.csv$')
+
+
+    for root, dirs, files in os.walk(resultados_folder):
+        for folder in dirs:
+            if folder == 'hourly':
+                full_path = os.path.join(root, folder)
+                print(full_path)
+                
+                csv_files = os.listdir(full_path)
+                print(csv_files)
+                for csv_file in csv_files:
+                    full_csv_file = os.path.join(full_path, csv_file)
+                    print(full_csv_file)
+                    df = pd.read_csv(full_csv_file)
+                    print(df)
+
+                    # query load data locally
+                    
 
 
 

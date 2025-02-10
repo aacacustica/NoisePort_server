@@ -87,14 +87,19 @@ def concatenate_acous_csv_by_hour(folder_path: str, output_subdir='hourly', conc
     csv_dataframes = []
     new_files = [] 
 
+
     for root, dirs, files in os.walk(folder_path):
         for file in files:
             if pattern.match(file):
                 full_path = os.path.join(root, file)
+                print(full_path)
+                print(root)
+                acoustic_path = root
+          
                 # relative path for tracking purposes
                 rel_path = os.path.relpath(full_path, folder_path)
                 print(rel_path)
-                exit()
+                
                 # skip files that have been processed before
                 if rel_path in already_concatenated:
                     print(f"Skipping already concatenated CSV: {rel_path}")
@@ -105,6 +110,8 @@ def concatenate_acous_csv_by_hour(folder_path: str, output_subdir='hourly', conc
                     new_files.append(rel_path)  #new file
                 except Exception as e:
                     print(f"Error reading {full_path}: {e}")
+    
+    print(f"This is the acoustic path --> {acoustic_path}")
 
     if not csv_dataframes:
         print("No new CSV files found for concatenation.")
@@ -125,8 +132,11 @@ def concatenate_acous_csv_by_hour(folder_path: str, output_subdir='hourly', conc
 
     
     
-    output_dir = os.path.join(folder_path, output_subdir)
+    output_dir = os.path.join(acoustic_path, output_subdir)
+    print("Outputdir --> ")
     print(output_dir)
+    # exit()
+
     os.makedirs(output_dir, exist_ok=True)
 
     # floor timestamp to the hour 
