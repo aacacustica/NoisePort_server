@@ -121,13 +121,8 @@ def initialize_database(db, logger):
 
 
 def load_data_db(db, data_path, logger, table_name=ACOUSTIC_TABLE_NAME):
-    logger.info(f"Database object: {db}")
-    logger.info(f"Data file path: {data_path}")
-    logger.info(f"Target table: {table_name}")
-
     cursor = db.cursor(dictionary=True)
     
-    # Note: The data_path must be wrapped in quotes in the SQL query.
     query_load = f"""
     LOAD DATA LOCAL INFILE '{data_path}'
         INTO TABLE {table_name}
@@ -138,18 +133,44 @@ def load_data_db(db, data_path, logger, table_name=ACOUSTIC_TABLE_NAME):
     """
     
     try:
-        # Execute the query to load data.
+        # execute the query to load data.
         cursor.execute(query_load)
-        # Commit the transaction so changes are saved.
+        # commit the transaction so changes are saved.
         db.commit()
         logger.info("Data loaded successfully")
     except mysql.connector.Error as err:
         logger.error("Error loading data: %s", err)
-        db.rollback()  # Optionally roll back changes if an error occurs.
+        db.rollback()
     finally:
         cursor.close()
         # db.close()  
 
+
+
+def power_laeq_avg(db, logger, table_name=ACOUSTIC_TABLE_NAME):
+    """
+    Execute a query that calculates the LAeq averages and returns the result.
+    """
+    cursor = db.cursor(dictionary=True)
+    query = f"""
+    SELECT 
+        DATE_FORMAT(Timestamp, '%Y-%m-%d %H:00:00') AS hour,
+        10 * LOG10(AVG(POWER(10, LA/10))) AS AVG_LAeq,
+        MAX(LAmax) AS max_LAmax,
+        MIN(LAmin) AS min_LAmin
+    FROM {table_name}
+    GROUP BY hour;
+    """
+    try:
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        logger.info("Query executed successfully.")
+        return rows
+    except mysql.connector.Error as err:
+        logger.error("Error executing query: %s", err)
+        return None
+    finally:
+        cursor.close()
 
 
 
@@ -164,7 +185,7 @@ def main():
     logger.info("Starting!!")
     home_dir = os.getenv("HOME")
     resultados_folder = os.path.join(home_dir, "RESULTADOS")
-    processed_list='processed_csvs.txt'
+    processed_list='processed_csv.txt'
     
     # database
     db = mysql.connector.connect(
@@ -189,9 +210,6 @@ def main():
         with open(processed_list, 'r') as f:
             for line in f:
                 already_processed.add(line.strip())
-    
-    # pattern to get the filename for acoustic csv fileas
-    pattern = re.compile(r'^\d{8}_\d{6}\.csv$')
 
 
     # LOOPING OVER THE CSV FILES TO MAKE THEM HOURLY AND UPLOADING INTO THE TABLE
@@ -200,29 +218,36 @@ def main():
         for folder in dirs:
             if folder == 'hourly':
                 full_path = os.path.join(root, folder)
-                
                 csv_files = os.listdir(full_path)
-                logger.info(f"These are the csv file --> {csv_files}")
+                logger.info("CSV files in %s: %s", full_path, csv_files)
 
                 for csv_file in csv_files:
+                    # processing files that are not already processed
                     if csv_file not in already_processed:
                         full_csv_file = os.path.join(full_path, csv_file)
-                        logger.info(f"CSV file full path --> {full_csv_file}")
+                        logger.info("Processing file: %s", full_csv_file)
+
                         df = pd.read_csv(full_csv_file)
                         
-                        # query load data locally
                         logger.info("Loading data into TABLE")
                         load_data_db(db, full_csv_file, logger)
-                        exit()
-
-
 
                         # mark file as processed
-                        # with open(processed_list, 'a') as f:
-                        #     f.write(csv_file + "\n")
+                        with open(processed_list, 'a') as f:
+                            f.write(csv_file + "\n")
+                        # exit()
                     else:
-                        print(f"Already processed: {csv_file}")
+                        logger.info("Skipping already processed file: %s", csv_file)
 
+
+
+    avg_results = power_laeq_avg(db, logger)
+    if avg_results is not None:
+        print("Power LAeq Average Results:")
+        for row in avg_results:
+            print(row)
+    else:
+        print("No results returned from power_laeq_avg query.")
 
 
     # NOW --> CLOSING THE DB
