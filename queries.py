@@ -1,63 +1,7 @@
-QUERY_CREATE_TABLE = """
-CREATE TABLE acoustic_data (
-    LA DECIMAL(10,2),
-    LC DECIMAL(10,2),
-    LZ DECIMAL(10,2),
-    LAmax DECIMAL(10,2),
-    LAmin DECIMAL(10,2),
-    `12.40Hz` DECIMAL(10,2),
-    `15.62Hz` DECIMAL(10,2),
-    `19.69Hz` DECIMAL(10,2),
-    `24.80Hz` DECIMAL(10,2),
-    `31.25Hz` DECIMAL(10,2),
-    `39.37Hz` DECIMAL(10,2),
-    `49.61Hz` DECIMAL(10,2),
-    `62.50Hz` DECIMAL(10,2),
-    `78.75Hz` DECIMAL(10,2),
-    `99.21Hz` DECIMAL(10,2),
-    `125.00Hz` DECIMAL(10,2),
-    `157.49Hz` DECIMAL(10,2),
-    `198.43Hz` DECIMAL(10,2),
-    `250.00Hz` DECIMAL(10,2),
-    `314.98Hz` DECIMAL(10,2),
-    `396.85Hz` DECIMAL(10,2),
-    `500.00Hz` DECIMAL(10,2),
-    `629.96Hz` DECIMAL(10,2),
-    `793.70Hz` DECIMAL(10,2),
-    `1000.00Hz` DECIMAL(10,2),
-    `1259.92Hz` DECIMAL(10,2),
-    `1587.40Hz` DECIMAL(10,2),
-    `2000.00Hz` DECIMAL(10,2),
-    `2519.84Hz` DECIMAL(10,2),
-    `3174.80Hz` DECIMAL(10,2),
-    `4000.00Hz` DECIMAL(10,2),
-    `5039.68Hz` DECIMAL(10,2),
-    `6349.60Hz` DECIMAL(10,2),
-    `8000.00Hz` DECIMAL(10,2),
-    `10079.37Hz` DECIMAL(10,2),
-    `12699.21Hz` DECIMAL(10,2),
-    `16000.00Hz` DECIMAL(10,2),
-    `20158.74Hz` DECIMAL(10,2),
-    Filename VARCHAR(255),
-    Timestamp DATETIME
-);
-"""
-
-
-# QUERY_LOAD_DATA = f"""
-# LOAD DATA LOCAL INFILE {}
-#     INTO TABLE acoustic_data
-#     FIELDS TERMINATED BY ',' 
-#     OPTIONALLY ENCLOSED BY '"'
-#     LINES TERMINATED BY '\n'
-# IGNORE 1 LINES;
-# """
-
-
-QUERY_LAEQ = """
+QUERY_AVG_LAEQ = """
 SELECT 
     DATE_FORMAT(Timestamp, '%Y-%m-%d %H:00:00') AS hour,
-    10 * LOG10(AVG(POWER(10, LA/10))) AS LAeq,
+    10 * LOG10(AVG(POWER(10, LA/10))) AS AVG_LAeq,
     MAX(LAmax) AS max_LAmax,
     MIN(LAmin) AS min_LAmin
 FROM acoustic_data

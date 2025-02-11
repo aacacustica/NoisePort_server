@@ -63,55 +63,23 @@ def mqtt_send_data():
 
 
 
-def load_data_db(data_path: str):
-    db = mysql.connector.connect(
-    host=HOST,
-    user=USER,
-    password=PASSWORD,
-    database=DATABASE_NAME,
-    allow_local_infile=True  # equivalent to --local-infile=1 in the CLI
-    )
-
-    cursor = db.cursor(dictionary=True)
-
-    cursor.execute("SHOW TABLES;")
-    tables_result = cursor.fetchall()
-    print("Tables in the database:", tables_result)
-
-    
-    cursor.execute(f"DESCRIBE {TABLE};")
-    desc_result = cursor.fetchall()
-    print("Structure of acoustic_data:", desc_result)
-
-    #----------------------------
-    # LOAD DATA INTO TABLE (acoustic_data)
-    #----------------------------
-    query_load = f"""
-    LOAD DATA LOCAL INFILE {data_path}
-        INTO TABLE acoustic_data
-        FIELDS TERMINATED BY ',' 
-        OPTIONALLY ENCLOSED BY '"'
-        LINES TERMINATED BY '\n'
-    IGNORE 1 LINES;
-    """
-
-    cursor.close()
-    db.close()
-
-
-
 
 
 def initialize_database(db, logger):
     """Ensure that the database and table exist"""
+    #this is to setting 
+    cursor = None
+
+
     try:
+        # ---------------------------------------------------------------------------
+        # ENSURE DATABASE
+        # ---------------------------------------------------------------------------
         logger.info("Ensure that the database and table exist")
-        cursor = db.cursor()
+        #avoid unread result issues
+        cursor = db.cursor(buffered=True)
 
-
-        query_create_db = f"""
-            CREATE DATABASE IF NOT EXISTS {DATABASE_NAME};
-        """
+        query_create_db = f"CREATE DATABASE IF NOT EXISTS {DATABASE_NAME};"
         cursor.execute(query_create_db)
         logger.info(f"Creating DATABASE --> {DATABASE_NAME}")
 
@@ -119,70 +87,52 @@ def initialize_database(db, logger):
         logger.info(f"Using --> {DATABASE_NAME}")
 
 
-        query_create_table = f"""
-            CREATE TABLE {TABLE_NAME_ACOUST} (
-                LA DECIMAL(10,2),
-                LC DECIMAL(10,2),
-                LZ DECIMAL(10,2),
-                LAmax DECIMAL(10,2),
-                LAmin DECIMAL(10,2),
-                `12.40Hz` DECIMAL(10,2),
-                `15.62Hz` DECIMAL(10,2),
-                `19.69Hz` DECIMAL(10,2),
-                `24.80Hz` DECIMAL(10,2),
-                `31.25Hz` DECIMAL(10,2),
-                `39.37Hz` DECIMAL(10,2),
-                `49.61Hz` DECIMAL(10,2),
-                `62.50Hz` DECIMAL(10,2),
-                `78.75Hz` DECIMAL(10,2),
-                `99.21Hz` DECIMAL(10,2),
-                `125.00Hz` DECIMAL(10,2),
-                `157.49Hz` DECIMAL(10,2),
-                `198.43Hz` DECIMAL(10,2),
-                `250.00Hz` DECIMAL(10,2),
-                `314.98Hz` DECIMAL(10,2),
-                `396.85Hz` DECIMAL(10,2),
-                `500.00Hz` DECIMAL(10,2),
-                `629.96Hz` DECIMAL(10,2),
-                `793.70Hz` DECIMAL(10,2),
-                `1000.00Hz` DECIMAL(10,2),
-                `1259.92Hz` DECIMAL(10,2),
-                `1587.40Hz` DECIMAL(10,2),
-                `2000.00Hz` DECIMAL(10,2),
-                `2519.84Hz` DECIMAL(10,2),
-                `3174.80Hz` DECIMAL(10,2),
-                `4000.00Hz` DECIMAL(10,2),
-                `5039.68Hz` DECIMAL(10,2),
-                `6349.60Hz` DECIMAL(10,2),
-                `8000.00Hz` DECIMAL(10,2),
-                `10079.37Hz` DECIMAL(10,2),
-                `12699.21Hz` DECIMAL(10,2),
-                `16000.00Hz` DECIMAL(10,2),
-                `20158.74Hz` DECIMAL(10,2),
-                Filename VARCHAR(255),
-                Timestamp DATETIME
-            );
-        """
-        cursor.execute(query_create_table)
-        logger.info(f"Creating table --> {TABLE_NAME}")
+        # ---------------------------------------------------------------------------
+        # ENSURE TABLES
+        # ---------------------------------------------------------------------------
+        for table_name, create_statement in TABLES.items():
+            logger.info("Creating table --> %s", table_name)
+            cursor.execute(create_statement)
+
+            # describe the table 
+            cursor.execute(f"DESCRIBE {table_name};")
+            table_structure = cursor.fetchall()
+            logger.info("Table structure for %s: %s", table_name, table_structure)
 
         db.commit()
-        logger.info("Database and table ensured.")
-    
-    
+        logger.info("Database and tables ensured.")
+
+
+    #LAST BLOCK
     except mysql.connector.Error as err:
-        logger.error("Error initializing database:", err)
+        logger.error("Error initializing database: %s", err)
     finally:
-        cursor.close()
-        db.close()
+        # close cursor
+        if cursor is not None:
+            try:
+                cursor.close()
+            except mysql.connector.Error as err:
+                logger.error("Error closing cursor: %s", err)
+        try:
+            db.close()
+        except mysql.connector.Error as err:
+            logger.error("Error closing database connection: %s", err)
 
 
 
 def main():
-    # initialize logger
+    # ------------------------------------
+    # INITIALIZATION
+    # ------------------------------------
+    # paths
+    home_dir = os.getenv("HOME")
+    resultados_folder = os.path.join(home_dir, "RESULTADOS")
+    processed_list='processed_csvs.txt'
+    
+    # logger
     logger = setup_logging('quey_automatize.log')
-    exit()
-    # initialize database
+    
+    # database
     db = mysql.connector.connect(
             host=HOST,
             user=USER,
@@ -193,22 +143,22 @@ def main():
     # testing the query database
     initialize_database(db, logger)
     
-    exit()
-    
 
-    home_dir = os.getenv("HOME")
-    resultados_folder = os.path.join(home_dir, "RESULTADOS")
-    processed_list='processed_csvs.txt'
-
-
+    # ------------------------------------
+    # PROCESSING
+    # ------------------------------------
     already_processed = set()
     if os.path.exists(processed_list):
         with open(processed_list, 'r') as f:
             for line in f:
                 already_processed.add(line.strip())
     
+    # pattern to get the filename for acoustic csv fileas
     pattern = re.compile(r'^\d{8}_\d{6}\.csv$')
 
+
+    # LOOPING OVER THE CSV FILES TO MAKE THEM HOURLY AND UPLOADING INTO THE TABLE
+    # ACOUSTIC PARAMETERS
     for root, dirs, files in os.walk(resultados_folder):
         for folder in dirs:
             if folder == 'hourly':
@@ -222,10 +172,10 @@ def main():
                         full_csv_file = os.path.join(full_path, csv_file)
                         print(full_csv_file)
                         df = pd.read_csv(full_csv_file)
-                        # print(df)
+                        print(df)
 
                         # query load data locally
-                        load_data_db(full_csv_file)
+                        load_data_db(db, full_csv_file)
 
 
 
@@ -234,7 +184,6 @@ def main():
                         #     f.write(csv_file + "\n")
                     else:
                         print(f"Already processed: {csv_file}")
-
 
 
 if __name__ == "__main__":
