@@ -113,10 +113,43 @@ def initialize_database(db, logger):
                 cursor.close()
             except mysql.connector.Error as err:
                 logger.error("Error closing cursor: %s", err)
-        try:
-            db.close()
-        except mysql.connector.Error as err:
-            logger.error("Error closing database connection: %s", err)
+        # try:
+        #     db.close()
+        # except mysql.connector.Error as err:
+        #     logger.error("Error closing database connection: %s", err)
+
+
+
+def load_data_db(db, data_path, logger, table_name=ACOUSTIC_TABLE_NAME):
+    logger.info(f"Database object: {db}")
+    logger.info(f"Data file path: {data_path}")
+    logger.info(f"Target table: {table_name}")
+
+    cursor = db.cursor(dictionary=True)
+    
+    # Note: The data_path must be wrapped in quotes in the SQL query.
+    query_load = f"""
+    LOAD DATA LOCAL INFILE '{data_path}'
+        INTO TABLE {table_name}
+        FIELDS TERMINATED BY ',' 
+        OPTIONALLY ENCLOSED BY '"'
+        LINES TERMINATED BY '\n'
+    IGNORE 1 LINES;
+    """
+    
+    try:
+        # Execute the query to load data.
+        cursor.execute(query_load)
+        # Commit the transaction so changes are saved.
+        db.commit()
+        logger.info("Data loaded successfully")
+    except mysql.connector.Error as err:
+        logger.error("Error loading data: %s", err)
+        db.rollback()  # Optionally roll back changes if an error occurs.
+    finally:
+        cursor.close()
+        # db.close()  
+
 
 
 
@@ -124,13 +157,14 @@ def main():
     # ------------------------------------
     # INITIALIZATION
     # ------------------------------------
-    # paths
+    # logger
+    logger = setup_logging('query_automatize.log')
+
+    # paths and processed csv_files
+    logger.info("Starting!!")
     home_dir = os.getenv("HOME")
     resultados_folder = os.path.join(home_dir, "RESULTADOS")
     processed_list='processed_csvs.txt'
-    
-    # logger
-    logger = setup_logging('quey_automatize.log')
     
     # database
     db = mysql.connector.connect(
@@ -140,6 +174,7 @@ def main():
             allow_local_infile=True
     )
 
+    logger.info("Initializing database!")
     # testing the query database
     initialize_database(db, logger)
     
@@ -147,6 +182,8 @@ def main():
     # ------------------------------------
     # PROCESSING
     # ------------------------------------
+    logger.info("Processing!")
+
     already_processed = set()
     if os.path.exists(processed_list):
         with open(processed_list, 'r') as f:
@@ -163,19 +200,20 @@ def main():
         for folder in dirs:
             if folder == 'hourly':
                 full_path = os.path.join(root, folder)
-                print(full_path)
                 
                 csv_files = os.listdir(full_path)
-                print(csv_files)
+                logger.info(f"These are the csv file --> {csv_files}")
+
                 for csv_file in csv_files:
                     if csv_file not in already_processed:
                         full_csv_file = os.path.join(full_path, csv_file)
-                        print(full_csv_file)
+                        logger.info(f"CSV file full path --> {full_csv_file}")
                         df = pd.read_csv(full_csv_file)
-                        print(df)
-
+                        
                         # query load data locally
-                        load_data_db(db, full_csv_file)
+                        logger.info("Loading data into TABLE")
+                        load_data_db(db, full_csv_file, logger)
+                        exit()
 
 
 
@@ -184,6 +222,15 @@ def main():
                         #     f.write(csv_file + "\n")
                     else:
                         print(f"Already processed: {csv_file}")
+
+
+
+    # NOW --> CLOSING THE DB
+    try:
+        db.close()
+        logger.info("Database connection closed")
+    except mysql.connector.Error as err:
+        logger.error("Error closing database connection: %s", err)
 
 
 if __name__ == "__main__":
