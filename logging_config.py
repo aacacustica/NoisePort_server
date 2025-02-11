@@ -1,6 +1,8 @@
 import logging
 
-def setup_logging(log_file='sonometer.log', level=logging.DEBUG):
+
+
+def setup_logging(log_file, level=logging.DEBUG):
     logger = logging.getLogger(__name__)
     logger.setLevel(level)
 

@@ -108,21 +108,70 @@ def initialize_database(db, logger):
         logger.info("Ensure that the database and table exist")
         cursor = db.cursor()
 
-        cursor.execute(QUERY_CREATE_DATABASE)
+
+        query_create_db = f"""
+            CREATE DATABASE IF NOT EXISTS {DATABASE_NAME};
+        """
+        cursor.execute(query_create_db)
         logger.info(f"Creating DATABASE --> {DATABASE_NAME}")
 
         cursor.execute(f"USE {DATABASE_NAME};")
         logger.info(f"Using --> {DATABASE_NAME}")
 
-        cursor.execute(QUERY_CREATE_TABLE)
-        logger.info(f"Creating table --> {TABLE}")
+
+        query_create_table = f"""
+            CREATE TABLE {TABLE_NAME_ACOUST} (
+                LA DECIMAL(10,2),
+                LC DECIMAL(10,2),
+                LZ DECIMAL(10,2),
+                LAmax DECIMAL(10,2),
+                LAmin DECIMAL(10,2),
+                `12.40Hz` DECIMAL(10,2),
+                `15.62Hz` DECIMAL(10,2),
+                `19.69Hz` DECIMAL(10,2),
+                `24.80Hz` DECIMAL(10,2),
+                `31.25Hz` DECIMAL(10,2),
+                `39.37Hz` DECIMAL(10,2),
+                `49.61Hz` DECIMAL(10,2),
+                `62.50Hz` DECIMAL(10,2),
+                `78.75Hz` DECIMAL(10,2),
+                `99.21Hz` DECIMAL(10,2),
+                `125.00Hz` DECIMAL(10,2),
+                `157.49Hz` DECIMAL(10,2),
+                `198.43Hz` DECIMAL(10,2),
+                `250.00Hz` DECIMAL(10,2),
+                `314.98Hz` DECIMAL(10,2),
+                `396.85Hz` DECIMAL(10,2),
+                `500.00Hz` DECIMAL(10,2),
+                `629.96Hz` DECIMAL(10,2),
+                `793.70Hz` DECIMAL(10,2),
+                `1000.00Hz` DECIMAL(10,2),
+                `1259.92Hz` DECIMAL(10,2),
+                `1587.40Hz` DECIMAL(10,2),
+                `2000.00Hz` DECIMAL(10,2),
+                `2519.84Hz` DECIMAL(10,2),
+                `3174.80Hz` DECIMAL(10,2),
+                `4000.00Hz` DECIMAL(10,2),
+                `5039.68Hz` DECIMAL(10,2),
+                `6349.60Hz` DECIMAL(10,2),
+                `8000.00Hz` DECIMAL(10,2),
+                `10079.37Hz` DECIMAL(10,2),
+                `12699.21Hz` DECIMAL(10,2),
+                `16000.00Hz` DECIMAL(10,2),
+                `20158.74Hz` DECIMAL(10,2),
+                Filename VARCHAR(255),
+                Timestamp DATETIME
+            );
+        """
+        cursor.execute(query_create_table)
+        logger.info(f"Creating table --> {TABLE_NAME}")
 
         db.commit()
-        print("Database and table ensured.")
+        logger.info("Database and table ensured.")
     
     
     except mysql.connector.Error as err:
-        print("Error initializing database:", err)
+        logger.error("Error initializing database:", err)
     finally:
         cursor.close()
         db.close()
@@ -131,7 +180,8 @@ def initialize_database(db, logger):
 
 def main():
     # initialize logger
-    logger = setup_logging()
+    logger = setup_logging('quey_automatize.log')
+    exit()
     # initialize database
     db = mysql.connector.connect(
             host=HOST,
