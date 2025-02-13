@@ -1,4 +1,13 @@
+# ----------------------------------------
+# BUCKET S3
+# ----------------------------------------
 BUCKET_NAME = 'demo-prototype-aac-2025'
+
+# ----------------------------------------
+# MQTT
+# ----------------------------------------
+MQTT_BROKER = "mqtt.demo2.muutech.com"
+MQTT_PORT = "12003"
 
 # ----------------------------------------
 # MYSQL
@@ -21,7 +30,7 @@ WAV_TABLE_NAME = "wav_data"
 TABLES = {
     "acoustic_data": """
         CREATE TABLE IF NOT EXISTS acoustic_data (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            record_id INT AUTO_INCREMENT PRIMARY KEY,
             LA DECIMAL(10,2),
             LC DECIMAL(10,2),
             LZ DECIMAL(10,2),
@@ -61,7 +70,8 @@ TABLES = {
             `16000.00Hz` DECIMAL(10,2),
             `20158.74Hz` DECIMAL(10,2),
             Filename VARCHAR(255),
-            Timestamp DATETIME
+            Timestamp DATETIME,
+            sensor_id VARCHAR(32)
         );
     """,
 

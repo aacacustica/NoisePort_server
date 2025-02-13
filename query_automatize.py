@@ -6,62 +6,6 @@ import re
 import pandas as pd
 from logging_config import setup_logging
 from config import *
-from queries import *
-
-
-
-def mqtt_send_data():
-    # 1. connection MySQL
-    db = mysql.connector.connect(
-        host=HOST,
-        user=USER,
-        password=PASSWORD,
-        database=DATABASE_NAME,
-        allow_local_infile=True  # equivalent to --local-infile=1 
-    )
-    cursor = db.cursor(dictionary=True)
-
-    query = """
-    SELECT 
-        DATE_FORMAT(Timestamp, '%Y-%m-%d %H:00:00') AS hour,
-        10 * LOG10(AVG(POWER(10, LA/10))) AS LAeq,
-        MAX(LAmax) AS max_LAmax,
-        MIN(LAmin) AS min_LAmin
-    FROM acoustic_data
-    GROUP BY hour;
-    """
-    cursor.execute(query)
-    rows = cursor.fetchall()
-
-    #convert the query result to JSON
-    payload = json.dumps(rows)
-    print("Data payload:", payload)
-
-
-
-    # 2. connect to the MQTT broker
-    mqtt_client = mqtt.Client()
-    # username/password:
-    # mqtt_client.username_pw_set("broker_username", "broker_password")
-    mqtt_broker = "localhost"  # or the IP/hostname of broker
-    mqtt_port = 1883
-    mqtt_client.connect(mqtt_broker, mqtt_port, 60)
-
-
-
-    # 3. publish the data to a topic
-    topic = "acoustic/data"  # topic name
-    mqtt_client.publish(topic, payload)
-    print(f"Published data to topic '{topic}'")
-
-
-
-    # 4. clean and disconnect
-    mqtt_client.disconnect()
-    cursor.close()
-    db.close()
-
-
 
 
 
@@ -69,7 +13,6 @@ def initialize_database(db, logger):
     """Ensure that the database and table exist"""
     #this is to setting 
     cursor = None
-
 
     try:
         # ---------------------------------------------------------------------------
@@ -124,13 +67,15 @@ def load_data_db(db, data_path, logger, table_name=ACOUSTIC_TABLE_NAME):
     cursor = db.cursor(dictionary=True)
     
     query_load = f"""
-    LOAD DATA LOCAL INFILE '{data_path}'
-        INTO TABLE {table_name}
-        FIELDS TERMINATED BY ',' 
-        OPTIONALLY ENCLOSED BY '"'
-        LINES TERMINATED BY '\n'
-    IGNORE 1 LINES;
+        LOAD DATA LOCAL INFILE '{data_path}'
+            INTO TABLE {table_name}
+            FIELDS TERMINATED BY ',' 
+            OPTIONALLY ENCLOSED BY '"'
+            LINES TERMINATED BY '\n'
+        IGNORE 1 LINES
+        (LA, LC, LZ, LAmax, LAmin, `12.40Hz`, `15.62Hz`, `19.69Hz`, `24.80Hz`, `31.25Hz`, `39.37Hz`, `49.61Hz`, `62.50Hz`, `78.75Hz`, `99.21Hz`, `125.00Hz`, `157.49Hz`, `198.43Hz`, `250.00Hz`, `314.98Hz`, `396.85Hz`, `500.00Hz`, `629.96Hz`, `793.70Hz`, `1000.00Hz`, `1259.92Hz`, `1587.40Hz`, `2000.00Hz`, `2519.84Hz`, `3174.80Hz`, `4000.00Hz`, `5039.68Hz`, `6349.60Hz`, `8000.00Hz`, `10079.37Hz`, `12699.21Hz`, `16000.00Hz`, `20158.74Hz`, Filename, Timestamp, sensor_id);
     """
+
     
     try:
         # execute the query to load data.
@@ -154,13 +99,15 @@ def power_laeq_avg(db, logger, table_name=ACOUSTIC_TABLE_NAME):
     cursor = db.cursor(dictionary=True)
     query = f"""
     SELECT 
-        DATE_FORMAT(Timestamp, '%Y-%m-%d %H:00:00') AS hour,
+        sensor_id,
+        CONCAT(DATE_FORMAT(Timestamp, '%Y-%m-%d %H:00:00'), ' CET') AS hour,
         10 * LOG10(AVG(POWER(10, LA/10))) AS AVG_LAeq,
         MAX(LAmax) AS max_LAmax,
         MIN(LAmin) AS min_LAmin
     FROM {table_name}
-    GROUP BY hour;
+    GROUP BY sensor_id, hour;
     """
+
     try:
         cursor.execute(query)
         rows = cursor.fetchall()
@@ -171,6 +118,37 @@ def power_laeq_avg(db, logger, table_name=ACOUSTIC_TABLE_NAME):
         return None
     finally:
         cursor.close()
+
+
+
+def send_mqtt_data(data, logger, broker=MQTT_BROKER, port=MQTT_PORT):
+    payload = json.dumps(data, default=str)
+    
+    try:
+        if data and isinstance(data, list) and isinstance(data[0], dict) and "sensor_id" in data[0]:
+            sensor_id = data[0]["sensor_id"]
+        else:
+            sensor_id = "unknown"
+    except Exception as e:
+        logger.error("Error extracting sensor_id: %s", e)
+        sensor_id = "unknown"
+    
+    # topic using the sensor_id
+    topic = f"aacacustica/{sensor_id}"
+    
+    # ensure port is an integer 
+    port = int(port)
+    
+    #MQTT client and connect.
+    client = mqtt.Client()
+    client.connect(broker, port, 60)
+    
+    # Publish payload to the topic
+    client.publish(topic, payload)
+    logger.info("Published data to topic '%s': %s", topic, payload)
+    
+    client.disconnect()
+
 
 
 
@@ -233,19 +211,26 @@ def main():
                         load_data_db(db, full_csv_file, logger)
 
                         # mark file as processed
-                        with open(processed_list, 'a') as f:
-                            f.write(csv_file + "\n")
-                        # exit()
+                        # with open(processed_list, 'a') as f:
+                        #     f.write(csv_file + "\n")
+
+
                     else:
                         logger.info("Skipping already processed file: %s", csv_file)
 
 
 
+    # ------------------------------------
+    # Query and Convert Results to JSON
+    # ------------------------------------
+    logger.info("Query and Convert Results to JSON")
     avg_results = power_laeq_avg(db, logger)
     if avg_results is not None:
         print("Power LAeq Average Results:")
-        for row in avg_results:
-            print(row)
+        print(avg_results)
+        
+        # send the data via MQTT
+        send_mqtt_data(avg_results, logger)
     else:
         print("No results returned from power_laeq_avg query.")
 
