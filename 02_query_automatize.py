@@ -232,7 +232,7 @@ def main():
         # send the data via MQTT
         send_mqtt_data(avg_results, logger)
     else:
-        print("No results returned from power_laeq_avg query.")
+        logger.warning("No results returned from power_laeq_avg query.")
 
 
     # NOW --> CLOSING THE DB
