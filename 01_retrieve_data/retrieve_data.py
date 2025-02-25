@@ -33,86 +33,45 @@ def download_new_files(bucket_name, home_dir, logger, local_dir='RESULTADOS', pr
         return
 
 
-    # for k, v in response.items():
-    #     #print(k)
-    
-    # #print(response.keys())
-    # #print(response.values())
-    # #print(response.items())
-    # #print(response.get('Contents'))
-    
-    # #print(response['Contents'][0])
-    # len_response = len(response['Contents'])
-    # #print(len_response)
-
-    # contents = response.get('Contents', [])
-    # paths = [item['Key'] for item in contents]
-    # #print(contents)
-    # #print()
-    
-    
-    # path = paths[0] 
-    # #print(path)
-    # #print(type(path))
-    # path = path.split("/")[:-1]
-    # #print(path)
-    # path = os.path.join(*path)
-    # #print(path)
-
-    # exit()
-
-    # #print()
-    # #print(home_dir)
-    
-
-    # download path: <PROYECT>/RESULTADOS
-    # download_path = os.path.join(home_dir, local_dir)
-    # os.makedirs(download_path, exist_ok=True)
-    # logger.info(f"Downloading files into: {download_path}\n")
 
     # downloading each file that has not been processed yet
     for obj in tqdm(response['Contents']):
         key = obj['Key']
         logger.info(f"Key: {key}")
-        #print(f"Key: {key}")
         
 
         if key not in already_processed:
             # last part of the key as the file name
             file_name = key.split("/")[-1]
-            #print(f"Filename is --> {file_name}")
+            logger.info(f"Filename is --> {file_name}")
+
             # if the key contains subdirectories, mirror that structure locally
             sub_dirs = key.split("/")[:-1]
             sub_path = os.path.join(*sub_dirs) if sub_dirs else ""
-            #print(home_dir)
-            #print(sub_path)
+            logger.info(sub_path)
             
             
             # local_sub_dir = os.path.join(download_path, sub_path)
             local_sub_dir = os.path.join(home_dir, sub_path)
-            #print(local_sub_dir)
+            logger.info(local_sub_dir)
             
             os.makedirs(local_sub_dir, exist_ok=True)
             local_file_path = os.path.join(local_sub_dir, file_name)
-            #print(local_file_path)
+            logger.info(local_file_path)
             
             
             
             logger.info(f"Downloading {key} to {local_file_path}")
             s3.download_file(bucket_name, key, local_file_path)
             
+
+
             # mark file as processed
             with open(processed_list, 'a') as f:
                 f.write(local_file_path + "\n")
 
-
         else:
             logger.warning(f"Already processed: {key}")
-
-
-
-
-
 
 
 def main():
@@ -120,8 +79,6 @@ def main():
     logger = setup_logging('retrive_data')
     home_dir = os.getenv("HOME")
     
-
-    # {1}
     download_new_files(BUCKET_NAME, home_dir,logger)
     
 
