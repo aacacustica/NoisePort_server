@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 
 
-def download_new_files(bucket_name, home_dir, logger, local_dir='RESULTADOS', processed_list='processed_files.txt'):
+def download_new_files(bucket_name, home_dir, logger, processed_list='processed_files.txt'):
     """
     Downloads new files from the S3 bucket into the folder ~/RESULTADOS.
     Keeps track of downloaded files in the processed_files.txt file.
@@ -44,6 +44,17 @@ def download_new_files(bucket_name, home_dir, logger, local_dir='RESULTADOS', pr
             # last part of the key as the file name
             file_name = key.split("/")[-1]
             logger.info(f"Filename is --> {file_name}")
+
+
+            try:
+                dt = datetime.datetime.strptime(file_name.split('.')[0], '%Y%m%d_%H%M%S')
+                hour_folder = dt.strftime('%Y%m%d_%H')
+            except Exception as e:
+                logger.warning(f"Error parsing date from filename {file_name}: {e}")
+                hour_folder = 'unknown_hour'
+
+            # hour_folder
+
 
             # if the key contains subdirectories, mirror that structure locally
             sub_dirs = key.split("/")[:-1]
