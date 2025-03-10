@@ -174,3 +174,8 @@ cython_debug/
 **/test/
 test/
 /test/
+
+# hide .txt files
+**/*.txt/
+*.txt/
+/*.txt/
