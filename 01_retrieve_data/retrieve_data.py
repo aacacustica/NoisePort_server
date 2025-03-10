@@ -9,7 +9,7 @@ import datetime
 
 
 
-def load_downloaded_files(downloaded_file_path):
+def load_downloaded_file(downloaded_file_path):
     """Load the set of downloaded filenames from a text file."""
     if os.path.exists(downloaded_file_path):
         with open(downloaded_file_path, "r") as f:
@@ -18,7 +18,7 @@ def load_downloaded_files(downloaded_file_path):
 
 
 
-def update_downloaded_files(downloaded_file_path, filename):
+def update_downloaded_file(downloaded_file_path, filename):
     """Append a downloaded filename to the text file."""
     with open(downloaded_file_path, "a") as f:
         f.write(filename + "\n")
@@ -34,17 +34,27 @@ def download_new_files(bucket_name, home_dir, logger, downloaded_list='downloade
     logger.info(f"Home directory: {home_dir}")
     cwd = os.getcwd()
     logger.info(f"Current dir: {cwd}")
-    exit()
 
 
     # ---------------------------
     # INIZIALATIN PROCESSING FILE
     # ---------------------------
-    downloaded_files_txt = os.path.join(cwd, "downloaded_acoustic.txt")
-    logger.info(f"Saving the downloaded file txt here --> {downloaded_files_txt}")
+    downloaded_files_path = os.path.join(cwd, "01_retrieve_data")
     
-    downloaded_files = downloaded_files(downloaded_files_txt)
-
+    if os.path.exists(downloaded_files_path):
+        download_txt_path = os.path.join(downloaded_files_path, "downloaded_acoustic.txt") # "downloaded_acoustic.txt"
+        logger.info(f"Downloaded file saved at: {download_txt_path}")
+    else:
+        logger.Error(f"downloaded_files_path doesn not exist {download_txt_path}")
+    logger.info(f"Saving the downloaded file txt here --> {download_txt_path}")
+    
+    
+    download_files = load_downloaded_file(download_txt_path)
+    
+    
+    # ---------------------------
+    # INIZIALATIN S3
+    # ---------------------------
     s3 = boto3.client('s3')
 
     logger.info("\nListing files in bucket")
@@ -59,7 +69,12 @@ def download_new_files(bucket_name, home_dir, logger, downloaded_list='downloade
     for obj in tqdm(response['Contents']):
         key = obj['Key']
         logger.info(f"Key: {key}")
-        
+        # print(f"Processing audio file --> {key}")
+
+        if key in download_files:
+            logger.info(f"Skipping {key}, already processed.")
+            continue
+
 
         # last part of the key as the file name
         file_name = key.split("/")[-1]
@@ -89,7 +104,6 @@ def download_new_files(bucket_name, home_dir, logger, downloaded_list='downloade
         local_file_path = os.path.join(local_sub_dir, file_name)
         logger.info(local_file_path)
         
-        
 
         #-----------------
         #DOWNLOAD
@@ -104,6 +118,12 @@ def download_new_files(bucket_name, home_dir, logger, downloaded_list='downloade
         logger.info(f"Deleting {key} from S3 bucket {bucket_name}")
         s3.delete_object(Bucket=bucket_name, Key=key)
 
+
+        #-------------------------------------
+        #MARKING THE AUFIO FILE AS DOWNLOADED
+        #-------------------------------------
+        update_downloaded_file(download_txt_path, key)
+        download_files.add(local_file_path)
             
 
 
