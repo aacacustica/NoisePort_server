@@ -1,4 +1,22 @@
 # ----------------------------------------
+#  SANDISK PATH
+# ----------------------------------------
+SANDISK_PATH = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/"
+
+
+# -------------------------
+# CALIBRATION CONSTANTS
+# -------------------------
+CALIBRATION_CONSTANTS = {
+    "P1_CONTENEDORES": -69.55,
+    "P2_CONTENEDORES": -68.74,
+    "P3_CONTENEDORES": -74.54,
+    "P4_CONTENEDORES": -82.24,
+}
+
+
+
+# ----------------------------------------
 # BUCKET S3
 # ----------------------------------------
 BUCKET_NAME = 'demo-prototype-aac-2025'
