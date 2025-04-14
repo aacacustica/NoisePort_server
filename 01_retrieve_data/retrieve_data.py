@@ -42,7 +42,7 @@ def download_new_files(bucket_name, home_dir, logger, downloaded_list='downloade
     downloaded_files_path = os.path.join(cwd, "01_retrieve_data")
     
     if os.path.exists(downloaded_files_path):
-        download_txt_path = os.path.join(downloaded_files_path, "downloaded_acoustic.txt") # "downloaded_acoustic.txt"
+        download_txt_path = os.path.join(downloaded_files_path, downloaded_list) # "downloaded_acoustic.txt"
         logger.info(f"Downloaded file saved at: {download_txt_path}")
     else:
         logger.Error(f"downloaded_files_path doesn not exist {download_txt_path}")
@@ -79,6 +79,8 @@ def download_new_files(bucket_name, home_dir, logger, downloaded_list='downloade
         # last part of the key as the file name
         file_name = key.split("/")[-1]
         logger.info(f"Filename is --> {file_name}")
+        # print(f"Filename is --> {file_name}")
+        
 
 
         try:
@@ -115,8 +117,15 @@ def download_new_files(bucket_name, home_dir, logger, downloaded_list='downloade
         #-----------------
         #DELETE
         #-----------------
-        logger.info(f"Deleting {key} from S3 bucket {bucket_name}")
-        s3.delete_object(Bucket=bucket_name, Key=key)
+        # logger.info(f"Deleting {key} from S3 bucket {bucket_name}")
+        # s3.delete_object(Bucket=bucket_name, Key=key)
+
+        if file_name.lower().endswith('.wav'):
+            logger.info(f"Deleting {key} from S3 bucket {bucket_name}")
+            s3.delete_object(Bucket=bucket_name, Key=key)
+        else:
+            logger.info(f"Skipping deletion for non-wav file: {file_name}")
+
 
 
         #-------------------------------------
