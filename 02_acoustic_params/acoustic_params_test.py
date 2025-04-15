@@ -80,6 +80,7 @@ class LeqLevelOct:
         processed_files_txt = os.path.join(path, "processed_acoustic.txt")
         processed_files_txt = processed_files_txt.replace("wav_files", "acoustic_params")
         self.logging.info(f"Saving the processed file txt here --> {processed_files_txt}")
+        print(f"Saving the processed file txt here --> {processed_files_txt}")
         
         processed_files = load_processed_files(processed_files_txt)
 
@@ -87,10 +88,15 @@ class LeqLevelOct:
         # ----------------------------------
         # COLLECTING AUDIO FILES TO PROCESS
         # ----------------------------------
+        print(f"This is the path --> {path}")
+
         try:
             audio_files = [f for f in os.listdir(path) if f.lower().endswith('.wav')]
             self.logging.info(f"Found {len(audio_files)} audio files: {audio_files}")
             full_paths = [os.path.join(path, file) for file in audio_files]
+            print(f"Found {len(audio_files)} audio files: {audio_files}")
+            print(f"Full paths: {full_paths}")
+            exit()
         
         except Exception as e:
             self.logging.error(f"Errorgetting the audio files: {e}")
@@ -402,45 +408,29 @@ def main():
                     wav_files_folder = os.path.join(root, storage_output_wav_folder)
                     print(wav_files_folder)
 
-                    wav_folders = os.listdir(wav_files_folder)
-                    wav_folders = [os.path.join(wav_files_folder, f) for f in wav_folders]
-                    for wav_folder in wav_folders:
-                        print(f"Processing folder: {wav_folder}")
-                        exit()
 
+                    ##########################################################
+                    ##########################################################
+                    ##########################################################
+                    logging.info("Creating the leq_processor")
+                    leq_processor = LeqLevelOct(
+                            audio_path=wav_files_folder,
 
+                            id_micro=id_micro,
+                            fs=audio_sample_rate,
+                            window_size=audio_window_size,
+                            calibration_constant=calib,
+                            
+                            acoustic_params=storage_output_acoust_folder,
+                            wav_files=storage_output_wav_folder,
+                            s3_bucket_name=storage_s3_bucket_name,
+                            
+                            upload_s3=upload_s3,
+                            logging=logging
+                        )
                         
-                        wav_files = [f for f in os.listdir(wav_folder) if f.lower().endswith('.wav')]
-                        # print(f"Found {len(wav_files)} audio files: {wav_files}")
-                        print(f"Found {len(wav_files)} audio files")
-                        full_paths = [os.path.join(wav_folder, file) for file in wav_files]
-                        # print(f"Full path: {full_paths}")
-                        print()
-
-                    print()
-                    exit()
-
-            
-
-        logging.info("Creating the leq_processor")
-        leq_processor = LeqLevelOct(
-                audio_path=path,
-
-                id_micro=id_micro,
-                fs=audio_sample_rate,
-                window_size=audio_window_size,
-                calibration_constant=calib,
-                
-                acoustic_params=storage_output_acoust_folder,
-                wav_files=storage_output_wav_folder,
-                s3_bucket_name=storage_s3_bucket_name,
-                
-                upload_s3=upload_s3,
-                logging=logging
-            )
-            
-        logging.info("Processing audio files...")
-        leq_processor.process_audio_files(path)
+                    logging.info("Processing audio files...")
+                    leq_processor.process_audio_files(wav_files_folder)
 
 
     except KeyboardInterrupt:
