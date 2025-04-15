@@ -191,7 +191,7 @@ class LeqLevelOct:
                     #----------------------------
                     # CALCULATE 1/3 OCTAVE LEVELS
                     #----------------------------
-                    levels, freqs =third_octave_filter(frame, self.fs, order=6, limits=[12, 20000], show=0, sigbands=0)
+                    levels, freqs =third_octave_filter(frame, self.fs, order=6, limits=[12, 20000])
                     # eound the levels to 2 decimal places
                     levels = [round(level, 2) for level in levels]
                     if freq_labels is None:
@@ -342,18 +342,24 @@ def main():
             audio_sample_rate, audio_window_size, audio_calibration_constant,\
             storage_s3_bucket_name, storage_output_wav_folder, \
             storage_output_acoust_folder = load_config_acoustic('config.yaml')
-            logging.info("Config loaded successfully")
-        
+            logging.info("Config loaded successfully")    
         except Exception as e:
             logging.error(f"Error loading config: {e}")
             return
+
+
+        # upload to bucket S3
+        if args.upload_S3:
+            upload_s3 = args.upload_S3
+        else:
+            upload_s3 = None
+
 
         if args.path:
             path = args.path
         else:
             # path = os.path.join(home_dir, location_record, location_place, location_point, storage_output_wav_folder)
             path = SANDISK_PATH
-            print(path)
             # check if it exist
             isdir = os.path.isdir(path)
             if isdir:
@@ -363,46 +369,59 @@ def main():
             else:
                 raise ValueError(f'Path ({path}) doesnt exist.')
             
-            #look for points folders!
-            point_folders = [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
-            print(point_folders)
-            print(CALIBRATION_CONSTANTS)
-            # THIS WILL store the id_micro and the calibration constant
-            # {
-            # 'P1_CONTENEDORES': -69.55, 
-            # 'P2_CONTENEDORES': -68.74, 
-            # 'P3_CONTENEDORES': -74.54, 
-            # 'P4_CONTENEDORES': -82.24
-            # }
+            
+            print()
+            # find the folder called "storage_output_wav_folder" with walk in the point_folders
+            for root, dirs, files in os.walk(path):
+                if storage_output_wav_folder in dirs:
+                    print(f"Found folder: {storage_output_wav_folder} in {root}")
+                    point = os.path.basename(root)
+                    print(f"Point: {point}")
 
-            # for each point folder, check if it is in the calibration constants
-            # and if it is, get the id_micro and the calibration constant
-            for point in point_folders:
-                print(point)
-                if point in CALIBRATION_CONSTANTS:
-                    id_micro = point
+
+                    ##########################################################
+                    ##########################################################
+                    ##########################################################
+                    # select the calibration constant for the point
+                    if point in CALIBRATION_CONSTANTS:
+                        calib = CALIBRATION_CONSTANTS[point]
+                        print(f"Calibration constant: {calib}")
+                    else:
+                        raise ValueError(f"Calibration constant for {point} not found in CALIBRATION_CONSTANTS.")
                     
-
-            exit()
+                    if point in ID_MICROPHONE:
+                        id_micro = ID_MICROPHONE[point]
+                        print(f"ID Microphone: {id_micro}")
+                    else:
+                        raise ValueError(f"ID Microphone for {point} not found in ID_MICROPHONE.")
                     
-        
-        if args.calib_const:
-            calib = args.calib_const
-        else:
-            calib = audio_calibration_constant
-        
-        # upload to bucket S3
-        if args.upload_S3:
-            upload_s3 = args.upload_S3
-        else:
-            upload_s3 = None
+                    
+                    ##########################################################
+                    ##########################################################
+                    ##########################################################
+                    wav_files_folder = os.path.join(root, storage_output_wav_folder)
+                    print(wav_files_folder)
 
-        logging.info(f"Path: {path}")
-        logging.info(f"Upload to bucket S3: {upload_s3}")
-        logging.info(f"Calibration constant: {calib}")
-        exit()
+                    wav_folders = os.listdir(wav_files_folder)
+                    wav_folders = [os.path.join(wav_files_folder, f) for f in wav_folders]
+                    for wav_folder in wav_folders:
+                        print(f"Processing folder: {wav_folder}")
+                        exit()
 
-        
+
+                        
+                        wav_files = [f for f in os.listdir(wav_folder) if f.lower().endswith('.wav')]
+                        # print(f"Found {len(wav_files)} audio files: {wav_files}")
+                        print(f"Found {len(wav_files)} audio files")
+                        full_paths = [os.path.join(wav_folder, file) for file in wav_files]
+                        # print(f"Full path: {full_paths}")
+                        print()
+
+                    print()
+                    exit()
+
+            
+
         logging.info("Creating the leq_processor")
         leq_processor = LeqLevelOct(
                 audio_path=path,
