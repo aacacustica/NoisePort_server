@@ -1,6 +1,5 @@
 import logging
 import os
-from datetime import datetime
 
 
 def setup_logging(script_name, level=logging.INFO):
@@ -15,6 +14,10 @@ def setup_logging(script_name, level=logging.INFO):
 
     logger = logging.getLogger(script_name)
     logger.setLevel(level)
+
+
+    #keeping  console handler quiet
+    logger.propagate = False
 
     # file handler overwrites the log file each time
     file_handler = logging.FileHandler(log_file, mode='w')
