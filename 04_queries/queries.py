@@ -171,8 +171,6 @@ def main():
         storage_s3_bucket_name, storage_output_wav_folder, \
         storage_output_acoust_folder = load_config_acoustic('config.yaml')
         logger.info("Config loaded successfully")   
-        print(storage_output_acoust_folder)
-        exit() 
     except Exception as e:
         logger.error(f"Error loading config: {e}")
         return
@@ -189,23 +187,27 @@ def main():
 
 
     for root, dirs, files in os.walk(path):
-        if storage_output_wav_folder in dirs:
-            logger.info(f"Found folder: {storage_output_wav_folder} in {root}")
+        if storage_output_acoust_folder in dirs:
+            logger.info(f"Found folder: {storage_output_acoust_folder} in {root}")
             point = os.path.basename(root)
             logger.info(f"Point: {point}")
 
 
             if point == "P2_CONTENEDORES":
-                pass
+                print("Subnormal")
+
+                wav_files_folder = os.path.join(root, storage_output_acoust_folder)
+                logger.info(f"Acoustic params folder: {wav_files_folder}")
+                print(f"Acoustic params folder: {wav_files_folder}")
     
     
     
     
+
+
+
+
     exit()  
-
-
-
-
     home_dir = os.getenv("HOME")
     resultados_folder = os.path.join(home_dir, "RESULTADOS")
     processed_list='processed_csv.txt'
