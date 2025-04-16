@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import argparse
 import time
+from tqdm import tqdm
 
 import soundfile as sf
 from pyfilterbank.splweighting import a_weighting_coeffs_design, c_weighting_coeffs_design
@@ -85,17 +86,23 @@ class LeqLevelOct:
         # COLLECTING AUDIO FILES TO PROCESS
         # ----------------------------------
         full_paths = []
+        wav_folder_strs = []
         try:
             wav_folders = os.listdir(path)
             wav_folders = [os.path.join(path, f) for f in wav_folders]
             for wav_folder in wav_folders:
                 self.logging.info(f"Processing folder: {wav_folder}")
+                # taking the last part of th path
+                wav_folder_str = wav_folder.split("/")[-1]
+                wav_folder_strs.append(wav_folder_str)
+
 
                 wav_files = [f for f in os.listdir(wav_folder) if f.lower().endswith('.wav')]
                 self.logging.info(f"Found {len(wav_files)} audio files")
                 # full_paths = [os.path.join(wav_folder, file) for file in wav_files]
                 full_paths.extend([os.path.join(wav_folder, file) for file in wav_files])
                 self.logging.info(f"Found {len(full_paths)} audio files")
+
 
         except Exception as e:
             self.logging.error(f"Errorgetting the audio files: {e}")
@@ -114,13 +121,14 @@ class LeqLevelOct:
         # ----------------------------------
         # PROCESSING
         # ----------------------------------
+        # folder_to_process = "20250404_19"
         all_data = []
-        for audio_file in full_paths:
+        for audio_file in tqdm(full_paths, desc="Processing audio files", unit="file"):
+            # if folder_to_process not in audio_file:
+            #     continue
+            # ----------------------------------
             self.logging.info(f"Processing file: {audio_file}")
             try:
-                file_start_time = time.time()
-
-
                 if audio_file in processed_files:
                     self.logging.info(f"Skipping {audio_file}, already processed.")
                     continue
@@ -248,6 +256,7 @@ class LeqLevelOct:
                 #debugging
                 # df = pd.read_csv(csv_acoustic_path)
                 # print(df)
+                # exit()
 
                 #print max and min for the LA column
                 # print(f"Max LA: {df['LA'].max()}")
@@ -276,12 +285,7 @@ class LeqLevelOct:
                 processed_files.add(audio_file)
                 processed_files.add(csv_acoustic_path)
                 logging.info(f"Final CSV file added to the processed file. {audio_file}")
-
-                file_end_time = time.time()
-                elapsed_time = file_end_time - file_start_time
-                self.logging.info(f"Processing of {audio_file} took {elapsed_time:.2f} seconds")
                 self.logging.info("")
-                
 
 
             # -------------
@@ -373,7 +377,7 @@ def main():
                     logging.info(f"Point: {point}")
 
 
-                    if point == "P4_CONTENEDORES":
+                    if point == "P2_CONTENEDORES":
                         ##########################################################
                         ##########################################################
                         ##########################################################
