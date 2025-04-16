@@ -5,6 +5,7 @@ import os
 import re
 import pandas as pd
 from logging_config import setup_logging
+from utils import *
 from config import *
 
 
@@ -161,6 +162,50 @@ def main():
 
     # paths and processed csv_files
     logger.info("Starting!!")
+    logger.info("")
+    try:
+        # config
+        logger.info("Getting the element form the yamnl file")
+        id_micro, location_record, location_place, location_point, \
+        audio_sample_rate, audio_window_size, audio_calibration_constant,\
+        storage_s3_bucket_name, storage_output_wav_folder, \
+        storage_output_acoust_folder = load_config_acoustic('config.yaml')
+        logger.info("Config loaded successfully")   
+        print(storage_output_acoust_folder)
+        exit() 
+    except Exception as e:
+        logger.error(f"Error loading config: {e}")
+        return
+
+
+    # [1] setup the folder to process
+    path = SANDISK_PATH
+    # check if it exist
+    isdir = os.path.isdir(path)
+    if isdir:
+        logger.info(f"Path exists --> {path}")
+    else:
+        raise ValueError(f'Path ({path}) doesnt exist.')
+
+
+    for root, dirs, files in os.walk(path):
+        if storage_output_wav_folder in dirs:
+            logger.info(f"Found folder: {storage_output_wav_folder} in {root}")
+            point = os.path.basename(root)
+            logger.info(f"Point: {point}")
+
+
+            if point == "P2_CONTENEDORES":
+                pass
+    
+    
+    
+    
+    exit()  
+
+
+
+
     home_dir = os.getenv("HOME")
     resultados_folder = os.path.join(home_dir, "RESULTADOS")
     processed_list='processed_csv.txt'
@@ -182,7 +227,6 @@ def main():
     # PROCESSING
     # ------------------------------------
     logger.info("Processing!")
-
     already_processed = set()
     if os.path.exists(processed_list):
         with open(processed_list, 'r') as f:
