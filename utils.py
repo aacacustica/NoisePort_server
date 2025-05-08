@@ -302,8 +302,14 @@ def upload_file_to_s3(file_path, bucket_name, logging):
     s3_path = file_path.split("/")[3:]
     # joint it back
     s3_path = "/".join(s3_path)
-    s3_full_path = os.path.join(s3_path)
+    # s3_full_path = os.path.join(s3_path)
     
+    
+    # change the s3 path
+    # change just the first CONTENEDORES ocurrence to NOISEPORT-TENERIFE/, but not the sencond one
+    s3_path = s3_path.replace("CONTENEDORES", "NOISEPORT-TENERIFE", 1)
+
+
     logging.info(f"Uploading {file_path} to s3://{bucket_name}/{s3_path}")
     try:
         s3.upload_file(file_path, bucket_name, s3_path)

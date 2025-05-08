@@ -123,6 +123,7 @@ class LeqLevelOct:
         # ----------------------------------
         # folder_to_process = "20250404_19"
         all_data = []
+        # for audio_file in tqdm(full_paths[:1], desc="Processing audio files", unit="file"):
         for audio_file in tqdm(full_paths, desc="Processing audio files", unit="file"):
             # if folder_to_process not in audio_file:
             #     continue
@@ -194,9 +195,6 @@ class LeqLevelOct:
                     Lmin = round(np.min(fast_levels), 2)
                     
 
-                    # 1/3-octave band SPL
-                    # oct_level_temp = self.get_oct_levels(frame)
-                    # oct_level_temp_rounded = [round(level, 2) for level in oct_level_temp]
                     #----------------------------
                     # CALCULATE 1/3 OCTAVE LEVELS
                     #----------------------------
@@ -257,12 +255,6 @@ class LeqLevelOct:
                 # df = pd.read_csv(csv_acoustic_path)
                 # print(df)
                 # exit()
-
-                #print max and min for the LA column
-                # print(f"Max LA: {df['LA'].max()}")
-                # print(f"Min LA: {df['LA'].min()}")
-                # time.sleep(2)
-
 
                 # --------------------------------------------------
                 #UPLOAD TO BUCKET S3
