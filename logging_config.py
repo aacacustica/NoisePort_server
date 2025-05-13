@@ -3,9 +3,9 @@ import os
 
 
 def setup_logging(script_name, level=logging.INFO):
-    home_dir = os.getenv("HOME")
+    current_dir = os.path.dirname(os.path.abspath(__file__))
     log_dir = "log"
-    full_path_log_dir = os.path.join(home_dir, log_dir)
+    full_path_log_dir = os.path.join(current_dir, log_dir)
     os.makedirs(full_path_log_dir, exist_ok=True)
 
     #log file 

@@ -7,6 +7,8 @@ import pandas as pd
 import argparse
 import time
 from tqdm import tqdm
+import json
+
 
 import soundfile as sf
 from pyfilterbank.splweighting import a_weighting_coeffs_design, c_weighting_coeffs_design
@@ -76,6 +78,7 @@ class LeqLevelOct:
         # ---------------------------
         processed_files_txt = os.path.join(path, "processed_acoustic.txt")
         processed_files_txt = processed_files_txt.replace("wav_files", "acoustic_params")
+        os.makedirs(os.path.dirname(processed_files_txt), exist_ok=True)
         self.logging.info(f"Saving the processed file txt here --> {processed_files_txt}")
         
         
@@ -85,30 +88,110 @@ class LeqLevelOct:
         # ----------------------------------
         # COLLECTING AUDIO FILES TO PROCESS
         # ----------------------------------
-        full_paths = []
-        wav_folder_strs = []
+        self.logging.info("")
+        full_paths= []
+        wav_folder_strs= []
+        diff_list= []
+
+
         try:
-            wav_folders = os.listdir(path)
-            wav_folders = [os.path.join(path, f) for f in wav_folders]
+            # get all sub-folders in 'path'
+            wav_folders = [os.path.join(path, f)for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
+            len_folders = len(wav_folders)
+            self.logging.info(f"Found {len_folders} folders in {path}")
+            
+            
+            self.logging.info("")
             for wav_folder in wav_folders:
                 self.logging.info(f"Processing folder: {wav_folder}")
-                # taking the last part of th path
-                wav_folder_str = wav_folder.split("/")[-1]
-                wav_folder_strs.append(wav_folder_str)
+                wav_folder_strs.append(os.path.basename(wav_folder))
 
+                wav_files = [f for f in os.listdir(wav_folder)if f.lower().endswith('.wav')]
+                full_paths.extend(os.path.join(wav_folder, f) for f in wav_files)
 
-                wav_files = [f for f in os.listdir(wav_folder) if f.lower().endswith('.wav')]
-                self.logging.info(f"Found {len(wav_files)} audio files")
-                # full_paths = [os.path.join(wav_folder, file) for file in wav_files]
-                full_paths.extend([os.path.join(wav_folder, file) for file in wav_files])
-                self.logging.info(f"Found {len(full_paths)} audio files")
+                found = len(wav_files)
+                if found == 60:
+                    self.logging.info(f"Found {found} audio files. Folder complete.")
+                else:
+                    missing = 60 - found
+                    self.logging.info(f"Found {found} audio files. "
+                        f"Missing {missing} files.")
+
+                    diff_list.append({
+                        "folder": wav_folder,
+                        "files_missing": missing
+                    })
 
 
         except Exception as e:
-            self.logging.error(f"Errorgetting the audio files: {e}")
-        
+            self.logging.error(f"Error getting the audio files: {e}")
+
+
+
+        # ----------------------------------
+        expect_wav_files = len_folders * 60
+        total_audio_files = len(full_paths)
+        total_missing = expect_wav_files - total_audio_files
+
+
+        #convertinto to hours, minutes and seconds, 60x60 3600
+        # 1 audio files = 60 seconds
+        # 1 folder = 60 audio files
+        # 1 folder = 60 minutes
+        # 1 folder = 1 hour
+        total_audio_files_in_hours = total_audio_files / 3600
+        total_audio_files_in_minutes = total_audio_files / 60
+        total_audio_files_in_seconds = total_audio_files
+
+        #missing files
+        total_missing_in_hours = total_missing / 3600
+        total_missing_in_minutes = total_missing / 60
+        total_missing_in_seconds = total_missing
+
+
         self.logging.info("")
-        self.logging.info(f"There are {len(full_paths)} total audio files to process")
+        self.logging.info(f"Expecting {expect_wav_files} wav files in total")
+        self.logging.info(f"There are {total_audio_files} total audio files to process")
+        self.logging.info(f"Missing {total_missing} wav files")
+        self.logging.info("")
+
+
+        self.logging.info(f"Total audio files in hours: {total_audio_files_in_hours:.2f} hours")
+        self.logging.info(f"Total audio files in minutes: {total_audio_files_in_minutes:.2f} minutes")
+        self.logging.info(f"Total audio files in seconds: {total_audio_files_in_seconds:.2f} seconds")
+        self.logging.info("")
+
+
+        self.logging.info(f"Total missing files in hours: {total_missing_in_hours:.2f} hours")
+        self.logging.info(f"Total missing files in minutes: {total_missing_in_minutes:.2f} minutes")
+        self.logging.info(f"Total missing files in seconds: {total_missing_in_seconds:.2f} seconds")
+        self.logging.info("")
+
+
+        # ----------------------------------
+        # saving the missing files information to the previous json file
+        report = {
+            "expected_wav_files": expect_wav_files,
+            "total_audio_files": total_audio_files,
+            "total_missing_files": total_missing,
+
+            "total_audio_duration": {
+                "hours": total_audio_files_in_hours,
+                "minutes": total_audio_files_in_minutes,
+                "seconds": total_audio_files_in_seconds
+            },
+            "missing_audio_duration": {
+                "hours": total_missing_in_hours,
+                "minutes": total_missing_in_minutes,
+                "seconds": total_missing_in_seconds
+            },
+            "folders_with_missing": diff_list
+        }
+
+        out_path = os.path.join(path, "wav_folder_report.json")
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(report, f, indent=2)
+        self.logging.info(f"Saved full report to {out_path}")
 
 
         # ----------------------------------
@@ -140,9 +223,9 @@ class LeqLevelOct:
                 # reading audio data
                 x, _ = sf.read(audio_file)
                 
-                #naming 
-                name_split = audio_file.split(".")[0]  # '20250107_130000'
-                name_split = name_split.split("/")[-1]  #'20250107_130000'
+                #naming
+                name_split = audio_file.split("\\")[-1]  # '20250107_130000'
+                name_split = name_split.split(".")[0]  # '20250107_130000'
                 self.logging.info(f"Name split: {name_split}")
                 
                 #CET
@@ -150,6 +233,7 @@ class LeqLevelOct:
                 start_timestamp = datetime.datetime.strptime(name_split, '%Y%m%d_%H%M%S')
                 start_timestamp = start_timestamp.replace(tzinfo=local_tz)
                 self.logging.info(start_timestamp)
+                # exit()
                 
 
                 # build a list of frame start timestamps
@@ -320,6 +404,9 @@ def parse_arguments():
 
 
 def main():
+    """
+    usage: python.exe -m 02_acoustic_params.acoustic_params_test -p '\\192.168.205.122\Contenedores'
+    """
     try:
         logging = setup_logging(script_name="acoustic_params")
         args = parse_arguments()
@@ -352,74 +439,76 @@ def main():
             path = args.path
         else:
             path = SANDISK_PATH
-            # check if it exist
-            isdir = os.path.isdir(path)
-            if isdir:
-                logging.info(f"Path exists --> {path}")
-                # continue
-            else:
-                raise ValueError(f'Path ({path}) doesnt exist.')
-            
-            
-            # find the folder called "storage_output_wav_folder" with walk in the point_folders
-            for root, dirs, files in os.walk(path):
-                if storage_output_wav_folder in dirs:
-                    logging.info(f"Found folder: {storage_output_wav_folder} in {root}")
-                    point = os.path.basename(root)
-                    logging.info(f"Point: {point}")
 
 
-                    if point == "P2_CONTENEDORES":
-                        ##########################################################
-                        ##########################################################
-                        ##########################################################
-                        # select the calibration constant for the point
-                        if point in CALIBRATION_CONSTANTS:
-                            calib = CALIBRATION_CONSTANTS[point]
-                            logging.info(f"Calibration constant: {calib}")
-                        else:
-                            raise ValueError(f"Calibration constant for {point} not found in CALIBRATION_CONSTANTS.")
-                        
-                        if point in ID_MICROPHONE:
-                            id_micro = ID_MICROPHONE[point]
-                            logging.info(f"ID Microphone: {id_micro}")
-                        else:
-                            raise ValueError(f"ID Microphone for {point} not found in ID_MICROPHONE.")
-                        
-                        
-                        ##########################################################
-                        ##########################################################
-                        ##########################################################
-                        wav_files_folder = os.path.join(root, storage_output_wav_folder)
-                        logging.info(f"WAV files folder: {wav_files_folder}")
+        # check if it exist
+        isdir = os.path.isdir(path)
+        if isdir:
+            logging.info(f"Path exists --> {path}")
+            # continue
+        else:
+            raise ValueError(f'Path ({path}) doesnt exist.')
+        
+        
+        # find the folder called "storage_output_wav_folder" with walk in the point_folders
+        for root, dirs, files in os.walk(path):
+            if storage_output_wav_folder in dirs:
+                logging.info(f"Found folder: {storage_output_wav_folder} in {root}")
+                point = os.path.basename(root)
+                logging.info(f"Point: {point}")
 
 
-                        ##########################################################
-                        ##########################################################
-                        ##########################################################
-                        logging.info("Creating the leq_processor")
-                        leq_processor = LeqLevelOct(
-                                audio_path=wav_files_folder,
-
-                                id_micro=id_micro,
-                                fs=audio_sample_rate,
-                                window_size=audio_window_size,
-                                calibration_constant=calib,
-                                
-                                acoustic_params=storage_output_acoust_folder,
-                                wav_files=storage_output_wav_folder,
-                                s3_bucket_name=storage_s3_bucket_name,
-                                
-                                upload_s3=upload_s3,
-                                logging=logging
-                            )
-                        logging.info("Processing audio files...")
-                        leq_processor.process_audio_files(wav_files_folder)
-                    
-                    
+                if point == "P1_CONTENEDORES":
+                    ##########################################################
+                    ##########################################################
+                    ##########################################################
+                    # select the calibration constant for the point
+                    if point in CALIBRATION_CONSTANTS:
+                        calib = CALIBRATION_CONSTANTS[point]
+                        logging.info(f"Calibration constant: {calib}")
                     else:
-                        logging.info(f"Skipping point: {point}")
-                        continue
+                        raise ValueError(f"Calibration constant for {point} not found in CALIBRATION_CONSTANTS.")
+                    
+                    if point in ID_MICROPHONE:
+                        id_micro = ID_MICROPHONE[point]
+                        logging.info(f"ID Microphone: {id_micro}")
+                    else:
+                        raise ValueError(f"ID Microphone for {point} not found in ID_MICROPHONE.")
+                    
+                    
+                    ##########################################################
+                    ##########################################################
+                    ##########################################################
+                    wav_files_folder = os.path.join(root, storage_output_wav_folder)
+                    logging.info(f"WAV files folder: {wav_files_folder}")
+
+
+                    ##########################################################
+                    ##########################################################
+                    ##########################################################
+                    logging.info("Creating the leq_processor")
+                    leq_processor = LeqLevelOct(
+                            audio_path=wav_files_folder,
+
+                            id_micro=id_micro,
+                            fs=audio_sample_rate,
+                            window_size=audio_window_size,
+                            calibration_constant=calib,
+                            
+                            acoustic_params=storage_output_acoust_folder,
+                            wav_files=storage_output_wav_folder,
+                            s3_bucket_name=storage_s3_bucket_name,
+                            
+                            upload_s3=upload_s3,
+                            logging=logging
+                        )
+                    logging.info("Processing audio files...")
+                    leq_processor.process_audio_files(wav_files_folder)
+                
+                
+                else:
+                    logging.info(f"Skipping point: {point}")
+                    continue
 
     except KeyboardInterrupt:
         logging.error("Recording interrupted by user.")
