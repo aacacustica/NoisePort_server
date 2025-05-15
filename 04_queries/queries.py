@@ -2,116 +2,124 @@ import json
 import mysql.connector
 import paho.mqtt.client as mqtt
 import os
-import re
 import pandas as pd
 from logging_config import setup_logging
 from utils import *
 from config import *
+import tqdm 
+
 
 
 
 def initialize_database(db, logger):
-    """Ensure that the database and table exist"""
-    #this is to setting 
+    """Ensure that the database and table exist, recreating them from scratch."""
     cursor = None
-
     try:
-        # ---------------------------------------------------------------------------
-        # ENSURE DATABASE
-        # ---------------------------------------------------------------------------
-        logger.info("Ensure that the database and table exist")
-        #avoid unread result issues
+        logger.info("Ensuring database and tables exist (recreating tables)…")
         cursor = db.cursor(buffered=True)
 
-        query_create_db = f"CREATE DATABASE IF NOT EXISTS {DATABASE_NAME};"
-        cursor.execute(query_create_db)
-        logger.info(f"Creating DATABASE --> {DATABASE_NAME}")
+        # 1) Create the database
+        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {DATABASE_NAME};")
+        logger.info(f"Created database if not exists: {DATABASE_NAME}")
 
         cursor.execute(f"USE {DATABASE_NAME};")
-        logger.info(f"Using --> {DATABASE_NAME}")
+        logger.info(f"Using database: {DATABASE_NAME}")
 
+        # 2) Drop any existing tables (updated schema)
+        for table_name in TABLES:
+            logger.info(f"Dropping table if exists: {table_name}")
+            cursor.execute(f"DROP TABLE IF EXISTS {table_name};")
 
-        # ---------------------------------------------------------------------------
-        # ENSURE TABLES
-        # ---------------------------------------------------------------------------
-        for table_name, create_statement in TABLES.items():
-            logger.info("Creating table --> %s", table_name)
-            cursor.execute(create_statement)
-
-            # describe the table 
+        # 3) Recreate tables from your TABLES dict
+        for table_name, create_stmt in TABLES.items():
+            logger.info(f"Creating table → {table_name}")
+            cursor.execute(create_stmt)
             cursor.execute(f"DESCRIBE {table_name};")
-            table_structure = cursor.fetchall()
-            logger.info("Table structure for %s: %s", table_name, table_structure)
+            structure = cursor.fetchall()
+            logger.info(f"Structure for {table_name}: {structure}")
 
         db.commit()
-        logger.info("Database and tables ensured.")
+        logger.info("Database and tables have been recreated successfully.")
 
-
-    #LAST BLOCK
     except mysql.connector.Error as err:
         logger.error("Error initializing database: %s", err)
+        # re-raise or sys.exit here if this is fatal. think of it
+
     finally:
-        # close cursor
-        if cursor is not None:
+        if cursor:
             try:
                 cursor.close()
             except mysql.connector.Error as err:
                 logger.error("Error closing cursor: %s", err)
-        # try:
-        #     db.close()
-        # except mysql.connector.Error as err:
-        #     logger.error("Error closing database connection: %s", err)
 
 
 
 def load_data_db(db, data_path, logger, table_name=ACOUSTIC_TABLE_NAME):
-    cursor = db.cursor(dictionary=True)
-    
-    query_load = f"""
-        LOAD DATA LOCAL INFILE '{data_path}'
-            INTO TABLE {table_name}
-            FIELDS TERMINATED BY ',' 
-            OPTIONALLY ENCLOSED BY '"'
-            LINES TERMINATED BY '\n'
-        IGNORE 1 LINES
-        (LA, LC, LZ, LAmax, LAmin, `12.40Hz`, `15.62Hz`, `19.69Hz`, `24.80Hz`, `31.25Hz`, `39.37Hz`, `49.61Hz`, `62.50Hz`, `78.75Hz`, `99.21Hz`, `125.00Hz`, `157.49Hz`, `198.43Hz`, `250.00Hz`, `314.98Hz`, `396.85Hz`, `500.00Hz`, `629.96Hz`, `793.70Hz`, `1000.00Hz`, `1259.92Hz`, `1587.40Hz`, `2000.00Hz`, `2519.84Hz`, `3174.80Hz`, `4000.00Hz`, `5039.68Hz`, `6349.60Hz`, `8000.00Hz`, `10079.37Hz`, `12699.21Hz`, `16000.00Hz`, `20158.74Hz`, Filename, Timestamp, sensor_id);
-    """
-
-    
+    cursor = db.cursor()
     try:
-        # execute the query to load data.
+        # 1) clear old data
+        cursor.execute(f"TRUNCATE TABLE {table_name};")
+        db.commit()
+        logger.info("Old data truncated successfully")
+
+        # 2) load new CSV
+        query_load = f"""
+        LOAD DATA LOCAL INFILE '{data_path}'
+        INTO TABLE {table_name}
+        FIELDS TERMINATED BY ','
+        OPTIONALLY ENCLOSED BY '"'
+        LINES TERMINATED BY '\\n'
+        IGNORE 1 LINES
+        (
+          @id_micro,
+          Filename,
+          Timestamp,
+          @unixts,
+          LA, LC, LZ, LAmax, LAmin,
+          `12.6Hz`, `15.8Hz`, `20.0Hz`, `25.1Hz`, `31.6Hz`,
+          `39.8Hz`, `50.1Hz`, `63.1Hz`, `79.4Hz`, `100.0Hz`,
+          `125.9Hz`, `158.5Hz`, `199.5Hz`, `251.2Hz`, `316.2Hz`,
+          `398.1Hz`, `501.2Hz`, `631.0Hz`, `794.3Hz`, `1000.0Hz`,
+          `1258.9Hz`, `1584.9Hz`, `1995.3Hz`, `2511.9Hz`,
+          `3162.3Hz`, `3981.1Hz`, `5011.9Hz`, `6309.6Hz`,
+          `7943.3Hz`, `10000.0Hz`, `12589.3Hz`, `15848.9Hz`
+        )
+        SET 
+            sensor_id = TRIM(BOTH '\\r' FROM @id_micro),
+            Unixtimestamp = @unixts;
+        """
         cursor.execute(query_load)
-        # commit the transaction so changes are saved.
         db.commit()
         logger.info("Data loaded successfully")
+
     except mysql.connector.Error as err:
         logger.error("Error loading data: %s", err)
         db.rollback()
+
     finally:
         cursor.close()
-        # db.close()  
+
+
 
 
 
 def power_laeq_avg(db, logger, table_name=ACOUSTIC_TABLE_NAME):
-    """
-    Execute a query that calculates the LAeq averages and returns the result.
-    """
     cursor = db.cursor(dictionary=True)
     query = f"""
     SELECT 
-        sensor_id,
-        CONCAT(DATE_FORMAT(Timestamp, '%Y-%m-%d %H:00:00'), ' CET') AS hour,
-        10 * LOG10(AVG(POWER(10, LA/10))) AS AVG_LAeq,
-        MAX(LAmax) AS max_LAmax,
-        MIN(LAmin) AS min_LAmin
+      sensor_id,
+      CONCAT(DATE_FORMAT(Timestamp, '%Y-%m-%d %H:00:00'), ' CET')  AS hour,
+      MIN(Unixtimestamp)                                        AS unixtimestamp,
+      10 * LOG10(AVG(POWER(10, LA/10)))                          AS AVG_LAeq,
+      MAX(LAmax)                                                AS max_LAmax,
+      MIN(LAmin)                                                AS min_LAmin
     FROM {table_name}
     GROUP BY sensor_id, hour;
     """
-
     try:
         cursor.execute(query)
         rows = cursor.fetchall()
+        logger.info(f"LOAD DATA inserted {cursor.rowcount} rows into {table_name}")
         logger.info("Query executed successfully.")
         return rows
     except mysql.connector.Error as err:
@@ -119,6 +127,7 @@ def power_laeq_avg(db, logger, table_name=ACOUSTIC_TABLE_NAME):
         return None
     finally:
         cursor.close()
+
 
 
 
@@ -152,6 +161,22 @@ def send_mqtt_data(data, logger, broker=MQTT_BROKER, port=MQTT_PORT):
 
 
 
+def load_processed_files(processed_file_path):
+    """Load the set of processed filenames from a text file."""
+    if os.path.exists(processed_file_path):
+        with open(processed_file_path, "r") as f:
+            return {line.strip() for line in f if line.strip()}
+    return set()
+
+
+
+def update_processed_files(processed_file_path, filename):
+    """Append a processed filename to the text file."""
+    with open(processed_file_path, "a") as f:
+        f.write(filename + "\n")
+
+
+
 
 def main():
     # ------------------------------------
@@ -160,9 +185,22 @@ def main():
     # logger
     logger = setup_logging('query_automatize.log')
 
+    # database
+    db = mysql.connector.connect(
+            host=HOST,
+            user=USER,
+            password=PASSWORD,
+            allow_local_infile=True)
+
+    logger.info("Initializing database!")
+    # testing the query database
+    initialize_database(db, logger)
+
+
     # paths and processed csv_files
     logger.info("Starting!!")
     logger.info("")
+
     try:
         # config
         logger.info("Getting the element form the yamnl file")
@@ -177,111 +215,139 @@ def main():
 
 
     # [1] setup the folder to process
-    path = SANDISK_PATH
+    path = SANDISK_PATH_LINUX
+    
     # check if it exist
     isdir = os.path.isdir(path)
     if isdir:
         logger.info(f"Path exists --> {path}")
     else:
-        raise ValueError(f'Path ({path}) doesnt exist.')
+        logger.warning(f"Path does not exist --> {path}")
+        path = SANDISK_PATH_WINDOWS
+        isdir = os.path.isdir(path)
+        if isdir:
+            logger.info(f"Path exists --> {path}")
+        else:
+            raise ValueError(f'Path ({path}) doesnt exist.')
 
-
-    for root, dirs, files in os.walk(path):
-        if storage_output_acoust_folder in dirs:
-            logger.info(f"Found folder: {storage_output_acoust_folder} in {root}")
-            point = os.path.basename(root)
-            logger.info(f"Point: {point}")
-
-
-            if point == "P2_CONTENEDORES":
-                print("Subnormal")
-
-                wav_files_folder = os.path.join(root, storage_output_acoust_folder)
-                logger.info(f"Acoustic params folder: {wav_files_folder}")
-                print(f"Acoustic params folder: {wav_files_folder}")
     
-    
-    
-    
+    logger.info("")
+    points = [point for point in os.listdir(path)]
+    points = [os.path.join(path, point) for point in points]
+    for point in points:
+        if "P2_CONTENEDORES" in point:
+            print("P2_CONTENEDORES")
+
+            # ---------------------------
+            acoust_folder = os.path.join(point, storage_output_acoust_folder)
+            logger.info(f"Acoustic params folder: {acoust_folder}")
+
+            # change storage_output_acoust_folder to "acoustic_params_query"
+            query_folder = os.path.join(point, "acoustic_params_query")
+            logger.info(f"Query folder: {query_folder}")
+            os.makedirs(query_folder, exist_ok=True)
+
+
+            # checking if the folder exist
+            if os.path.isdir(acoust_folder):
+                logger.info(f"Folder exists: {acoust_folder}")
+            else:
+                logger.warning(f"Folder does not exist: {acoust_folder}")
+                continue
+
+            # ---------------------------
+            # INIZIALATIN PROCESSING FILE
+            # ---------------------------
+            processed_files_txt = os.path.join(query_folder, "processed_acoustic_query.txt")
+            logger.info(f"Saving the proicessed file txt here --> {processed_files_txt}")
+            processed_files = load_processed_files(processed_files_txt)
 
 
 
-
-    exit()  
-    home_dir = os.getenv("HOME")
-    resultados_folder = os.path.join(home_dir, "RESULTADOS")
-    processed_list='processed_csv.txt'
-    
-    # database
-    db = mysql.connector.connect(
-            host=HOST,
-            user=USER,
-            password=PASSWORD,
-            allow_local_infile=True
-    )
-
-    logger.info("Initializing database!")
-    # testing the query database
-    initialize_database(db, logger)
-    
-
-    # ------------------------------------
-    # PROCESSING
-    # ------------------------------------
-    logger.info("Processing!")
-    already_processed = set()
-    if os.path.exists(processed_list):
-        with open(processed_list, 'r') as f:
-            for line in f:
-                already_processed.add(line.strip())
+            folder_days = os.listdir(acoust_folder)
+            # filter the FILES, FUST THE FOLDERS
+            folder_days = [day_folder for day_folder in folder_days if os.path.isdir(os.path.join(acoust_folder, day_folder))]
+            logger.info("Folder days in %s: %s", acoust_folder, folder_days)
+            folder_days = [os.path.join(acoust_folder, day_folder) for day_folder in folder_days]
 
 
-    # LOOPING OVER THE CSV FILES TO MAKE THEM HOURLY AND UPLOADING INTO THE TABLE
-    # ACOUSTIC PARAMETERS
-    for root, dirs, files in os.walk(resultados_folder):
-        for folder in dirs:
-            if folder == 'hourly':
-                full_path = os.path.join(root, folder)
-                csv_files = os.listdir(full_path)
-                logger.info("CSV files in %s: %s", full_path, csv_files)
+            # -.--------------------
+            # PROCESSING
+            # --------------------
+            logger.info("")
+            for day in tqdm.tqdm(folder_days, desc="Processing days", unit="day"):
+                #day string to save the concat file
+                day_str = day.split("/")[-1]
+                logger.info("Processing day_hour: %s", day_str)
+                logger.info("Processing: %s", day)
+                
+                csv_files = os.listdir(day)
+                csv_files = [csv_file for csv_file in csv_files if csv_file.endswith(".csv")]
+                logger.info("CSV files in %s: %s", day, csv_files)
+                csv_files = [os.path.join(day, csv_file) for csv_file in csv_files]
+                
 
-                for csv_file in csv_files:
-                    # processing files that are not already processed
-                    if csv_file not in already_processed:
-                        full_csv_file = os.path.join(full_path, csv_file)
-                        logger.info("Processing file: %s", full_csv_file)
+                # concatenating the csv files
+                logger.info("Trying to concatenate the csv files to process one hour of audio data recordings")
+                df_day = pd.concat([pd.read_csv(csv_file) for csv_file in csv_files], ignore_index=True)
+                
+                # order by the timestamp
+                df_day = df_day.sort_values(by=["Timestamp"])
+                print(df_day)
+                exit()
 
-                        df = pd.read_csv(full_csv_file)
-                        
-                        logger.info("Loading data into TABLE")
-                        load_data_db(db, full_csv_file, logger)
+                # make result csv_file
+                csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
+                logger.info("Concatenated CSV file path: %s", csv_concat_path)
 
-                        # mark file as processed
-                        # with open(processed_list, 'a') as f:
-                        #     f.write(csv_file + "\n")
+                # save csv file
+                df_day.to_csv(os.path.join(query_folder, f"{day_str}.csv"), index=False)
+                logger.info("Concatenated CSV files, saved as: %s", csv_concat_path)
+                # exit()
+
+                
+
+                logger.info("Loading data into TABLE")
+                load_data_db(db, csv_concat_path, logger)
+                cur = db.cursor()
+                cur.execute(f"SELECT COUNT(*) FROM {ACOUSTIC_TABLE_NAME}")
+                n = cur.fetchone()[0]
+                logger.info(f"→ {ACOUSTIC_TABLE_NAME} contains {n} rows after LOAD DATA")
+                cur.close()
+                
+                
+                
+                # ------------------------------------
+                # Query and Convert Results to JSON
+                # ------------------------------------
+                logger.info("Query and Convert Results to JSON")
+                avg_results = power_laeq_avg(db, logger)
+                print(avg_results)
+                logger.info(avg_results)
+                exit()
+
+                # if avg_results is not None:
+                #     logger.info("Power LAeq Average Results:")                      
+                #     # send the data MQTT
+                #     send_mqtt_data(avg_results, logger)
+                # else:
+                #     logger.warning("No results returned from power_laeq_avg query.")
 
 
-                    else:
-                        logger.info("Skipping already processed file: %s", csv_file)
+
+                # ------------------------------------
+                # Update processed files
+                # ------------------------------------
+                # update the processed files
+                # update_processed_files(processed_files_txt, csv_file)
+                # logger.info("Updated processed files list with: %s", csv_file)
+                # #add processed file
+                # processed_files.add(csv_file)
+                # logger.info("Added to processed files: %s", csv_file)
 
 
 
-    # ------------------------------------
-    # Query and Convert Results to JSON
-    # ------------------------------------
-    logger.info("Query and Convert Results to JSON")
-    avg_results = power_laeq_avg(db, logger)
-    if avg_results is not None:
-        print("Power LAeq Average Results:")
-        print(avg_results)
-        
-        # send the data via MQTT
-        send_mqtt_data(avg_results, logger)
-    else:
-        logger.warning("No results returned from power_laeq_avg query.")
-
-
-    # NOW --> CLOSING THE DB
+    #CLOSING THE DB
     try:
         db.close()
         logger.info("Database connection closed")
