@@ -243,6 +243,7 @@ def main():
         if "P2_CONTENEDORES" in point:
             try:
                 # ---------------------------
+                point_str = point.split("/")[-1]
                 acoust_folder = os.path.join(point, storage_output_acoust_folder)
                 logger.info(f"Acoustic params folder: {acoust_folder}")
 
@@ -363,6 +364,11 @@ def main():
                     avg_results = power_laeq_avg(db, logger)
                     # print(avg_results)
                     logger.info(avg_results)
+                    # addig the "day", which is "/mnt/sandisk/CONTENEDORES/CONTENEDORES/P2_CONTENEDORES/acoustic_params/20250407_03" to the avg_results
+                    for result in avg_results:
+                        result["day_path"] = day
+
+                    # print(avg_results)
 
                     if avg_results is not None:
                         logger.info("Power LAeq Average Results:")                      
@@ -377,6 +383,7 @@ def main():
 
                 # append the avg_results to the all_info list
                 all_info.append(avg_results)
+                print(all_info)
 
 
                 # ------------------------------------
@@ -399,7 +406,10 @@ def main():
     logger.info("")
     logger.info("Saving all_info to JSON")
     logger.info("all_info: %s", all_info)
-    all_info_path = os.path.join(query_folder, "all_info.json")
+
+    # adding the folder processed to the all_info
+
+    all_info_path = os.path.join(query_folder, f"{point_str}_all.json")
     with open(all_info_path, "w") as f:
         json.dump(all_info, f, indent=4, default=decimal_to_native)
     logger.info("Saved all_info to: %s", all_info_path)
