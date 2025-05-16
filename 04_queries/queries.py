@@ -4,6 +4,7 @@ import paho.mqtt.client as mqtt
 import os
 import pandas as pd
 import tqdm 
+import decimal
 
 
 from logging_config import setup_logging
@@ -159,20 +160,25 @@ def send_mqtt_data(data, logger, broker=MQTT_BROKER, port=MQTT_PORT):
 
 
 
-def load_processed_files(processed_file_path):
+def load_processed_folder(processed_folder_path):
     """Load the set of processed filenames from a text file."""
-    if os.path.exists(processed_file_path):
-        with open(processed_file_path, "r") as f:
+    if os.path.exists(processed_folder_path):
+        with open(processed_folder_path, "r") as f:
             return {line.strip() for line in f if line.strip()}
     return set()
 
 
 
-def update_processed_files(processed_file_path, filename):
+def update_processed_folder(processed_folder_path, filename):
     """Append a processed filename to the text file."""
-    with open(processed_file_path, "a") as f:
+    with open(processed_folder_path, "a") as f:
         f.write(filename + "\n")
 
+
+def decimal_to_native(obj):
+    if isinstance(obj, decimal.Decimal):
+        return float(obj)
+    raise TypeError(f"Type {obj.__class__.__name__} not serializable")
 
 
 
@@ -256,9 +262,9 @@ def main():
                 # ---------------------------
                 # INIZIALATIN PROCESSING FILE
                 # ---------------------------
-                processed_files_txt = os.path.join(query_folder, "processed_acoustic_query.txt")
-                logger.info(f"Saving the proicessed file txt here --> {processed_files_txt}")
-                processed_files = load_processed_files(processed_files_txt)
+                processed_folder_txt = os.path.join(query_folder, "processed_acoustic_query.txt")
+                logger.info(f"Saving the proicessed file txt here --> {processed_folder_txt}")
+                processed_folder = load_processed_folder(processed_folder_txt)
             except Exception as e:
                 logger.error(f"Error setting up folders: {e}")
                 continue
@@ -266,6 +272,7 @@ def main():
 
 
             try:
+                logger.info("")
                 folder_days = os.listdir(acoust_folder)
                 # filter the FILES, FUST THE FOLDERS
                 folder_days = [day_folder for day_folder in folder_days if os.path.isdir(os.path.join(acoust_folder, day_folder))]
@@ -280,7 +287,13 @@ def main():
             # PROCESSING
             # --------------------
             logger.info("")
-            for day in tqdm.tqdm(folder_days, desc="Processing days", unit="day"):
+            for day in tqdm.tqdm(folder_days[:5], desc="Processing days", unit="day"):
+                # checking if the day is already processed
+                if day in processed_folder:
+                    logger.info("Already processed: %s", day)
+                    continue
+
+
                 try:
                     #day string to save the concat file
                     day_str = day.split("/")[-1]
@@ -301,6 +314,7 @@ def main():
                     continue
 
                 try:
+                    logger.info("")
                     # concatenating the csv files
                     logger.info("Trying to concatenate the csv files to process one hour of audio data recordings")
                     df_day = pd.concat([pd.read_csv(csv_file) for csv_file in csv_files], ignore_index=True)
@@ -311,6 +325,7 @@ def main():
                 try:
                     # order by the timestamp
                     df_day = df_day.sort_values(by=["Timestamp"])
+                    # print(df_day)
 
                     # make result csv_file
                     csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
@@ -325,6 +340,7 @@ def main():
                 
 
                 try:
+                    logger.info("")
                     logger.info("Loading data into TABLE")
                     load_data_db(db, csv_concat_path, logger)
                     cur = db.cursor()
@@ -339,21 +355,21 @@ def main():
                 
                 
                 # ------------------------------------
-                # Query and Convert Results to JSON
+                # query and convert cesults to json
                 # ------------------------------------
                 try:
+                    logger.info("")
                     logger.info("Query and Convert Results to JSON")
                     avg_results = power_laeq_avg(db, logger)
-                    print(avg_results)
+                    # print(avg_results)
                     logger.info(avg_results)
-                    # exit()
 
-                    # if avg_results is not None:
-                    #     logger.info("Power LAeq Average Results:")                      
-                    #     # send the data MQTT
-                    #     send_mqtt_data(avg_results, logger)
-                    # else:
-                    #     logger.warning("No results returned from power_laeq_avg query.")
+                    if avg_results is not None:
+                        logger.info("Power LAeq Average Results:")                      
+                        # send the data MQTT
+                        send_mqtt_data(avg_results, logger)
+                    else:
+                        logger.warning("No results returned from power_laeq_avg query.")
                 except Exception as e:
                     logger.error(f"Error querying and converting results to JSON: {e}")
                     continue
@@ -364,31 +380,35 @@ def main():
 
 
                 # ------------------------------------
-                # Update processed files
+                # update processed folder
                 # ------------------------------------
-                # try:
-                    # update the processed files
-                    # update_processed_files(processed_files_txt, csv_file)
-                    # logger.info("Updated processed files list with: %s", csv_file)
-                    # #add processed file
-                    # processed_files.add(csv_file)
-                    # logger.info("Added to processed files: %s", csv_file)
-                # except Exception as e:
-                #     logger.error(f"Error updating processed files: {e}")
-                #     continue
+                try:
+                    logger.info("")
+                    update_processed_folder(processed_folder_txt, day)
+                    processed_folder = load_processed_folder(processed_folder_txt)
+                    logger.info("Added to processed files: %s", day)
+                except Exception as e:
+                    logger.error(f"Error updating processed files: {e}")
+                    continue
 
 
-    print("all_info", all_info)
-    # save the all_info to a json file
+
+    # ------------------------------------
+    # save all_info to json
+    # ------------------------------------
+    logger.info("")
+    logger.info("Saving all_info to JSON")
+    logger.info("all_info: %s", all_info)
     all_info_path = os.path.join(query_folder, "all_info.json")
     with open(all_info_path, "w") as f:
-        json.dump(all_info, f, indent=4)
+        json.dump(all_info, f, indent=4, default=decimal_to_native)
     logger.info("Saved all_info to: %s", all_info_path)
 
 
 
     #CLOSING THE DB
     try:
+        logger.info("")
         db.close()
         logger.info("Database connection closed")
     except mysql.connector.Error as err:
