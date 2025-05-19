@@ -73,7 +73,7 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
                 logging.info(f"Skipping {audio_file}, already processed.")
                 continue
             
-            file_start_time = time.time()
+            # file_start_time = time.time()
 
             # -----------------------------------------------------------
             # csv file name and folder
@@ -89,6 +89,7 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
             start_timestamp = datetime.datetime.strptime(wav_file_raw, '%Y%m%d_%H%M%S')
             start_timestamp = start_timestamp.replace(tzinfo=local_tz)
             logging.info(f"Start_timestamp --> {start_timestamp}")
+            exit()
             
 
             if window_size is None:
@@ -277,10 +278,10 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
             logging.info(f"Final CSV file added to the processed file. {csv_full_path}")
 
             
-            file_end_time = time.time()
-            elapsed_time = file_end_time - file_start_time
-            logging.info(f"Processing of {audio_file} took {elapsed_time:.2f} seconds")
-            print(f"Processing of {audio_file} took {elapsed_time:.2f} seconds")
+            # file_end_time = time.time()
+            # elapsed_time = file_end_time - file_start_time
+            # logging.info(f"Processing of {audio_file} took {elapsed_time:.2f} seconds")
+            # print(f"Processing of {audio_file} took {elapsed_time:.2f} seconds")
             # exit()
 
 

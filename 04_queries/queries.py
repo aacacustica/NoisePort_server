@@ -187,7 +187,7 @@ def main():
     # INITIALIZATION
     # ------------------------------------
     # logger
-    logger = setup_logging('query_automatize.log')
+    logger = setup_logging('query_automatize')
 
     # database
     db = mysql.connector.connect(
