@@ -1,7 +1,8 @@
 # ----------------------------------------
 #  SANDISK PATH
 # ----------------------------------------
-SANDISK_PATH = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/"
+SANDISK_PATH_LINUX = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/"
+SANDISK_PATH_WINDOWS = r"\\192.168.205.122\Contenedores"
 
 
 # -------------------------

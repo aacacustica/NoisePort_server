@@ -158,11 +158,25 @@ def main():
     # INITIALIZATION
     # ------------------------------------
     # logger
-    logger = setup_logging('query_automatize.log')
+    logger = setup_logging('query_automatize')
+
+    # database
+    db = mysql.connector.connect(
+            host=HOST,
+            user=USER,
+            password=PASSWORD,
+            allow_local_infile=True
+    )
+
+    logger.info("Initializing database!")
+    # testing the query database
+    initialize_database(db, logger)
+
 
     # paths and processed csv_files
     logger.info("Starting!!")
     logger.info("")
+
     try:
         # config
         logger.info("Getting the element form the yamnl file")
@@ -177,53 +191,56 @@ def main():
 
 
     # [1] setup the folder to process
-    path = SANDISK_PATH
+    path = SANDISK_PATH_LINUX
+    
     # check if it exist
     isdir = os.path.isdir(path)
     if isdir:
         logger.info(f"Path exists --> {path}")
     else:
-        raise ValueError(f'Path ({path}) doesnt exist.')
+        logger.warning(f"Path does not exist --> {path}")
+        path = SANDISK_PATH_WINDOWS
+        isdir = os.path.isdir(path)
+        if isdir:
+            logger.info(f"Path exists --> {path}")
+        else:
+            raise ValueError(f'Path ({path}) doesnt exist.')
 
+    
+    logger.info("")
+    points = [point for point in os.listdir(path)]
+    points = [os.path.join(path, point) for point in points]
+    for point in points:
+        if "P2_CONTENEDORES" in point:
+            print("P2_CONTENEDORES")
 
-    for root, dirs, files in os.walk(path):
-        if storage_output_acoust_folder in dirs:
-            logger.info(f"Found folder: {storage_output_acoust_folder} in {root}")
-            point = os.path.basename(root)
-            logger.info(f"Point: {point}")
+            acoust_folder = os.path.join(point, storage_output_acoust_folder)
+            logger.info(f"Acoustic params folder: {acoust_folder}")
+            print(f"Acoustic params folder: {acoust_folder}")
 
+            # checking if the folder exist
+            if os.path.isdir(acoust_folder):
+                logger.info(f"Folder exists: {acoust_folder}")
+            else:
+                logger.warning(f"Folder does not exist: {acoust_folder}")
+                continue
 
-            if point == "P2_CONTENEDORES":
-                print("Subnormal")
+            csv_files = os.listdir(acoust_folder)
+            logger.info("CSV files in %s: %s", acoust_folder, csv_files)
 
-                wav_files_folder = os.path.join(root, storage_output_acoust_folder)
-                logger.info(f"Acoustic params folder: {wav_files_folder}")
-                print(f"Acoustic params folder: {wav_files_folder}")
     
     
     
     
-
-
-
-
     exit()  
+
+
+
+
     home_dir = os.getenv("HOME")
     resultados_folder = os.path.join(home_dir, "RESULTADOS")
     processed_list='processed_csv.txt'
-    
-    # database
-    db = mysql.connector.connect(
-            host=HOST,
-            user=USER,
-            password=PASSWORD,
-            allow_local_infile=True
-    )
-
-    logger.info("Initializing database!")
-    # testing the query database
-    initialize_database(db, logger)
-    
+        
 
     # ------------------------------------
     # PROCESSING
