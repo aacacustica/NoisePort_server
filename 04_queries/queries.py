@@ -240,7 +240,7 @@ def main():
     points = [os.path.join(path, point) for point in points]
     all_info = []
     for point in points:
-        if "P2_CONTENEDORES" in point:
+        if "P3_CONTENEDORES" in point:
             try:
                 # ---------------------------
                 point_str = point.split("/")[-1]
@@ -288,7 +288,7 @@ def main():
             # PROCESSING
             # --------------------
             logger.info("")
-            for day in tqdm.tqdm(folder_days[:5], desc="Processing days", unit="day"):
+            for day in tqdm.tqdm(folder_days, desc="Processing days", unit="day"):
                 # checking if the day is already processed
                 if day in processed_folder:
                     logger.info("Already processed: %s", day)
@@ -368,10 +368,12 @@ def main():
                     for result in avg_results:
                         result["day_path"] = day
 
-                    # print(avg_results)
+                    logger.info("Power LAeq Average Results:")
+                    logger.info(avg_results)
+
 
                     if avg_results is not None:
-                        logger.info("Power LAeq Average Results:")                      
+                        logger.info("Power LAeq Average Results:")
                         # send the data MQTT
                         send_mqtt_data(avg_results, logger)
                     else:
@@ -383,7 +385,7 @@ def main():
 
                 # append the avg_results to the all_info list
                 all_info.append(avg_results)
-                print(all_info)
+                # print(all_info)
 
 
                 # ------------------------------------
