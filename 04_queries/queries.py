@@ -242,7 +242,7 @@ def main():
     points = [os.path.join(path, point) for point in points]
     all_info = []
     for point in points:
-        if "P3_CONTENEDORES" in point:
+        if "P4_CONTENEDORES" in point:
             try:
                 # ---------------------------
                 point_str = point.split("/")[-1]

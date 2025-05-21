@@ -5,6 +5,7 @@ import datetime
 import time
 import csv
 import pandas as pd
+import tqdm
 
 import resampy
 import soundfile as sf
@@ -14,6 +15,8 @@ import warnings
 
 from utils import *
 from logging_config import setup_logging
+from config import *
+import json
 
 
 #removing 
@@ -25,9 +28,9 @@ warnings.filterwarnings("ignore",
 
 
 
-def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, window_size, threshold, upload_s3, logging, output_wav_folder, output_predict_lt_folder, s3_bucket_name, cwd, yamnet_class_map_csv):
-    """Perform inference on one or more audio files.
-
+def inference(path,id_micro, model_path, sample_rate, chunk_size, window_size, threshold, upload_s3, logging, output_wav_folder, output_predict_lt_folder, s3_bucket_name, cwd, yamnet_class_map_csv):
+    """
+    Perform inference on one or more audio files.
     Args:
         file_list (list[str]): List of file paths to process.
         window_size (float, optional): Window size in seconds. If None, process the entire file at once.
@@ -41,9 +44,12 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
     # ---------------------------
     processed_files_txt = os.path.join(path, "processed_predictions.txt")
     processed_files_txt = processed_files_txt.replace("wav_files", "predictions_litle")
+    os.makedirs(os.path.dirname(processed_files_txt), exist_ok=True)
     logging.info(f"Saving the processed file txt here --> {processed_files_txt}")
     
     processed_files = load_processed_files(processed_files_txt)
+
+
     
     # --------------------------------------------------------
     # 1) create the TFLite interpreter
@@ -61,19 +67,135 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
     logging.info("Classes map loaded")
 
 
-    # --------------------
-    # Processing audio files
-    # --------------------
-    for audio_file in file_list:
-        try:
-            logging.info("")
-            logging.info(f"Processing --> {audio_file}")
 
+
+    # ----------------------------------
+    # COLLECTING AUDIO FILES TO PROCESS
+    # ----------------------------------
+    logging.info("")
+    full_paths= []
+    wav_folder_strs= []
+    diff_list= []
+
+
+    try:
+        # get all sub-folders in 'path'
+        wav_folders = [os.path.join(path, f)for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
+        len_folders = len(wav_folders)
+        logging.info(f"Found {len_folders} folders in {path}")
+        
+        
+        logging.info("")
+        for wav_folder in wav_folders:
+            logging.info(f"Processing folder: {wav_folder}")
+            wav_folder_strs.append(os.path.basename(wav_folder))
+
+            wav_files = [f for f in os.listdir(wav_folder)if f.lower().endswith('.wav')]
+            full_paths.extend(os.path.join(wav_folder, f) for f in wav_files)
+
+            found = len(wav_files)
+            if found == 60:
+                logging.info(f"Found {found} audio files. Folder complete.")
+            else:
+                missing = 60 - found
+                logging.info(f"Found {found} audio files. "
+                    f"Missing {missing} files.")
+
+                diff_list.append({
+                    "folder": wav_folder,
+                    "files_missing": missing
+                })
+
+
+    except Exception as e:
+        logging.error(f"Error getting the audio files: {e}")
+
+
+
+    # ----------------------------------
+    try:
+        expect_wav_files = len_folders * 60
+        total_audio_files = len(full_paths)
+        total_missing = expect_wav_files - total_audio_files
+
+
+        #convertinto to hours, minutes and seconds, 60x60 3600
+        # 1 audio files = 60 seconds
+        # 1 folder = 60 audio files
+        # 1 folder = 60 minutes
+        # 1 folder = 1 hour
+        total_audio_files_in_hours = total_audio_files / 3600
+        total_audio_files_in_minutes = total_audio_files / 60
+        total_audio_files_in_seconds = total_audio_files
+
+        #missing files
+        total_missing_in_hours = total_missing / 3600
+        total_missing_in_minutes = total_missing / 60
+        total_missing_in_seconds = total_missing
+
+
+        logging.info("")
+        logging.info(f"Expecting {expect_wav_files} wav files in total")
+        logging.info(f"There are {total_audio_files} total audio files to process")
+        logging.info(f"Missing {total_missing} wav files")
+        logging.info("")
+
+
+        logging.info(f"Total audio files in hours: {total_audio_files_in_hours:.2f} hours")
+        logging.info(f"Total audio files in minutes: {total_audio_files_in_minutes:.2f} minutes")
+        logging.info(f"Total audio files in seconds: {total_audio_files_in_seconds:.2f} seconds")
+        logging.info("")
+
+
+        logging.info(f"Total missing files in hours: {total_missing_in_hours:.2f} hours")
+        logging.info(f"Total missing files in minutes: {total_missing_in_minutes:.2f} minutes")
+        logging.info(f"Total missing files in seconds: {total_missing_in_seconds:.2f} seconds")
+        logging.info("")
+
+
+        # ----------------------------------
+        # saving the missing files information to the previous json file
+        report = {
+            "expected_wav_files": expect_wav_files,
+            "total_audio_files": total_audio_files,
+            "total_missing_files": total_missing,
+
+            "total_audio_duration": {
+                "hours": total_audio_files_in_hours,
+                "minutes": total_audio_files_in_minutes,
+                "seconds": total_audio_files_in_seconds
+            },
+            "missing_audio_duration": {
+                "hours": total_missing_in_hours,
+                "minutes": total_missing_in_minutes,
+                "seconds": total_missing_in_seconds
+            },
+            "folders_with_missing": diff_list
+        }
+
+        out_path = os.path.join(path, "wav_folder_report.json")
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(report, f, indent=2)
+        logging.info(f"Saved full report to {out_path}")
+    
+    except Exception as e:
+        logging.error(f"Error saving the report: {e}")
+            
+
+
+    # ----------------------------------
+    # PROCESSING
+    # ----------------------------------
+    for audio_file in tqdm.tqdm(full_paths, desc="Processing files", unit="file"):
+        try:
+
+            # filtering out the files that have already been processed
             if audio_file in processed_files:
                 logging.info(f"Skipping {audio_file}, already processed.")
                 continue
-            
-            # file_start_time = time.time()
+        
+
+            logging.info(f"Processing file: {audio_file}")
 
             # -----------------------------------------------------------
             # csv file name and folder
@@ -89,7 +211,6 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
             start_timestamp = datetime.datetime.strptime(wav_file_raw, '%Y%m%d_%H%M%S')
             start_timestamp = start_timestamp.replace(tzinfo=local_tz)
             logging.info(f"Start_timestamp --> {start_timestamp}")
-            exit()
             
 
             if window_size is None:
@@ -276,15 +397,9 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
             processed_files.add(audio_file)
             logging.info(f"Final CSV file added to the processed file. {audio_file}")
             logging.info(f"Final CSV file added to the processed file. {csv_full_path}")
-
-            
-            # file_end_time = time.time()
-            # elapsed_time = file_end_time - file_start_time
-            # logging.info(f"Processing of {audio_file} took {elapsed_time:.2f} seconds")
-            # print(f"Processing of {audio_file} took {elapsed_time:.2f} seconds")
             # exit()
 
-
+            
         # -------------
         # END
         # ---------------
@@ -359,11 +474,15 @@ def main():
         if args.path:
             path = args.path
         else:
-            path = os.path.join(home_dir, location_record, location_place, location_point, storage_output_wav_folder)
-            if os.path.exists(path):
-                logging.info(f"Path exists --> {path}")
-            else:
-                raise Exception('Path doesnt exist.')
+            path = SANDISK_PATH_LINUX
+        # check if it exist
+        isdir = os.path.isdir(path)
+        if isdir:
+            logging.info(f"Path exists --> {path}")
+            # continue
+        else:
+            raise ValueError(f'Path ({path}) doesnt exist.')
+        
         
         # DEEP LEARNING MODEL PATH
         if args.model_path:
@@ -394,11 +513,68 @@ def main():
 
 
     logging.info(f"Path: {path}")
-    logging.info(f"ID Micro: {id_micro}")
     logging.info(f"Model path: {model_path}")
     logging.info(f"Window size: {window_size}")
     logging.info(f"Probability treshold: {threshold}")
     logging.info(f"Upload to bucket S3: {upload_s3}")
+
+
+    logging.info("")
+    for root, dirs, files in os.walk(path):
+            if storage_output_wav_folder in dirs:
+                logging.info(f"Found folder: {storage_output_wav_folder} in {root}")
+                point = os.path.basename(root)
+                logging.info(f"Point: {point}")
+
+
+                if point == "P2_CONTENEDORES":
+                    logging.info("")
+                    # print("P2_CONTENEDORES")
+
+                    if point in ID_MICROPHONE:
+                        id_micro = ID_MICROPHONE[point]
+                        logging.info(f"ID Microphone: {id_micro}")
+                    else:
+                        raise ValueError(f"ID Microphone for {point} not found in ID_MICROPHONE.")
+                
+                    
+                    wav_files_folder = os.path.join(root, storage_output_wav_folder)
+                    logging.info(f"WAV files folder: {wav_files_folder}")
+
+
+                    # ----------
+                    # INFERENCE
+                    # ----------
+                    try:
+                        inference(
+                            path=wav_files_folder,
+                            
+                            id_micro=id_micro,
+                            model_path=model_path,
+                            yamnet_class_map_csv=prediction_yamnet_class_map_csv,
+                            
+                            sample_rate=prediction_sample_rate,
+                            chunk_size=prediction_chunk_size,
+                            window_size=window_size,
+                            threshold=threshold,
+                            
+                            upload_s3=upload_s3,
+                            
+                            output_wav_folder=storage_output_wav_folder,
+                            output_predict_lt_folder=storage_output_predict_lt_folder,
+                            s3_bucket_name=storage_s3_bucket_name,
+                            
+                            cwd=cwd,
+                            
+                            logging=logging
+                        )
+                        logging.info("Inference finished.")
+                    
+                    except Exception as e:
+                        logging.error(f"Error making inference: {e}")
+                    exit()
+                
+    exit()
 
 
 
