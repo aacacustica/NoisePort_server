@@ -40,11 +40,21 @@ CALIBRATION_CONSTANTS = {
 # ----------------------------------------
 BUCKET_NAME = 'demo-prototype-aac-2025'
 
+
 # ----------------------------------------
 # MQTT
 # ----------------------------------------
-MQTT_BROKER = "mqtt.demo2.muutech.com"
-MQTT_PORT = "12003"
+# DEMO
+# MQTT_BROKER = "mqtt.demo2.muutech.com"
+# MQTT_PORT = "12003"
+
+
+# FINAL ENDPOINT
+MQTT_BROKER = "mqtt.aacacustica.muutech.com"
+MQTT_PORT = "12081"
+MQTT_USER     = "aac"
+MQTT_PASSWORD = "nrcXniqigJ1LEq2Dm_7y"
+
 
 # ----------------------------------------
 # MYSQL

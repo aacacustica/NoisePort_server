@@ -5,6 +5,7 @@ import os
 import pandas as pd
 import tqdm 
 import decimal
+import ssl
 
 
 from logging_config import setup_logging
