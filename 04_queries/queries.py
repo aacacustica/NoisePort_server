@@ -131,34 +131,57 @@ def power_laeq_avg(db, logger, table_name=ACOUSTIC_TABLE_NAME):
 
 
 
-def send_mqtt_data(data, logger, broker=MQTT_BROKER, port=MQTT_PORT):
+# def send_mqtt_data(data, logger, broker=MQTT_BROKER, port=MQTT_PORT):
+#     payload = json.dumps(data, default=str)
+    
+#     try:
+#         if data and isinstance(data, list) and isinstance(data[0], dict) and "sensor_id" in data[0]:
+#             sensor_id = data[0]["sensor_id"]
+#         else:
+#             sensor_id = "unknown"
+#     except Exception as e:
+#         logger.error("Error extracting sensor_id: %s", e)
+#         sensor_id = "unknown"
+    
+#     # topic using the sensor_id
+#     topic = f"aacacustica/{sensor_id}"
+    
+#     # ensure port is an integer 
+#     port = int(port)
+    
+#     #MQTT client and connect.
+#     client = mqtt.Client()
+#     client.connect(broker, port, 60)
+    
+#     # Publish payload to the topic, save the info inside the broker
+#     # client.publish(topic, payload)
+#     client.publish(topic, payload, qos=1, retain=True) # keep it false
+#     logger.info("Connected to MQTT broker at %s:%s", broker, port)
+#     logger.info("Published data to topic '%s': %s", topic, payload)
+    
+#     client.disconnect()
+
+def send_mqtt_data(data, logger):
     payload = json.dumps(data, default=str)
-    
+    # extract sensor_id for topic
     try:
-        if data and isinstance(data, list) and isinstance(data[0], dict) and "sensor_id" in data[0]:
-            sensor_id = data[0]["sensor_id"]
-        else:
-            sensor_id = "unknown"
-    except Exception as e:
-        logger.error("Error extracting sensor_id: %s", e)
+        sensor_id = data[0].get("sensor_id", "unknown") if isinstance(data, list) else "unknown"
+    except Exception:
         sensor_id = "unknown"
-    
-    # topic using the sensor_id
     topic = f"aacacustica/{sensor_id}"
-    
-    # ensure port is an integer 
-    port = int(port)
-    
-    #MQTT client and connect.
+
+    # create client
     client = mqtt.Client()
-    client.connect(broker, port, 60)
-    
-    # Publish payload to the topic, save the info inside the broker
-    # client.publish(topic, payload)
-    client.publish(topic, payload, qos=1, retain=True) # keep it false
-    logger.info("Connected to MQTT broker at %s:%s", broker, port)
-    logger.info("Published data to topic '%s': %s", topic, payload)
-    
+    #username & password
+    client.username_pw_set(MQTT_USER, MQTT_PASSWORD)
+    #TLS default system CA certs
+    client.tls_set(cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLS_CLIENT)
+    client.tls_insecure_set(False)  # enforce certificate hostname check
+
+    #connect & publish
+    client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
+    client.publish(topic, payload, qos=1, retain=True)
+    logger.info("Published data to topic '%s' via TLS: %s", topic, payload)
     client.disconnect()
 
 
@@ -243,7 +266,7 @@ def main():
     points = [os.path.join(path, point) for point in points]
     all_info = []
     for point in points:
-        if "P4_CONTENEDORES" in point:
+        if "P2_CONTENEDORES" in point:
             try:
                 # ---------------------------
                 point_str = point.split("/")[-1]

@@ -52,7 +52,7 @@ BUCKET_NAME = 'demo-prototype-aac-2025'
 # FINAL ENDPOINT
 MQTT_BROKER = "mqtt.aacacustica.muutech.com"
 MQTT_PORT = "12081"
-MQTT_USER     = "aac"
+MQTT_USER = "aac"
 MQTT_PASSWORD = "nrcXniqigJ1LEq2Dm_7y"
 
 
