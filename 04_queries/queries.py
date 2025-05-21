@@ -154,7 +154,7 @@ def send_mqtt_data(data, logger, broker=MQTT_BROKER, port=MQTT_PORT):
     
     # Publish payload to the topic, save the info inside the broker
     # client.publish(topic, payload)
-    client.publish(topic, payload, qos=1, retain=False) # keep it false
+    client.publish(topic, payload, qos=1, retain=True) # keep it false
     logger.info("Connected to MQTT broker at %s:%s", broker, port)
     logger.info("Published data to topic '%s': %s", topic, payload)
     
