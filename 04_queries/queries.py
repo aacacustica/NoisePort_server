@@ -166,10 +166,12 @@ def send_mqtt_data(data, logger):
         # ensure port is an integer 
         port = int(MQTT_PORT_MUUTECH)
 
-        #username & password
+        
+        # connect to the broker using TLS trusting the server certificate
         client.username_pw_set(MQTT_USER_MUUTECH, MQTT_PASSWORD_MUUTECH)
-        client.tls_set() 
-        client.tls_insecure_set(False)
+        client.tls_set(cert_reqs=ssl.CERT_NONE)
+        client.tls_insecure_set(True)
+
 
         #connect & publish
         client.connect(MQTT_BROKER_MUUTECH, port, keepalive=60)
