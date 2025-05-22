@@ -44,16 +44,19 @@ BUCKET_NAME = 'demo-prototype-aac-2025'
 # ----------------------------------------
 # MQTT
 # ----------------------------------------
+# FLAG FOR DEMO
+DEMO = False
+
 # DEMO
-# MQTT_BROKER = "mqtt.demo2.muutech.com"
-# MQTT_PORT = "12003"
+MQTT_BROKER_DEMO = "mqtt.demo2.muutech.com"
+MQTT_PORT_DEMO = "12003"
 
 
 # FINAL ENDPOINT
-MQTT_BROKER = "mqtt.aacacustica.muutech.com"
-MQTT_PORT = "12081"
-MQTT_USER = "aac"
-MQTT_PASSWORD = "nrcXniqigJ1LEq2Dm_7y"
+MQTT_BROKER_MUUTECH = "mqtt.aacacustica.muutech.com"
+MQTT_PORT_MUUTECH = "12081"
+MQTT_USER_MUUTECH = "aac"
+MQTT_PASSWORD_MUUTECH = "nrcXniqigJ1LEq2Dm_7y"
 
 
 # ----------------------------------------

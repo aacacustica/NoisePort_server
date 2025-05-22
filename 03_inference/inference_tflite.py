@@ -527,7 +527,7 @@ def main():
                 logging.info(f"Point: {point}")
 
 
-                if point == "P2_CONTENEDORES":
+                if point == "P1_CONTENEDORES":
                     logging.info("")
                     # print("P2_CONTENEDORES")
 
