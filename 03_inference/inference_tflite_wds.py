@@ -362,36 +362,27 @@ def main():
         #WAV PÀTH
         if args.path:
             path = args.path
-            if os.path.exists(path):
-                logging.info(f"Path exists --> {path}")
-            else:
-                raise Exception('Path doesnt exist.')
         else:
-            path = os.path.join(home_dir, location_record, location_place, location_point, storage_output_wav_folder)
+            # if not, try to set the SANDISK_PATH_LINUX and if it fails, set the SANDISK_PATH_WINDOWS
+            path = SANDISK_PATH_LINUX
             if os.path.exists(path):
-                logging.info(f"Path exists --> {path}")
+                logging.info(f"Path exists: {path}")
             else:
+                logging.info(f"Path does not exist: {path}")
                 path = SANDISK_PATH_WINDOWS
-                logging.info(f"Path doesnt exist. Using default path --> {path}")
                 if os.path.exists(path):
-                    logging.info(f"Path exists --> {path}")
+                    logging.info(f"Path exists: {path}")
                 else:
-                    path = SANDISK_PATH_LINUX
-                    logging.info(f"Path doesnt exist. Using default path --> {path}")
-                    if os.path.exists(path):
-                        logging.info(f"Path exists --> {path}")
-                    else:
-                        raise Exception('Path doesnt exist.')
-        
-        print(f"Path: {path}")
-        exit()
+                    logging.error(f"Path does not exist: {path}")
+                    raise FileNotFoundError(f"Neither path exists: {SANDISK_PATH_LINUX} or {SANDISK_PATH_WINDOWS}")         
             
+        
         # DEEP LEARNING MODEL PATH
         if args.model_path:
             model_path = args.model_path
         else:
             model_path = prediction_model_tflt
-
+        
         # WINDOW
         if args.window_size:
             window_size = args.window_size
@@ -423,50 +414,84 @@ def main():
 
 
 
-    # -----------------------
-    # GETTING AUDIO FILES
-    # -----------------------
-    try:
-        audio_files = [f for f in os.listdir(path) if f.lower().endswith('.wav')]
-        full_paths = [os.path.join(path, file) for file in audio_files]
-    except Exception as e:
-        logging.error(f"Errorgetting the audio files: {e}")
 
-    logging.info(f"Found {len(audio_files)} audio files: {audio_files}")
+    for root, dirs, files in os.walk(path):
+            if storage_output_wav_folder in dirs:
+                logging.info(f"Found folder: {storage_output_wav_folder} in {root}")
+                point = os.path.basename(root)
+                logging.info(f"Point: {point}")
+
+                if point == "P2_CONTENEDORES":
+                    ##########################################################
+                    ##########################################################
+                    ##########################################################
+                    # taking the id microphone from the config file
+                    if point in ID_MICROPHONE:
+                        id_micro = ID_MICROPHONE[point]
+                        logging.info(f"ID Microphone: {id_micro}")
+                    else:
+                        raise ValueError(f"ID Microphone for {point} not found in ID_MICROPHONE.")
+                    
+                    
+                    ##########################################################
+                    ##########################################################
+                    ##########################################################
+                    wav_files_folder = os.path.join(root, storage_output_wav_folder)
+                    logging.info(f"WAV files folder: {wav_files_folder}")
+
+                    # wav folders
+                    wav_folders = [os.path.join(wav_files_folder, d) for d in os.listdir(wav_files_folder) if os.path.isdir(os.path.join(wav_files_folder, d))]
+                    logging.info(f"There are {len(wav_folders)} folders in the WAV files folder")
+                    logging.info(f"WAV folders: {wav_folders}")
+
+                    # -----------------------
+                    # GETTING AUDIO FILES
+                    # -----------------------
+                    try:
+                        audio_files = [f for f in os.listdir(path) if f.lower().endswith('.wav')]
+                        full_paths = [os.path.join(path, file) for file in audio_files]
+                    except Exception as e:
+                        logging.error(f"Errorgetting the audio files: {e}")
+
+                    logging.info(f"Found {len(audio_files)} audio files: {audio_files}")
+
+                    print(f"this is the path --> {path}")
+                    print(f"this is the wav folder --> {wav_files_folder}")
+                    exit()
 
 
 
-    # ----------
-    # INFERENCE
-    # ----------
-    try:
-        inference(
-            path=path,
-            file_list=full_paths,
-            
-            id_micro=id_micro,
-            model_path=model_path,
-            yamnet_class_map_csv=prediction_yamnet_class_map_csv,
-            
-            sample_rate=prediction_sample_rate,
-            chunk_size=prediction_chunk_size,
-            window_size=window_size,
-            threshold=threshold,
-            
-            upload_s3=upload_s3,
-            
-            output_wav_folder=storage_output_wav_folder,
-            output_predict_lt_folder=storage_output_predict_lt_folder,
-            s3_bucket_name=storage_s3_bucket_name,
-            
-            cwd=cwd,
-            
-            logging=logging
-        )
-        logging.info("Inference finished.")
-    
-    except Exception as e:
-        logging.error(f"Error making inference: {e}")
+                    # ----------
+                    # INFERENCE
+                    # ----------
+                    try:
+                        inference(
+                            path=path,
+                            file_list=full_paths,
+                            
+                            id_micro=id_micro,
+                            model_path=model_path,
+                            yamnet_class_map_csv=prediction_yamnet_class_map_csv,
+                            
+                            sample_rate=prediction_sample_rate,
+                            chunk_size=prediction_chunk_size,
+                            window_size=window_size,
+                            threshold=threshold,
+                            
+                            upload_s3=upload_s3,
+                            
+                            output_wav_folder=storage_output_wav_folder,
+                            output_predict_lt_folder=storage_output_predict_lt_folder,
+                            s3_bucket_name=storage_s3_bucket_name,
+                            
+                            cwd=cwd,
+                            
+                            logging=logging
+                        )
+                        logging.info("Inference finished.")
+                    
+                    except Exception as e:
+                        logging.error(f"Error making inference: {e}")
 
 
 

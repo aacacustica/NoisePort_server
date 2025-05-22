@@ -1,0 +1,1560 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import seaborn as sns
+from utils import *
+import os
+from config import *
+import plotly.express as px
+import matplotlib.colors as mcolors
+from matplotlib.patches import Patch
+
+
+plt.rc('font', size=MEDIUM_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=MEDIUM_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=MEDIUM_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=MEDIUM_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+
+
+cmap_dict = sns.color_palette(palette=["#C8FFC8", "#00C800", "#007800", "#FFFF00", "#FFC878", "#FF9600", "#FF0000", "#780000", "#FF00FF", "#8C3CFF", "#000078"],n_colors=11)
+
+hex_colors = [mcolors.to_hex(color) for color in cmap_dict]
+custom_color_scale = [[i/len(hex_colors), color] for i, color in enumerate(hex_colors)]
+custom_color_scale.append([1, hex_colors[-1]])
+    
+
+
+
+def plot_night_evolution(df, folder_output_dir: str, logger, laeq_column:str, plotname:str, indicador_noche:str):
+    try:
+        df = df.dropna(subset=[laeq_column])
+        logger.info(f"Using the laeq_column: {laeq_column}")
+        sns.set_style("whitegrid")
+        sns.set_palette("tab10")
+        
+        df['Día'] = df['night_str']
+        
+        df['date'] = pd.to_datetime(df['date'])
+        df.sort_values(by=['date', 'hour'], inplace=True)
+
+        night_data = pd.DataFrame()
+        unique_dates = df['date'].dt.date.unique()
+
+        for current_date in unique_dates:
+            next_date = current_date + pd.Timedelta(days=1)
+            data_23 = df[(df['date'].dt.date == current_date) & (df['hour'] == 23)]
+            data_00_06 = df[(df['date'].dt.date == next_date) & (df['hour'].isin(range(0, 7)))]
+
+            if not data_23.empty and not data_00_06.empty:
+                combined_data = pd.concat([data_23, data_00_06])
+                night_data = pd.concat([night_data, combined_data])
+
+        night_data['plot_hour'] = night_data['hour'].replace({23: -1}).astype(int)
+        night_data.sort_values(by=['date', 'plot_hour'], inplace=True)
+        
+        # save to excel
+        os.makedirs(folder_output_dir, exist_ok=True)
+        night_data.to_csv(f"{folder_output_dir}/{plotname}_{indicador_noche}_evolution.csv", index=False)
+        logger.info(f"Night evolution data saved to {folder_output_dir}/{plotname}_{indicador_noche}_evolution.csv")
+
+        fig = sns.relplot(
+            data=night_data, 
+            x="plot_hour", 
+            y=laeq_column, 
+            kind="line", 
+            hue="Día",
+            estimator=leq, 
+            aspect=1.3,
+            palette=C_MAP_WEEKDAY_NIGHT
+        )
+        
+        plt.xticks(range(-1, 7), ['23:00', '00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00'])
+        plt.yticks(range(DB_RANGE_BOTTOM, DB_RANGE_TOP, BD_RANGE_STEP), [str(level) for level in range(DB_RANGE_BOTTOM, DB_RANGE_TOP, BD_RANGE_STEP)])
+
+        plt.xlim(-1.5, 6.5)
+
+        for ax in fig.axes.flat:
+            ax.spines['top'].set_visible(True)
+            ax.spines['right'].set_visible(True)
+
+        plt.title(f'Evolución {indicador_noche}')
+        plt.ylabel('dB(A)')
+        plt.xlabel('Hora')
+
+        os.makedirs(folder_output_dir, exist_ok=True)
+
+        logger.info(f"Saving the plot {plotname}_{indicador_noche}")
+        fig.savefig(f"{folder_output_dir}/{plotname}_{indicador_noche}_evolution.png", dpi=150)
+        logger.info(f"Night evolution plot saved to {folder_output_dir}/{plotname}_{indicador_noche}_evolution.png")
+    
+    except Exception as e:
+        logger.error(f"Error in plot_night_evolution: {e}")
+
+
+
+def plot_night_evolution_15_min(df, folder_output_dir: str, logger, name_extension, laeq_column:str, plotname:str, indicador_noche:str):
+    try:
+        df = df.dropna(subset=[laeq_column])
+        logger.info(f"Using the laeq_column: {laeq_column}")        
+        sns.set_style("whitegrid")
+        sns.set_palette("tab10")
+        
+        df['Día'] = df['night_str']
+        df.index = pd.to_datetime(df.index)
+
+        df_resampled = df.resample('15min')[laeq_column].mean()
+        df_night_str = df.resample('15min')['Día'].agg(lambda x: x.value_counts().index[0] if len(x) > 0 else None)
+        df_resampled = pd.DataFrame(df_resampled).join([df_night_str])
+        
+        # date and time columns
+        df_resampled['date'] = df_resampled.index.date
+        df_resampled['time'] = df_resampled.index.time
+        
+        # convert time column to a plottable format with a 15-minute offset
+        df_resampled['plot_time'] = [(t.hour * 60 + t.minute - 15) - (23 * 60) if t.hour >= 23 else (t.hour * 60 + t.minute - 15) + 60 for t in df_resampled['time']]
+
+        # filter data
+        unique_dates = pd.to_datetime(df_resampled.index.date).unique()
+        night_data = pd.DataFrame()
+
+        # data for each night
+        for current_date in unique_dates:
+            #  time, which is the last 15-minute interval of the previous day
+            start_time = pd.Timestamp(current_date - pd.Timedelta(days=1)).replace(hour=23, minute=0)
+            
+            # end time, which is the first 6 hours and 45 minutes of the current day
+            end_time = pd.Timestamp(current_date).replace(hour=6, minute=45)
+            
+            # slice the data, which is the last 15-minute interval of the previous day and the first 6 hours and 45 minutes of the current day
+            data_slice = df_resampled[start_time:end_time]
+            
+            # if the slice is not empty and the minimum index hour is 23, then it is a night
+            if not data_slice.empty and data_slice.index.min().hour == 23:
+                # so we add it to the night data
+                night_data = pd.concat([night_data, data_slice])
+        
+        #save to csv
+        os.makedirs(folder_output_dir, exist_ok=True)
+        
+        logger.info(f"Saving the data {plotname}_{indicador_noche}")
+        night_data.to_csv(f"{folder_output_dir}/{plotname}_{indicador_noche}_evolution_{name_extension}.csv", index=False)
+        logger.info(f"Night evolution data saved to {folder_output_dir}/{plotname}_{indicador_noche}_evolution_{name_extension}.csv")
+        
+        fig = sns.relplot(
+                data=night_data, 
+                x="plot_time", 
+                y=laeq_column, 
+                kind="line",
+                errorbar=None,
+                hue="Día",
+                estimator=leq, 
+                aspect=1.3,
+                palette=C_MAP_WEEKDAY_NIGHT
+            )
+
+        x_labels = [f'{hour:02d}:{minute:02d}' for hour in range(23, 24) for minute in range(0, 60, 15)] + \
+                [f'{hour:02d}:{minute:02d}' for hour in range(0, 7) for minute in range(0, 60, 15)]
+                
+        x_ticks = range(-15, 465, 15)
+        plt.xticks(x_ticks, x_labels, rotation=90)
+        plt.yticks(range(DB_RANGE_BOTTOM, DB_RANGE_TOP, BD_RANGE_STEP), [str(level) for level in range(DB_RANGE_BOTTOM, DB_RANGE_TOP, BD_RANGE_STEP)])
+        
+        plt.xlim(-30, 465)
+        
+        for ax in fig.axes.flat:
+            ax.spines['top'].set_visible(True)
+            ax.spines['right'].set_visible(True)
+        
+        plt.title(f'Evolución {indicador_noche} cada 15 minutos')
+        plt.ylabel('dB(A)')
+        plt.xlabel('Hora')
+
+        # save the plot
+        logger.info(f"Saving the plot {plotname}_{indicador_noche}")
+        fig.savefig(os.path.join(folder_output_dir, f'{plotname}_{indicador_noche}_evolution_{name_extension}.png'),  dpi=150)
+        logger.info(f"Night evolution plot saved to {folder_output_dir}/{plotname}_{indicador_noche}_evolution_{name_extension}.png")
+    except Exception as e:
+        logger.error(f"Error in plot_night_evolution_15_min: {e}")
+
+
+
+  
+def plot_predic_laeq_15_min(df: pd.DataFrame, yamnet_csv:pd.DataFrame, taxonomy_map, df_Pred:pd.DataFrame, folder_output_dir: str, logger, columns_dict: dict, agg_period: int, plotname: str):
+    try:
+        # remove nan values
+        df = df.dropna(subset=[columns_dict['LAEQ_COLUMN_COEFF']])
+        logger.info(f"Using the columns_dict: {columns_dict}")
+
+        # # check
+        spl_start_date = df['datetime'].iloc[0]
+        spl_end_date = df['datetime'].iloc[-1]
+        spl_difference_between_first_days = df['datetime'].iloc[10] - df['datetime'].iloc[9]
+        logger.info(f"SPL file: Start date {spl_start_date} and End date {spl_end_date}")
+        logger.info(f"SPL file: Difference between first and second date: {spl_difference_between_first_days}")
+
+        pred_start_date = df_Pred['date'].iloc[0]
+        pred_end_date = df_Pred['date'].iloc[-1]
+        logger.info(f"Pred file: Start date {pred_start_date} and End date {pred_end_date}")
+        pred_difference_between_first_days = df_Pred['date'].iloc[10] - df_Pred['date'].iloc[9]
+        logger.info(f"Pred file: Difference between first and second date: {pred_difference_between_first_days}")
+
+        agg_funcs = {
+            columns_dict['LAEQ_COLUMN_COEFF']: leq,
+        }
+
+        if pred_difference_between_first_days >= pd.Timedelta(minutes=15):
+            logger.info(f"Resampling the SPL file to 15 minutes")
+            df_LAeq = df.resample(f'{agg_period}s').agg(agg_funcs)
+        else:
+            logger.info(f"No Resampling the SPL file")
+            df_LAeq = df
+
+
+        start_date = max(df_LAeq.index.min(), df_Pred.index.min())
+        end_date = min(df_LAeq.index.max(), df_Pred.index.max())
+
+        df_LAeq = df_LAeq[start_date:end_date]
+        df_Pred = df_Pred[start_date:end_date]
+        df_Pred.index = df_Pred.index.round('15min')
+
+        # check if the first date for lae and pred is the same
+        check_dilay = df_LAeq.index[0] - df_Pred.index[0]
+        if check_dilay != pd.Timedelta(seconds=0):
+            logger.info(f"The mismatch for LAeq and Pred date is {check_dilay}")
+
+            # check which is earlier, and apply the shift
+            if df_LAeq.index[0] < df_Pred.index[0]:
+                df_LAeq = df_LAeq.shift(periods=abs(check_dilay.seconds), freq='s')
+            else:
+                df_Pred = df_Pred.shift(periods=abs(check_dilay.seconds), freq='s')
+            logger.info(f"Shifted the data to match the dates")
+
+
+        # merge df
+        df_aligned = df_LAeq.merge(df_Pred, how='left', left_index=True, right_index=True)
+        # remove rows with NaN values
+        df_aligned.dropna(inplace=True)
+
+        # print(df_aligned)
+        # set date_y as index
+        if "date_y" in df_aligned.columns:
+            df_aligned.set_index('date_y', inplace=True, drop=False)
+        else:
+            df_aligned.set_index('date', inplace=True, drop=False)
+
+
+        ####################################################################
+        df_aligned['class_probability'] = df_aligned.apply(
+            lambda x: (x['class'], x['probability']) if isinstance(x['class'], float) else list(zip(x['class'], x['probability'])),
+            axis=1
+        )
+        df_exploded = df_aligned.explode('class_probability')
+        df_exploded['class'] = df_exploded['class_probability'].apply(lambda x: x[0] if isinstance(x, tuple) else x)
+        df_exploded['probability'] = df_exploded['class_probability'].apply(lambda x: x[1] if isinstance(x, tuple) else None)
+        ####################################################################
+
+        # create the df_all, merge with the audioset dataframe
+        df_exploded['display_name'] = df_exploded['class']
+        df_all = df_exploded.merge(yamnet_csv, how='left', on='display_name')
+        df_all = df_all.dropna(subset=['display_name'])
+    
+
+
+        #########################################################
+        #### Plotting the data ####
+        
+        display_name = 'display_name'
+        iso_taxonomy = 'iso_taxonomy'
+        classes = 'class'
+
+        brown_2 = 'Brown_Level_2'
+        brown_3 = 'Brown_Level_3'
+        noiseport_1 = 'NoisePort_Level_1'
+        noiseport_2 = 'NoisePort_Level_2'
+
+        if 'Siren' in set(taxonomy_map.values()):
+            class_to_plot = noiseport_1
+            color_palet = COLOR_PALLET_PORT_L1
+            logger.info("Using 'NoisePort_Level_1' class for plotting")
+        else:
+            class_to_plot = brown_2
+            color_palet = COLOR_PALLET_URBAN
+            logger.info("Using 'Brown_Level_2' class for plotting")
+
+
+        grouped_df = df_all.groupby(class_to_plot).agg(
+            number=(classes, 'size'),
+            LAeq=('LA_corrected', lambda x: leq(x))
+        ).reset_index()
+
+        fig = px.treemap(
+                grouped_df,
+                path=[class_to_plot],  
+                values='number',
+                color=class_to_plot,#color by category
+                color_discrete_map= color_palet,
+                hover_data={'LAeq': True, 'number': True},
+                custom_data=['LAeq']                  
+            )
+
+        # title and hover settings
+        fig.update_layout(title=f'{plotname} | Promedio Energético (LAeq) por Clases')
+        fig.update_traces(
+            hovertemplate=(
+                '<b>%{label}</b><br>'
+                'LAeq: %{customdata[0]:.2f} dB<br>'
+                'Count: %{value}'
+            ),
+            texttemplate='%{label}<br><br>LAeq: %{customdata[0]:.2f} dB'
+        )
+            
+        # Save plot
+        os.makedirs(folder_output_dir, exist_ok=True)
+        fig.write_html(f"{folder_output_dir}/{plotname}_LAeq_class_mean.html")
+        grouped_df.to_csv(f"{folder_output_dir}/{plotname}_LAeq_class_mean.csv", index=False)
+        
+        logger.info(f"LAeq class mean plot saved to {folder_output_dir}/{plotname}_LAeq_class_mean.html")
+        logger.info(f"LAeq class mean data saved to {folder_output_dir}/{plotname}_LAeq_class_mean.csv")
+
+    except Exception as e:
+        logger.error(f"Error in plot_predic_laeq_15_min: {e}")
+        
+
+
+
+def plot_predic_laeq_15_min_period(df: pd.DataFrame, yamnet_csv:pd.DataFrame, taxonomy_map, df_Pred:pd.DataFrame, folder_output_dir: str, logger, columns_dict: dict, agg_period: int, plotname: str):
+    try:
+        folder_output_dir = os.path.join(folder_output_dir, 'Prediction_LAeq_15_min_Period')
+        # remove nan values
+        df = df.dropna(subset=[columns_dict['LAEQ_COLUMN_COEFF']])
+        logger.info(f"Using the columns_dict: {columns_dict}")
+
+        # # check
+        spl_start_date = df['datetime'].iloc[0]
+        spl_end_date = df['datetime'].iloc[-1]
+        spl_difference_between_first_days = df['datetime'].iloc[10] - df['datetime'].iloc[9]
+        logger.info(f"SPL file: Start date {spl_start_date} and End date {spl_end_date}")
+        logger.info(f"SPL file: Difference between first and second date: {spl_difference_between_first_days}")
+
+        pred_start_date = df_Pred['date'].iloc[0]
+        pred_end_date = df_Pred['date'].iloc[-1]
+        logger.info(f"Pred file: Start date {pred_start_date} and End date {pred_end_date}")
+        pred_difference_between_first_days = df_Pred['date'].iloc[10] - df_Pred['date'].iloc[9]
+        logger.info(f"Pred file: Difference between first and second date: {pred_difference_between_first_days}")
+
+        agg_funcs = {
+            columns_dict['LAEQ_COLUMN_COEFF']: leq,
+        }
+
+        if pred_difference_between_first_days >= pd.Timedelta(minutes=15):
+            logger.info(f"Resampling the SPL file to 15 minutes")
+            df_LAeq = df.resample(f'{agg_period}s').agg(agg_funcs)
+        else:
+            logger.info(f"No Resampling the SPL file")
+            df_LAeq = df
+
+
+        start_date = max(df_LAeq.index.min(), df_Pred.index.min())
+        end_date = min(df_LAeq.index.max(), df_Pred.index.max())
+
+        df_LAeq = df_LAeq[start_date:end_date]
+        df_Pred = df_Pred[start_date:end_date]
+        df_Pred.index = df_Pred.index.round('15min')
+
+
+
+        # check if the first date for lae and pred is the same
+        check_dilay = df_LAeq.index[0] - df_Pred.index[0]
+        if check_dilay != pd.Timedelta(seconds=0):
+            logger.info(f"The mismatch for LAeq and Pred date is {check_dilay}")
+
+            # check which is earlier, and apply the shift
+            if df_LAeq.index[0] < df_Pred.index[0]:
+                df_LAeq = df_LAeq.shift(periods=abs(check_dilay.seconds), freq='s')
+            else:
+                df_Pred = df_Pred.shift(periods=abs(check_dilay.seconds), freq='s')
+            logger.info(f"Shifted the data to match the dates")
+
+
+        # merge df
+        df_aligned = df_LAeq.merge(df_Pred, how='left', left_index=True, right_index=True)
+        # remove rows with NaN values
+        df_aligned.dropna(inplace=True)
+
+        # set date_y as index
+        if "date_y" in df_aligned.columns:
+            df_aligned.set_index('date_y', inplace=True, drop=False)
+        else:
+            df_aligned.set_index('date', inplace=True, drop=False)
+        
+
+        ####################################################################
+        df_aligned['class_probability'] = df_aligned.apply(
+            lambda x: (x['class'], x['probability']) if isinstance(x['class'], float) else list(zip(x['class'], x['probability'])),
+            axis=1
+        )
+        df_exploded = df_aligned.explode('class_probability')
+        df_exploded['class'] = df_exploded['class_probability'].apply(lambda x: x[0] if isinstance(x, tuple) else x)
+        df_exploded['probability'] = df_exploded['class_probability'].apply(lambda x: x[1] if isinstance(x, tuple) else None)
+        ####################################################################
+
+        # create the df_all, merge with the audioset dataframe
+        df_exploded['display_name'] = df_exploded['class']
+        df_all = df_exploded.merge(yamnet_csv, how='left', on='display_name')
+        df_all = df_all.dropna(subset=['display_name'])
+
+        if 'datetime_y' in df_all.columns and 'hour_x' in df_all.columns:
+            logger.info("Using 'datetime_y' and 'hour_x' columns for datetime and hour categorization.")
+            df_all['datetime_y'] = pd.to_datetime(df_all['datetime_y'])
+            df_all['time_of_day'] = df_all['hour_x'].apply(categorize_time_of_day)
+
+        else:
+            logger.info("Using 'date' and 'hour' columns for datetime and hour categorization.")
+            df_all['datetime_y'] = pd.to_datetime(df_all['date'])
+            df_all['time_of_day'] = df_all['hour'].apply(categorize_time_of_day)
+    
+
+
+        #########################################################
+        #### Plotting the data ####
+        
+        display_name = 'display_name'
+        iso_taxonomy = 'iso_taxonomy'
+        classes = 'class'
+
+        brown_1 = 'Brown_Level_1'
+        brown_2 = 'Brown_Level_2'
+        brown_3 = 'Brown_Level_3'
+        noiseport_1 = 'NoisePort_Level_1'
+        noiseport_2 = 'NoisePort_Level_2'
+
+        if 'Siren' in set(taxonomy_map.values()):
+            class_to_plot = noiseport_1
+            color_palet = COLOR_PALLET_PORT_L1
+            logger.info("Using 'NoisePort_Level_1' class for plotting")
+        else:
+            class_to_plot = brown_2
+            color_palet = COLOR_PALLET_URBAN
+            logger.info("Using 'Brown_Level_2' class for plotting")
+
+        order_time_of_day = ['Ld', 'Le', 'Ln']
+
+        df_all['time_of_day'] = pd.Categorical(df_all['time_of_day'], categories=order_time_of_day, ordered=True)
+        df_all['order_index'] = df_all['time_of_day'].cat.codes
+
+        grouped_df = df_all.groupby([class_to_plot, df_all['time_of_day']]).agg(
+            number=(classes, 'size'),
+            LAeq=('LA_corrected', lambda x: leq(x)),
+            order_index=('order_index', 'first')
+        ).reset_index()
+
+        grouped_df = grouped_df.dropna(subset=['LAeq'])
+
+        # iterate for each period and save it individually
+        for period in order_time_of_day:
+            period_df = grouped_df[grouped_df['time_of_day'] == period]
+
+            fig = px.treemap(
+                            period_df, 
+                            path=[px.Constant(period), class_to_plot],  
+                            values='number',
+                            color=class_to_plot,
+                            color_discrete_map=color_palet,# <--- color_discrete_map, and not 'color_continuous_scale=color_palet' 
+                            hover_data={'LAeq': True, 'number': True},
+                            custom_data=['LAeq'],
+                        )
+
+            fig.update_layout(title=f'{plotname} | Promedio Energético (LAeq) distribución por Periodo {period} por Clases')
+            fig.update_traces(hovertemplate='<b>%{label}</b><br>LAeq: %{customdata[0]:.2f} dB<br>Count: %{value}')
+            fig.update_traces(texttemplate='%{label}<br><br>LAeq: %{customdata[0]:.2f} dB')
+
+            os.makedirs(folder_output_dir, exist_ok=True)
+
+            logger.info(f"Saving the plot {plotname}")
+            fig.write_html(f"{folder_output_dir}/{plotname}_LAeq_class_period_{period}.html")
+            logger.info(f"LAeq class period plot saved to {folder_output_dir}/{plotname}_LAeq_class_period_{period}.html")
+
+            logger.info(f"Saving the data {plotname}")
+            period_df.to_csv(f"{folder_output_dir}/{plotname}_LAeq_class_period_{period}.csv", index=False)
+            logger.info(f"LAeq class period data saved to {folder_output_dir}/{plotname}_LAeq_class_period_{period}.csv")
+
+    except Exception as e:
+        logger.error(f"Error in plot_predic_laeq_15_min_period: {e}")
+
+
+
+
+def plot_predic_laeq_15_min_4h(df: pd.DataFrame, yamnet_csv:pd.DataFrame, taxonomy_map, df_Pred:pd.DataFrame, folder_output_dir: str, logger, columns_dict: dict, agg_period: int, plotname: str):
+    try:
+        folder_output_dir = os.path.join(folder_output_dir, 'Prediction_LAeq_15_min_4h')
+        # remove nan values
+        df = df.dropna(subset=[columns_dict['LAEQ_COLUMN_COEFF']])
+        logger.info(f"Using the columns_dict: {columns_dict}")
+
+
+        # # check
+        spl_start_date = df['datetime'].iloc[0]
+        spl_end_date = df['datetime'].iloc[-1]
+        spl_difference_between_first_days = df['datetime'].iloc[10] - df['datetime'].iloc[9]
+        logger.info(f"SPL file: Start date {spl_start_date} and End date {spl_end_date}")
+        logger.info(f"SPL file: Difference between first and second date: {spl_difference_between_first_days}")
+
+        pred_start_date = df_Pred['date'].iloc[0]
+        pred_end_date = df_Pred['date'].iloc[-1]
+        logger.info(f"Pred file: Start date {pred_start_date} and End date {pred_end_date}")
+        pred_difference_between_first_days = df_Pred['date'].iloc[10] - df_Pred['date'].iloc[9]
+        logger.info(f"Pred file: Difference between first and second date: {pred_difference_between_first_days}")
+
+        agg_funcs = {columns_dict['LAEQ_COLUMN_COEFF']: leq}
+
+        if pred_difference_between_first_days >= pd.Timedelta(minutes=15):
+            logger.info(f"Resampling the SPL file to 15 minutes")
+            df_LAeq = df.resample(f'{agg_period}s').agg(agg_funcs)
+        else:
+            logger.info(f"No Resampling the SPL file")
+            df_LAeq = df
+
+
+        start_date = max(df_LAeq.index.min(), df_Pred.index.min())
+        end_date = min(df_LAeq.index.max(), df_Pred.index.max())
+
+        df_LAeq = df_LAeq[start_date:end_date]
+        df_Pred = df_Pred[start_date:end_date]
+
+        df_Pred.index = df_Pred.index.round('15min')
+        
+
+        # check if the first date for lae and pred is the same
+        check_dilay = df_LAeq.index[0] - df_Pred.index[0]
+        if check_dilay != pd.Timedelta(seconds=0):
+            logger.info(f"The mismatch for LAeq and Pred date is {check_dilay}")
+
+            # check which is earlier, and apply the shift
+            if df_LAeq.index[0] < df_Pred.index[0]:
+                df_LAeq = df_LAeq.shift(periods=abs(check_dilay.seconds), freq='s')
+            else:
+                df_Pred = df_Pred.shift(periods=abs(check_dilay.seconds), freq='s')
+            logger.info(f"Shifted the data to match the dates")
+
+
+
+        # merge df
+        df_aligned = df_LAeq.merge(df_Pred, how='left', left_index=True, right_index=True)
+        # remove rows with NaN values
+        df_aligned.dropna(inplace=True)
+
+
+        # set date_y as index
+        if "date_y" in df_aligned.columns:
+            df_aligned.set_index('date_y', inplace=True, drop=False)      
+        else:
+            df_aligned.set_index('date', inplace=True, drop=False)
+
+        ####################################################################
+        df_aligned['class_probability'] = df_aligned.apply(
+            lambda x: (x['class'], x['probability']) if isinstance(x['class'], float) else list(zip(x['class'], x['probability'])),
+            axis=1
+        )
+        df_exploded = df_aligned.explode('class_probability')
+        df_exploded['class'] = df_exploded['class_probability'].apply(lambda x: x[0] if isinstance(x, tuple) else x)
+        df_exploded['probability'] = df_exploded['class_probability'].apply(lambda x: x[1] if isinstance(x, tuple) else None)
+        ####################################################################
+
+        # create the df_all, merge with the audioset dataframe
+        df_exploded['display_name'] = df_exploded['class']
+        df_all = df_exploded.merge(yamnet_csv, how='left', on='display_name')
+        df_all = df_all.dropna(subset=['display_name'])
+
+        # convert data time type datetime_y column
+        if 'datetime_y' in df_all.columns and 'hour_x' in df_all.columns:
+            logger.info("Using 'datetime_y' and 'hour_x' columns for datetime and hour categorization.")
+            df_all['datetime_y'] = pd.to_datetime(df_all['datetime_y'])
+            df_all['time_of_day'] = df_all['hour_x'].apply(categorize_time_of_day_4)
+
+        else:
+            logger.info("Using 'date' and 'hour' columns for datetime and hour categorization.")
+            df_all['datetime_y'] = pd.to_datetime(df_all['date'])
+            df_all['time_of_day'] = df_all['hour'].apply(categorize_time_of_day_4)
+        
+        
+        
+        #########################################################
+        #### Plotting the data ####
+        display_name = 'display_name'
+        iso_taxonomy = 'iso_taxonomy'
+        classes = 'class'
+
+        brown_1 = 'Brown_Level_1'
+        brown_2 = 'Brown_Level_2'
+        brown_3 = 'Brown_Level_3'
+        noiseport_1 = 'NoisePort_Level_1'
+        noiseport_2 = 'NoisePort_Level_2'
+
+        if 'Siren' in set(taxonomy_map.values()):
+            class_to_plot = noiseport_1
+            color_palet = COLOR_PALLET_PORT_L1
+            logger.info("Using 'NoisePort_Level_1' class for plotting")
+        else:
+            class_to_plot = brown_2
+            color_palet = COLOR_PALLET_URBAN
+            logger.info("Using 'Brown_Level_2' class for plotting")
+
+
+        order_time_of_day = ['Ld_1', 'Ld_2', 'Ld_3', 'Le', 'Ln_1', 'Ln_2']
+
+        df_all['time_of_day'] = pd.Categorical(df_all['time_of_day'], categories=order_time_of_day, ordered=True)
+        df_all['order_index'] = df_all['time_of_day'].cat.codes
+        
+
+        grouped_df = df_all.groupby([class_to_plot, df_all['time_of_day']]).agg(
+            number=(classes, 'size'),
+            LAeq=('LA_corrected', lambda x: leq(x)),
+            order_index=('order_index', 'first')
+        ).reset_index()
+
+
+        # remove rows with nan values
+        grouped_df = grouped_df.dropna(subset=['LAeq'])
+        for period in order_time_of_day:
+            period_df = grouped_df[grouped_df['time_of_day'] == period]
+
+            fig = px.treemap(period_df, 
+                            path=[px.Constant(period),class_to_plot],  
+                            values='number',
+                            color=class_to_plot,
+                            color_discrete_map=color_palet,
+                            # range_color=[30, 85],
+                            hover_data={'LAeq': True, 'number': True},
+                            custom_data=['LAeq'],                  
+                        )
+
+            fig.update_layout(title=f'{plotname} | Promedio Energético (LAeq) distribución por Periodo {period} por Clases')
+            fig.update_traces(hovertemplate='<b>%{label}</b><br>LAeq: %{customdata[0]:.2f} dB<br>Count: %{value}')
+            fig.update_traces(texttemplate='%{label}<br><br>LAeq: %{customdata[0]:.2f} dB')
+
+            os.makedirs(folder_output_dir, exist_ok=True)
+
+            logger.info(f"Saving the plot {plotname}")
+            fig.write_html(f"{folder_output_dir}/{plotname}_LAeq_class_period_{period}.html")
+            logger.info(f"LAeq class period plot saved to {folder_output_dir}/{plotname}_LAeq_class_period_{period}.html")
+
+            logger.info(f"Saving the data {plotname}")
+            period_df.to_csv(f"{folder_output_dir}/{plotname}_LAeq_class_period_{period}.csv", index=False)
+            logger.info(f"LAeq class period data saved to {folder_output_dir}/{plotname}_LAeq_class_period_{period}.csv")
+
+
+    except Exception as e:
+        logger.error(f"Error in PLOT_PREDIC_LAEQ_4H: {e}")
+
+
+
+
+def plot_prediction_stack_bar(df_Pred:pd.DataFrame, yamnet_csv, taxonomy_map, folder_output_dir: str, logger, plotname: str):
+    try:
+        sns.set_style("white")
+        sns.set_palette("tab10")
+
+        # make duration to make the resample to 15 minutes
+        start_date = df_Pred['date'].iloc[0]
+        end_date = df_Pred['date'].iloc[-1]
+        difference_between_first_days = df_Pred['date'].iloc[10] - df_Pred['date'].iloc[9]
+        logger.info(f"Start date {start_date} and End date {end_date}")
+        logger.info(f"Difference between first and second date: {difference_between_first_days}")
+
+        # explode
+        df_exploded = df_Pred.explode('class')
+        df_exploded['display_name'] = df_exploded['class']
+        df_exploded['number'] = 1
+
+        #~insert date
+        df_exploded = insert_dates(df_exploded)
+        df_exploded['mapped_class'] = df_exploded['class'].map(taxonomy_map)
+
+        #################################
+        home_dir = os.path.expanduser('~')
+        full_path = os.path.join(home_dir, RELATIVE_PATH_YAMNET_MAP.lstrip('\\'))
+        union = pd.read_csv(full_path, sep=';')
+        # merge classes with ontology
+        df_exploded = df_exploded.merge(union,how='left',on='display_name')
+
+        # remove Unnamed columns
+        df_exploded = df_exploded.loc[:, ~df_exploded.columns.str.contains('^Unnamed')]
+        # rename columns
+        df_exploded.rename(columns={"fullday": "Día", "hour": "Hora", "mid": "Distribución de clases"}, inplace=True)
+        unique_día_weekday = df_exploded['Día'].unique()
+        #set to categorical
+        df_exploded['Día'] = pd.Categorical(df_exploded['Día'], categories=unique_día_weekday, ordered=True)
+
+
+
+        ################################ PLOT ################################
+        display_name = 'display_name'
+        iso_taxonomy = 'iso_taxonomy'
+        classes = 'class'
+
+        brown_2 = 'Brown_Level_2'
+        brown_3 = 'Brown_Level_3'
+        noiseport_1 = 'NoisePort_Level_1'
+        noiseport_2 = 'NoisePort_Level_2'
+
+        if 'Siren' in set(taxonomy_map.values()):
+            class_to_plot = noiseport_1
+            color_pallet = COLOR_PALLET_PORT_L1
+            logger.info("Using 'NoisePort_Level_1' class for plotting")
+        else:
+            class_to_plot = brown_2  
+            color_pallet = COLOR_PALLET_URBAN
+            logger.info("Using 'Brown_Level_2' class for plotting")
+
+        dfg = df_exploded.groupby([class_to_plot,'Día']).count().reset_index()
+        fig = px.bar(
+            dfg, 
+            x='Día',
+            y='Distribución de clases',
+            color=class_to_plot,
+            title=f'{plotname} | Clases por Día',
+            color_discrete_sequence=px.colors.qualitative.Alphabet, 
+            color_discrete_map=color_pallet,
+            height=900,
+            width=2000
+        )
+
+        fig.write_html(f"{folder_output_dir}/{plotname}_prediction_stack_map.html")
+        logger.info(f"Prediccion stack bar saved at: {folder_output_dir}/{plotname}_prediction_stack_map.html")
+
+        # save csv with the data
+        dfg.to_csv(f"{folder_output_dir}/{plotname}_prediction_stack_map.csv")
+        logger.info(f"Saved csv at {folder_output_dir}/{plotname}_prediction_stack_map.csv")
+
+    except Exception as e:
+        logger.error(f"Error in plot_prediction_stack_bar: {e}")
+
+
+
+
+
+def plot_prediction_map(df_Pred:pd.DataFrame, taxonomy_map, folder_output_dir: str, logger, plotname: str):
+    try:
+        sns.set_style("white")
+        sns.set_palette("tab10")
+
+        # remove empty entries in class column
+        df_Pred = df_Pred.dropna(subset=['class'])
+
+        # make duration to make the resample to 15 minutes
+        start_date = df_Pred['date'].iloc[0]
+        end_date = df_Pred['date'].iloc[-1]
+        difference_between_first_days = df_Pred['date'].iloc[10] - df_Pred['date'].iloc[9]
+        logger.info(f"Start date {start_date} and End date {end_date}")
+        logger.info(f"Difference between first and second date: {difference_between_first_days}")
+
+        # explode
+        df_exploded = df_Pred.explode('class')
+        df_exploded['display_name'] = df_exploded['class']
+        df_exploded['number'] = 1
+
+        #~insert date
+        df_exploded = insert_dates(df_exploded)
+        df_exploded = df_exploded.dropna(subset=['class'])
+        # print if there is nan values
+        if df_exploded['class'].isnull().values.any():
+            logger.error("There are nan values in the class column")
+
+        df_exploded['mapped_class'] = df_exploded['class'].map(taxonomy_map)
+        df_exploded = df_exploded.dropna(subset=['mapped_class'])
+
+
+
+        ################################ PLOT ################################
+        # if plot_prediction_stack_bar is greater than 1 second
+        if difference_between_first_days == pd.Timedelta(seconds=1):
+            logger.info(f"Plotting the prediction map for {plotname} equal to 1 second")
+            resampled_df = df_exploded.resample('15min').agg({
+                'filename': 'first',  # taking the first filename in each bin
+                'class': 'first',
+                'probability': 'first', 
+                'display_name': 'first', 
+                'number': 'sum',  # summing up the numbers in each bin
+                'year': 'first',
+                'month': 'first',
+                'day': 'first',
+                'hour': 'first',
+                'minute': 'first',
+                'second': 'first',
+                'weekday': 'first',
+                'fullday': 'first',
+                'mapped_class': 'first'
+            })
+            ###################### PLOTTING ######################
+            df_resampled = resampled_df.sort_values(by=["year", "month", "fullday"])
+        
+        else:
+            logger.info(f"Plotting the prediction map for {plotname} greater than 1 second")
+            ###################### PLOTTING ######################
+            df_resampled = df_exploded.sort_values(by=["year", "month", "fullday"])
+
+
+        # drop None values
+        df_resampled = df_resampled.dropna(subset=['mapped_class'])
+        # map class to number
+        class_to_num = {class_name: index+1 for index, class_name in enumerate(df_resampled['mapped_class'].unique())}
+
+        df_resampled['class_num'] = df_resampled['mapped_class'].map(class_to_num)
+        # drop nan values
+        df_resampled = df_resampled.dropna(subset=['class_num'])
+        
+        # inverting the dictionary to get the name of the class for the legend
+        name_class = {v: k for k, v in class_to_num.items()}
+        
+
+
+
+        # mapping from classes numbers to colors
+        if 'Siren' in set(taxonomy_map.values()):
+            num_to_color = {num: COLOR_PALLET_PORT_L1[class_name] for class_name, num in class_to_num.items()}
+            logger.info("Using 'NoisePort_Level_1' class for plotting")
+        else:
+            num_to_color = {num: COLOR_PALLET_URBAN[class_name] for class_name, num in class_to_num.items()}
+            logger.info("Using 'Brown_Level_2' class for plotting")
+        cmap = [num_to_color[cls_num] for cls_num in name_class.keys()]
+        
+        # leggend elements colors
+        legend_elements = [Patch(facecolor=num_to_color[cls_num], label=f"Clase {cls_num} - {name_class.get(cls_num, '')}") for cls_num in name_class.keys()]
+        day_class = pd.pivot_table(data=df_resampled, columns=df_resampled.index.time, index=["year", "month", "fullday"], values="class_num", aggfunc='mean')
+
+
+        plt.figure(figsize=(45, 35))
+        if day_class.isna().all().all() or day_class.empty:
+            logger.warning("No valid data. Skipping...")
+        else:
+            ax = sns.heatmap(day_class, annot=False, cmap=cmap, linewidth=0.5, cbar=False)
+
+            # show every 4th column as an example
+            step = 2
+            xtick_locs = range(0, len(day_class.columns), step)
+            xtick_labels = [day_class.columns[i].strftime('%H:%M:%S') for i in xtick_locs]
+            
+            ax.set_xticks(xtick_locs)
+            ax.set_xticklabels(xtick_labels, rotation=90, fontsize=50)
+
+            yticklabels = [f"{idx[0]}-{idx[1]}-{idx[2]}" for idx in day_class.index]
+            ax.set_yticklabels(yticklabels, rotation=0, fontsize=50)
+            
+            plt.legend(
+                handles=legend_elements, 
+                title="Clases", 
+                loc='center left', 
+                bbox_to_anchor=(1, 0.5),
+                fontsize=40
+            )
+            plt.title(f"{plotname} | Clases 15 min", fontsize=60)
+
+            plt.savefig(f"{folder_output_dir}/{plotname}_prediction_map.png", bbox_inches='tight')
+            logger.info(f"Saved image at {folder_output_dir}/{plotname}_prediction_map.png")
+
+            # save csv with the data
+            day_class.to_csv(f"{folder_output_dir}/{plotname}_prediction_map.csv")
+            logger.info(f"Saved csv at {folder_output_dir}/{plotname}_prediction_map.csv")
+          
+    except Exception as e:
+        logger.error(f"Error in plot_prediction_map: {e}")
+
+
+
+
+
+def plot_tree_map(df_Pred:pd.DataFrame,taxonomy_map, folder_output_dir: str, logger, plotname: str):
+    try:
+        sns.set_style("white")
+        sns.set_palette("tab10")
+
+        # prediction map foñder
+        folder_output_dir = os.path.join(folder_output_dir, 'Prediction_Tree_Map')
+        os.makedirs(folder_output_dir, exist_ok=True)
+
+        # make duration to make the resample to 15 minutes
+        start_date = df_Pred['date'].iloc[0]
+        end_date = df_Pred['date'].iloc[-1]
+        difference_between_first_days = df_Pred['date'].iloc[10] - df_Pred['date'].iloc[9]
+        logger.info(f"Start date {start_date} and End date {end_date}")
+        logger.info(f"Difference between first and second date: {difference_between_first_days}")
+
+        # explode
+        df_exploded = df_Pred.explode('class')
+        df_exploded['display_name'] = df_exploded['class']
+        df_exploded['number'] = 1
+
+        #~insert date
+        df_exploded = insert_dates(df_exploded)
+        df_exploded['mapped_class'] = df_exploded['class'].map(taxonomy_map)
+
+        #################################
+        home_dir = os.path.expanduser('~')
+        full_path = os.path.join(home_dir, RELATIVE_PATH_YAMNET_MAP.lstrip('\\'))
+        union = pd.read_csv(full_path, sep=';')
+
+        # merge classes with ontology
+        df_exploded = df_exploded.merge(union, how='left', on='display_name')
+        # remove Unnamed columns
+        df_exploded = df_exploded.loc[:, ~df_exploded.columns.str.contains('^Unnamed')]
+
+
+        display_name = 'display_name'
+        iso_taxonomy = 'iso_taxonomy'
+        classes = 'class'
+
+        brown_1 = 'Brown_Level_1'
+        brown_2 = 'Brown_Level_2'
+        brown_3 = 'Brown_Level_3'
+        noiseport_1 = 'NoisePort_Level_1'
+        noiseport_2 = 'NoisePort_Level_2'
+
+        if 'Siren' in set(taxonomy_map.values()):
+            class_to_plot = noiseport_1
+            color_pallet = COLOR_PALLET_PORT_L1
+            logger.info("Using 'NoisePort_Level_1' class for plotting")
+        else:
+            class_to_plot = brown_2  
+            color_pallet = COLOR_PALLET_URBAN
+            logger.info("Using 'Brown_Level_2' class for plotting")
+
+        df_exploded = df_exploded.dropna(subset=[class_to_plot, 'class'])
+
+        fig = px.treemap(df_exploded, 
+                 path=[class_to_plot, 'class'], 
+                 values='number',
+                 color=class_to_plot,  #for coloring
+                color_discrete_map=color_pallet
+                )
+
+        fig.update_layout(title=f'{plotname} | Clases')
+
+        fig.write_html(f"{folder_output_dir}/{plotname}_prediction_tree_map.html")
+        logger.info(f"{folder_output_dir}/{plotname}_prediction_tree_map.html")
+
+        # save csv with the data
+        df_exploded.to_csv(f"{folder_output_dir}/{plotname}_prediction_tree_map.csv")
+        logger.info(f"Saved csv at {folder_output_dir}/{plotname}_prediction_tree_map.csv")
+
+        #####################################      
+        for day in df_exploded['day'].unique():
+            day_df = df_exploded[df_exploded['day'] == day]
+            fig = px.treemap(day_df, 
+                     path=[class_to_plot, 'class'], 
+                     values='number',
+                     color=class_to_plot,  #for coloring
+                    color_discrete_map=color_pallet
+                    )
+            
+            fig.update_layout(title=f'{plotname} | {day_df["year"].iloc[0]}-{day_df["month"].iloc[0]}-{day}')
+
+            fig.write_html(f"{folder_output_dir}/{plotname}_prediction_tree_map{day}.html")
+            logger.info(f"{folder_output_dir}/{plotname}_prediction_tree_map{day}.html")
+
+            # save csv with the data
+            day_df.to_csv(f"{folder_output_dir}/{plotname}_prediction_tree_map{day}.csv")
+            logger.info(f"Saved csv at {folder_output_dir}/{plotname}_prediction_tree_map{day}.csv")
+
+    except Exception as e:
+        logger.error(f"Error in plot_tree_map: {e}")
+
+
+
+
+def make_time_plot(df: pd.DataFrame, folder_output_dir: str, logger, columns_dict: dict, agg_period: int, plotname: str, percentiles: list):
+    try:
+        logger.info(f"Using the columns_dict: {columns_dict}")
+        # add an hour to the dataframe
+        # df.index = df.index + pd.DateOffset(hours=1)
+        # remove nan values
+        df = df.dropna(subset=[columns_dict['LAEQ_COLUMN_COEFF']])
+        
+        agg_funcs = {
+            columns_dict['LAEQ_COLUMN_COEFF']: leq,
+            # columns_dict['LCEQ_COLUMN_COEFF']: leq,
+            columns_dict['LAMAX_COLUMN_COEFF']: 'max',
+            columns_dict['LAMIN_COLUMN_COEFF']: 'min'
+            
+        }
+        logger.info(f"Using the columns_dict: {columns_dict}")
+
+        logger.info(f"Using the agg_funcs: {agg_funcs}")
+        df_LAeq = df.resample(f'{agg_period}s').agg(agg_funcs)
+        oca = df.resample(f'{agg_period}s').agg({'oca': 'min'})
+
+
+        # try a style, if not, use seaborn-whitegrid
+        try:
+            plt.style.use('seaborn-v0_8-whitegrid')
+        except:
+            plt.style.use('seaborn-whitegrid')
+            
+        fig, ax = plt.subplots(figsize=(20, 10))
+        ax.set_facecolor("white")
+
+        logger.info(f"Using the percentiles: {percentiles}")
+        logger.info(f"Using the agg_period: {agg_period}")
+        
+        
+        logger.info(f"Using the columns_dict: {columns_dict['LAEQ_COLUMN_COEFF']}, {columns_dict['LAMAX_COLUMN_COEFF']}, {columns_dict['LAMIN_COLUMN_COEFF']}")
+        x = df_LAeq.index
+        ax.plot(x, df_LAeq[columns_dict['LAEQ_COLUMN_COEFF']], linewidth=3, color='red', label='LAeq')
+        #plot LCEQ
+        # ax.plot(x, df_LAeq[columns_dict['LCEQ_COLUMN_COEFF']], linewidth=1, color='blue', label='LCeq')
+        ax.plot(x, df_LAeq[columns_dict['LAMAX_COLUMN_COEFF']], linewidth=1, color='#FF99FF', label='Lmax')
+        ax.plot(x, df_LAeq[columns_dict['LAMIN_COLUMN_COEFF']], linewidth=1, color='#92D050', label='Lmin')
+        
+        if SHOW_OCA:
+            # OCA
+            ax.plot(x, oca.values, color='#00B0F0', label='OCA')
+
+
+        percentile_data = {}
+        for percentile in percentiles:
+            quantile_value = (100 - percentile) / 100
+            percentile_series = df[columns_dict['LAEQ_COLUMN_COEFF']].resample(f'{agg_period}s').quantile(quantile_value)
+            ax.plot(x, percentile_series, linewidth=0.5, label=f'L{percentile}', color=PERCENTIL_COLOUR[percentile])
+            percentile_data[f'L{percentile}'] = percentile_series
+
+
+        # debugg time of the plot
+        hours = mdates.HourLocator(interval=HOUR_INTERVAL)
+        h_fmt = mdates.DateFormatter('%d-%m-%y %H:%M')
+        
+        ax.xaxis.set_major_locator(hours)
+        ax.xaxis.set_major_formatter(h_fmt)
+
+        plt.xlim(df.index.min(), df.index.max())
+        plt.ylim([DB_LOWER_LIMIT, DB_UPPER_LIMIT])
+        plt.ylabel('dB(A)', fontsize=BIGGEST_SIZE)
+        plt.xlabel('Hora', fontsize=BIGGEST_SIZE)
+        plt.title(f'{plotname} Nivel equivalente {agg_period}s', fontsize=BIGGEST_SIZE)
+
+        plt.xticks(rotation=90, fontsize=BIGGEST_SIZE)
+        plt.yticks(fontsize=BIGGEST_SIZE)
+
+        plt.legend(loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0.1, fancybox=True, framealpha=1, edgecolor='black', fontsize=BIGGEST_SIZE)
+        
+        plt.tight_layout()
+        
+        # make grid
+        plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+
+        # save
+        os.makedirs(folder_output_dir, exist_ok=True)
+
+        logger.info(f"Saving the plot {plotname}")
+        plt.savefig(f'{folder_output_dir}/{plotname}_{agg_period}s_time_plot.png', dpi=350) # dpi stands for dots per inch, the more the dpi the better the quality of the image
+        logger.info(f"Timeplot saved to {folder_output_dir}/{plotname}_{agg_period}s_time_plot.png")
+
+
+
+
+        # --- save CSV ---
+        df_plot_data = df_LAeq.copy()
+        df_plot_data['oca'] = oca['oca']
+        for col_name, series in percentile_data.items():
+            df_plot_data[col_name] = series
+
+        # save
+        output_csv = f'{folder_output_dir}/{plotname}_{agg_period}s_time_plot.csv'
+        logger.info(f"Saving the data to {output_csv}")
+        df_plot_data.to_csv(output_csv, index=True)
+        logger.info(f"Timeplot data saved to {output_csv}")
+
+        plt.close()
+
+
+    except Exception as e:
+        logger.error(f"Error in make_timeplot: {e}")
+
+
+
+
+
+def plot_heatmap_evolution_hour(df, folder_output_dir: str, logger, values_column: str, agg_func: str, plotname:str):
+    try:
+        # remove nan values
+        df = df.dropna(subset=[values_column])
+        logger.info(f"Using the values_column: {values_column}")
+        sns.set_style("white")
+        sns.set_palette("tab10")
+        
+        df['Día'] = df['day_name'].replace(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'])
+        df['date_day'] = df['date'].astype(str) + ' ' + df['Día']
+        
+        leq_day_hour = pd.pivot_table(
+            df, 
+            values=values_column, 
+            index=['date_day'],
+            columns=['hour'], 
+            aggfunc=agg_func
+        ).round(1)
+  
+        leq_day_hour.columns = [f"{hour:02d}:00" for hour in leq_day_hour.columns]
+        
+        plt.figure(figsize=(20,10))
+        heatmap =sns.heatmap(
+            leq_day_hour, 
+            vmin=30, 
+            vmax=85, 
+            cmap=cmap_dict, 
+            annot=True,
+            annot_kws={"size": BIGGER_SIZE}
+        )
+        
+        plt.xlabel('Hora', fontsize=BIGGEST_SIZE)
+        plt.ylabel('Día', fontsize=BIGGEST_SIZE)
+        plt.title(f'{plotname} Nivel equivalente', fontsize=BIGGEST_SIZE)
+        
+        plt.yticks(rotation=0, fontsize=BIGGEST_SIZE)
+        plt.xticks(rotation=90, fontsize=BIGGEST_SIZE)
+
+        cbar = heatmap.collections[0].colorbar
+        cbar.ax.tick_params(labelsize=BIGGEST_SIZE)
+
+        plt.tight_layout()
+        
+        os.makedirs(f'{folder_output_dir}', exist_ok=True)
+        
+        logger.info(f"Saving the plot {plotname}")
+        plt.savefig(f'{folder_output_dir}/{plotname}_heatmap_evolucion.png',dpi=350)
+        logger.info(f"Heatmap plot saved to {folder_output_dir}/{plotname}_heatmap_evolucion.png")
+
+        logger.info(f"Saving the data {plotname}")
+        leq_day_hour.to_csv(f'{folder_output_dir}/{plotname}_heatmap_evolucion.csv', index=True)
+        logger.info(f"Heatmap data saved to {folder_output_dir}/{plotname}_heatmap_evolucion.csv")
+        
+        plt.close()
+        
+    except Exception as e:
+        logger.error(f"Error in plot_heatmap_evolution_hour: {e}")
+
+
+
+
+
+def plot_heatmap_evolution_15_min(df, folder_output_dir: str, logger, values_column: str, agg_func: str, plotname:str):
+    if not isinstance(df.index, pd.DatetimeIndex):
+        logger.error("DataFrame index is not a datetime index.")
+        return
+
+    try:
+        # remove nan values
+        df = df.dropna(subset=[values_column])
+        logger.info(f"Using the values_column: {values_column}")
+        sns.set_style("white")
+        sns.set_palette("tab10")
+        
+        def get_15min_interval(dt):
+            return f"{dt.hour:02d}:{(dt.minute // 15) * 15:02d}"
+
+        df['Día'] = df['day_name'].replace(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'])
+        df['date_day'] = df['date'].astype(str) + ' ' + df['Día']
+        df['15min_interval'] = df.index.map(get_15min_interval)
+
+        leq_day_15min = pd.pivot_table(
+            df, 
+            values=values_column, 
+            index=['date_day'],
+            columns=['15min_interval'], 
+            aggfunc=agg_func
+        ).round(1)
+        
+
+        plt.figure(figsize=(20,10))
+        heatmap =sns.heatmap(
+            leq_day_15min, 
+            vmin=30, 
+            vmax=85, 
+            cmap=cmap_dict, 
+            # annot=True,
+            # annot_kws={"size": MEDIUM_SIZE}
+        )
+        
+        plt.xlabel('Hora', fontsize=BIGGEST_15_MIN_SIZE)
+        plt.ylabel('Día', fontsize=BIGGEST_15_MIN_SIZE)
+        plt.title(f'{plotname} Nivel equivalente 15 minutos', fontsize=30)
+        
+        plt.yticks(rotation=0, fontsize=BIGGEST_15_MIN_SIZE)
+        plt.xticks(rotation=90, fontsize=BIGGEST_15_MIN_SIZE)
+
+        cbar = heatmap.collections[0].colorbar
+        cbar.ax.tick_params(labelsize=BIGGEST_15_MIN_SIZE)
+        
+        plt.tight_layout()
+        
+        os.makedirs(f'{folder_output_dir}', exist_ok=True)
+
+        logger.info(f"Saving the plot {plotname}")
+        plt.savefig(f'{folder_output_dir}/{plotname}_heatmap_evolucion_15_min.png',dpi=150)
+        logger.info(f"Heatmap plot saved to {folder_output_dir}/{plotname}_heatmap_evolucion_15_min.png")
+
+        logger.info(f"Saving the data {plotname}")
+        leq_day_15min.to_csv(f'{folder_output_dir}/{plotname}_heatmap_evolucion_15_min.csv', index=False)
+        logger.info(f"Heatmap data saved to {folder_output_dir}/{plotname}_heatmap_evolucion_15_min.csv")
+        
+        plt.close()
+        
+    except Exception as e:
+        logger.error(f"Error in plot_heatmap: {e}")
+
+
+
+
+
+def plot_indicadores_heatmap(df, folder_output_dir: str, logger, plotname:str, ind_column:str):
+    try:
+        # remove nan values
+        df = df.dropna(subset=[ind_column])
+        logger.info(f"Using the ind_column: {ind_column}")
+        sns.set_style("white")
+        sns.set_palette("tab10")
+
+        if "Fecha" not in df.columns and "Date hour" in df.columns:
+            logger.info(f"Date hour column found, using it as Fecha")
+            # df["Fecha"] = df["Date hour"]
+            df["Fecha"] = pd.to_datetime(df['Date hour'], dayfirst=True)
+            logger.info(f"Date hour column found, using it as Fecha")
+        
+        if "Fecha" not in df.columns and "Time" in df.columns:
+            logger.info(f"Time column found, using it as Fecha")
+            df["Fecha"] = pd.to_datetime(df['Time'], dayfirst=True)
+            logger.info(f"Time column found, using it as Fecha")
+            
+        if "Fecha" not in df.columns and "marcadores" in df.columns:
+            logger.info("No Fecha column found")
+            # reindex datetime index column
+            if isinstance(df.index, pd.DatetimeIndex):
+                # uncomment if you want to reset the index
+                # df.reset_index(inplace=True)
+                df["Fecha"] = pd.to_datetime(df['datetime'], dayfirst=True)
+                logger.info(f"Using the datetime index as Fecha")
+
+        if "Fecha" not in df.columns and 'OVLD' not in df.columns:
+            # copy 'date' colimn and named it as 'Fecha'
+            df['Fecha'] = df['datetime']
+            logger.info(f"Using the datetime index as Fecha")
+
+        # if 'Fecha' and 'datetime' columns are present, use 'datetime' as 'Fecha'
+        if 'Fecha' in df.columns and 'datetime' in df.columns:
+            df['Fecha'] = df['datetime']
+            logger.info(f"Using the datetime index as Fecha")
+
+
+        df_indicadores = (df.groupby(['date','indicador_str'])['Fecha'].agg(['first','last']))
+        df_indicadores['duration'] = df_indicadores.apply(lambda row: calculate_duration(row['first'], row['last']), axis=1)
+        
+        # set weekday in the plot
+        df['date_weekday'] = df['Fecha'].dt.strftime('%Y-%m-%d') + ' ' + df['Fecha'].dt.day_name().replace(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'])
+        
+        # indicators to check
+        indicators_to_check = ['Ld', 'Le', 'Ln']
+
+        # select first and last day
+        first_day = df['date'].min()
+        last_day = df['date'].max()
+
+        # check presence of indicators
+        presence_first_day = {indicator: indicator in df[df['date'] == first_day]['indicador_str'].unique() for indicator in indicators_to_check}
+        presence_last_day = {indicator: indicator in df[df['date'] == last_day]['indicador_str'].unique() for indicator in indicators_to_check}
+        logger.info(f"Presence of indicators in first day {first_day}: {presence_first_day}")
+        logger.info(f"Presence of indicators in last day {last_day}: {presence_last_day}")
+
+        # 'duration of indicators
+        duration_first_day = {indicator: df_indicadores.loc[(first_day, indicator), 'duration'] if presence_first_day[indicator] else 0 for indicator in indicators_to_check}
+        duration_last_day = {indicator: df_indicadores.loc[(last_day, indicator), 'duration'] if presence_last_day[indicator] else 0 for indicator in indicators_to_check}
+        
+        # log duration information
+        for indicator in indicators_to_check:
+            logger.info(f"Duration of {indicator} on the first day {first_day}: {duration_first_day[indicator]}")
+            logger.info(f"Duration of {indicator} on the last day {last_day}: {duration_last_day[indicator]}")
+
+        # apply filter based on duration and presence
+        for indicator in indicators_to_check:
+            if presence_first_day[indicator] and duration_first_day[indicator] <= LE_SECONDS:
+                df = df[~((df['date'] == first_day) & (df['indicador_str'] == indicator))]
+                logger.info(f"{indicator} indicator from first day {first_day} removed, less than {LE_SECONDS} seconds")
+
+            if presence_last_day[indicator] and duration_last_day[indicator] <= LE_SECONDS:
+                df = df[~((df['date'] == last_day) & (df['indicador_str'] == indicator))]
+                logger.info(f"{indicator} indicator from last day {last_day} removed, less than {LE_SECONDS} seconds")
+        
+
+
+        # make the energy average of the indicators
+        indicadores_table = pd.pivot_table(
+            data=df,
+            index="date_weekday",
+            columns="indicador_str",
+            values=ind_column,
+            aggfunc=leq
+        ).round(1)
+
+        desired_order = ["Ln", "Ld", "Le"]
+        indicadores_table = indicadores_table.reindex(columns=desired_order)
+
+        plt.figure(figsize=(15, 8))
+        
+        ax = sns.heatmap(
+            indicadores_table, 
+            annot=True, 
+            fmt=".1f", 
+            linewidth=0.5, 
+            cmap=cmap_dict, 
+            vmin=30, 
+            vmax=85,
+            annot_kws={"size": MEDIUM_SIZE}
+        )
+        ax.set_yticklabels(ax.get_yticklabels(), rotation=0)
+        
+        plt.ylabel('Día', fontsize=BIGGEST_SIZE)
+        plt.xlabel('Indicador', fontsize=BIGGEST_SIZE)
+        plt.title(f'{plotname} Indicadores', fontsize=BIGGEST_SIZE)
+
+        plt.yticks(rotation=0, fontsize=BIGGEST_SIZE)
+        plt.xticks(rotation=0, fontsize=BIGGEST_SIZE)
+
+        cbar = ax.collections[0].colorbar
+        cbar.ax.tick_params(labelsize=BIGGEST_SIZE)
+
+        plt.tight_layout()
+        
+        os.makedirs(f'{folder_output_dir}', exist_ok=True)
+
+        logger.info(f"Saving the plot {plotname}")
+        plt.savefig(f"{folder_output_dir}/{plotname}_indicadores.png")
+        logger.info(f"Indicadores plot saved to {folder_output_dir}\{plotname}_indicadores.png")
+        
+        logger.info(f"Saving the data {plotname}")
+        indicadores_table.to_csv(f"{folder_output_dir}/{plotname}_indicadores.csv", index=True)
+        logger.info(f"Indicadores data saved to {folder_output_dir}\{plotname}_indicadores.csv")
+        
+        plt.close()
+        
+        
+        # indicador power average
+        general_power_averages = indicadores_table.apply(leq).round(1)
+        general_power_averages_df = general_power_averages.to_frame().transpose()
+        
+        os.makedirs(f'{folder_output_dir}', exist_ok=True)
+
+        logger.info(f"Indicadores generales data {plotname}")
+        general_power_averages_df.to_csv(f'{folder_output_dir}/{plotname}_indicadores_generales.csv', index=False)
+        logger.info(f"Indicadores generales data saved to {folder_output_dir}/{plotname}_indicadores_generales.csv")
+    
+    except Exception as e:
+        logger.error(f"Error in plot_indicadores_heatmap: {e}")
+
+
+
+
+
+def plot_day_evolution(df, folder_output_dir: str, logger, laeq_column: str, plotname: str):
+    try:
+        # remove nan values
+        df = df.dropna(subset=[laeq_column])
+        df = df.reset_index(drop=True)
+        df = df.drop_duplicates()
+        logger.info(f"Using the laeq_column: {laeq_column}")
+
+        sns.set_style("whitegrid")
+        sns.set_palette("tab10")
+        
+        # translate the day name to Spanish
+        df['Día'] = df['day_name'].replace(
+            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+            ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        )
+        
+        weekdays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        df['Día'] = pd.Categorical(df['Día'], categories=weekdays, ordered=True)
+        
+        fig = sns.relplot(
+            data=df,
+            x="hour",
+            y=laeq_column,
+            kind="line", # kind is the type of plot to draw
+            hue="Día", # hue is the column to split the data
+            estimator=leq,  # estimator is the function to apply to the data
+            aspect=1.3, # aspect is the width/height ratio
+            palette=C_MAP_WEEKDAY,
+        )
+
+        fig.set(xlim=(-1, 24), ylim=(DB_RANGE_BOTTOM, DB_RANGE_TOP))
+
+        # change the x-axis labels to 24-hour format
+        hour_labels = [f"{hour:02d}:00" for hour in range(24)]
+        plt.xticks(range(24), hour_labels, rotation=90)
+
+        plt.yticks(range(DB_RANGE_BOTTOM, DB_RANGE_TOP, BD_RANGE_STEP), [str(level) for level in range(DB_RANGE_BOTTOM, DB_RANGE_TOP, BD_RANGE_STEP)])
+
+        for ax in fig.axes.flat:
+            ax.spines['top'].set_visible(True)
+            ax.spines['right'].set_visible(True)
+        
+        plt.axvline(x=6.50, color=".7", dashes=(2, 1), zorder=0)  # 6:45 AM
+        plt.axvline(x=18.50, color=".7", dashes=(2, 1), zorder=0)  # 6:45 PM
+        plt.axvline(x=22.50, color=".7", dashes=(2, 1), zorder=0)  # 10:45 PM
+
+        plt.text(s="Ln", x=0.13, y=0.97, transform=plt.gca().transAxes, c="Black", weight="bold")
+        plt.text(s="Ld", x=0.53, y=0.97, transform=plt.gca().transAxes, c="Black", weight="bold")
+        plt.text(s="Le", x=0.85, y=0.97, transform=plt.gca().transAxes, c="Black", weight="bold")
+        plt.text(s="Ln", x=0.96, y=0.97, transform=plt.gca().transAxes, c="Black", weight="bold")
+        
+        plt.title(f"Evolución día {plotname} Date {df['date'].iloc[0]} - {df['date'].iloc[-1]}", fontsize=14)
+        plt.ylabel('dB(A)')
+        plt.xlabel('Hora')
+
+        logger.info(f"Day evolution plot created for {plotname} Date {df['date'].iloc[0]} - {df['date'].iloc[-1]}")
+        
+        os.makedirs(folder_output_dir, exist_ok=True)
+
+        logger.info(f"Saving the plot {plotname}")
+        fig.savefig(f"{folder_output_dir}/{plotname}_day_evolution.png", dpi=300)
+        logger.info(f"Day evolution plot saved to {folder_output_dir}/{plotname}_day_evolution.png")
+
+        logger.info(f"Saving the data {plotname}")
+        df.to_csv(f"{folder_output_dir}/{plotname}_day_evolution.csv", index=False)
+        logger.info(f"Day evolution data saved to {folder_output_dir}/{plotname}_day_evolution.csv")
+
+        plt.close()
+
+    except Exception as e:
+        logger.error(f"Error in plot_day_evolution: {e}")
+
+
+
+def plot_period_evolution(df,  folder_output_dir: str, logger, laeq_column:str, plotname:str):
+    try:
+        df = df.dropna(subset=[laeq_column])
+        df = df.reset_index(drop=True)
+        df = df.drop_duplicates()
+        logger.info(f"Using the laeq_column: {laeq_column}")
+        
+        sns.set_style("whitegrid")
+        sns.set_palette("tab10")
+        
+        # translate the day name to spanish from english in day_name
+        df['Día'] = df['day_name'].replace(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'])
+        
+        weekdays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        df['Día'] = pd.Categorical(df['Día'], categories=weekdays, ordered=True)
+        
+        for ind in df["indicador_str"].unique():
+            if ind == 'Ln':
+                continue
+            
+            df_temp = df[df["indicador_str"] == ind]
+            
+            fig = sns.relplot(
+                data=df_temp,
+                x="hour",
+                y=laeq_column,
+                kind="line", # kind is the type of plot to draw
+                hue="Día", # hue is the column to split the data
+                estimator=leq,  # estimator is the function to apply to the data
+                aspect=1.3, # aspect is the width/height ratio
+                palette=C_MAP_WEEKDAY,
+            )
+            
+            if ind == 'Ld':
+                fig.set(xlim=(6, 19), ylim=(DB_RANGE_BOTTOM, DB_RANGE_TOP))
+                plt.xticks(range(7, 19), [f"{hour:02d}:00" for hour in range(7, 19)])
+                logger.info(f"Plotted Ld")
+                
+            elif ind == 'Le':
+                fig.set(xlim=(18.7, 22.3), ylim=(DB_RANGE_BOTTOM, DB_RANGE_TOP))
+                plt.xticks([18.7, 19, 20, 21, 22, 22.3], ['', '19:00', '20:00', '21:00', '22:00', ''])
+                logger.info(f"Ploted Le")
+
+            plt.yticks(range(DB_RANGE_BOTTOM, DB_RANGE_TOP, BD_RANGE_STEP), [str(level) for level in range(DB_RANGE_BOTTOM, DB_RANGE_TOP, BD_RANGE_STEP)])
+
+            for ax in fig.axes.flat:
+                ax.spines['top'].set_visible(True)
+            
+            ax.spines['right'].set_visible(True)
+            plt.title(f"Evolución {ind}")
+            plt.ylabel('dB(A)')
+            plt.xlabel('Hora')
+        
+            os.makedirs(f'{folder_output_dir}', exist_ok=True)
+            
+            logger.info(f"Saving the plot {plotname}_{ind}")
+            fig.savefig(f"{folder_output_dir}/{plotname}_{ind}_evolution.png",dpi=150)
+            logger.info(f"Period evolution plot saved to {folder_output_dir}/{plotname}_{ind}_evolution.png")
+
+            logger.info(f"Saving the data {plotname}_{ind}")
+            df_temp.to_csv(f"{folder_output_dir}/{plotname}_{ind}_evolution.csv", index=False)
+            logger.info(f"Period evolution data saved to {folder_output_dir}/{plotname}_{ind}_evolution.csv")
+        
+            plt.close()
+        
+    
+    except Exception as e:
+        logger.error(f"Error in plot_period_evolution: {e}")
+
+
+
+
+
+# ---------------------------------------------
+# ---------------------------------------------
+# ---------------------------------------------
+# TODO
+def plt_spectrogram(df, folder_output_dir, sufix_string, logger, plotname):
+    # print(df)
+    print(df.columns)
+    print(sufix_string)
+
+    if sufix_string == "SONOMETRO":
+        logger.info("Sufix string is SONOMETRO")
+        exit()
+
+    else:
+        frequency_columns = df.columns[5:-2] 
+        frequencies = [float(col.replace('Hz', '').replace('k', '000')) for col in frequency_columns]
+        times = pd.to_datetime(df['date'])
+
+
+
+        # select datatime from 22:30 to 23:30 of just one day
+        # df = df[(df['date'] >= '2024-07-09 22:30:00') & (df['date'] <= '2024-07-09 23:30:00')]
+        # times = pd.to_datetime(df['date'])
+
+
+
+        spectrogram_data = df[frequency_columns].T.values
+        spectrogram_data = spectrogram_data.clip(20, 110)
+        freq_labels = [f"{freq} Hz" for freq in frequencies]
+        
+        plt.figure(figsize=(20, 10))
+        plt.pcolormesh(times, frequencies, spectrogram_data, shading='auto', cmap='inferno')
+        plt.colorbar(label='Magnitude (dB)')
+
+        plt.yticks(frequencies, freq_labels)
+        plt.ylabel('Frequency (Hz)')
+
+        plt.xlabel('Time')
+        plt.title(f'Spectrogram: {plotname}')
+        plt.yscale('log')
+        plt.ylim([min(frequencies), max(frequencies)])
+
+        plt.gca().xaxis.set_major_locator(mdates.MinuteLocator(interval=300))
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
+
+        plt.xticks(rotation=90)
+        plt.tight_layout()
+        # remove the grid
+        plt.grid(False)
+
+        # Save the plot
+        output_file = f'{folder_output_dir}/Spectrogram/{plotname}_spectrogram.png'
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        plt.savefig(output_file, dpi=150)
+        plt.close()
+        logger.info(f"Spectrogram saved to {output_file}")
