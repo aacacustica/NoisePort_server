@@ -28,7 +28,7 @@ warnings.filterwarnings("ignore",
 
 
 
-def inference(path,id_micro, model_path, sample_rate, chunk_size, window_size, threshold, upload_s3, logging, output_wav_folder, output_predict_lt_folder, s3_bucket_name, cwd, yamnet_class_map_csv):
+def inference(path,resultados_folder,id_micro, model_path, sample_rate, chunk_size, window_size, threshold, upload_s3, logging, output_wav_folder, output_predict_lt_folder, s3_bucket_name, cwd, yamnet_class_map_csv):
     """
     Perform inference on one or more audio files.
     Args:
@@ -42,12 +42,13 @@ def inference(path,id_micro, model_path, sample_rate, chunk_size, window_size, t
     # ---------------------------
     # INIZIALATIN PROCESSING FILE
     # ---------------------------
-    processed_files_txt = os.path.join(path, "processed_predictions.txt")
-    processed_files_txt = processed_files_txt.replace("wav_files", "predictions_litle")
+    processed_files_txt = os.path.join(resultados_folder, "processed_predictions.txt")
     os.makedirs(os.path.dirname(processed_files_txt), exist_ok=True)
     logging.info(f"Saving the processed file txt here --> {processed_files_txt}")
     
+
     processed_files = load_processed_files(processed_files_txt)
+    logging.info(f"Processed files: {len(processed_files)}")
 
 
     
@@ -218,10 +219,16 @@ def inference(path,id_micro, model_path, sample_rate, chunk_size, window_size, t
             else:
                 csv_filename = wav_filename.replace(".wav", f"_tflt_w_{window_size}.csv")  # e.g. 20250108_142606.csv
             logging.info(f"CSV filename --> {csv_filename}")
+            
 
 
 
+            logging.info("")
+            # logging.info(audio_file)
             prediction_folder = os.path.dirname(audio_file).replace(output_wav_folder, output_predict_lt_folder)
+            logging.info(f"Prediction folder --> {prediction_folder}")
+            prediction_folder = prediction_folder.replace(MEDIDAS_FOLDER, RESULTADOS_FOLDER)
+            logging.info(f"Prediction folder --> {prediction_folder}")
             os.makedirs(prediction_folder, exist_ok=True)
             logging.info(f"Making litRT prediction folder --> {prediction_folder}")
 
@@ -395,9 +402,7 @@ def inference(path,id_micro, model_path, sample_rate, chunk_size, window_size, t
             # ----------------------------
             update_processed_files(processed_files_txt, csv_full_path)
             processed_files.add(audio_file)
-            logging.info(f"Final CSV file added to the processed file. {audio_file}")
             logging.info(f"Final CSV file added to the processed file. {csv_full_path}")
-            # exit()
 
             
         # -------------
@@ -527,7 +532,7 @@ def main():
                 logging.info(f"Point: {point}")
 
 
-                if point == "P1_CONTENEDORES":
+                if point == "P2_CONTENEDORES":
                     logging.info("")
                     # print("P2_CONTENEDORES")
 
@@ -542,12 +547,24 @@ def main():
                     logging.info(f"WAV files folder: {wav_files_folder}")
 
 
+                    # -------------------------------------------------
+                    # MAKING RESULTADOS FOLDER
+                    # -------------------------------------------------
+                    # output folder --> replace MEDIDAS_FOLDER with RESULTADOS_FOLDER
+                    resultados_folder = wav_files_folder.replace(MEDIDAS_FOLDER, RESULTADOS_FOLDER)
+                    logging.info(f"RESULTADOS_FOLDER: {resultados_folder}")
+                    resultados_folder = os.path.dirname(resultados_folder)
+                    resultados_folder = os.path.join(resultados_folder, storage_output_predict_lt_folder)
+                    logging.info(f"RESULTADOS_FOLDER: {resultados_folder}")
+
+
                     # ----------
                     # INFERENCE
                     # ----------
                     try:
                         inference(
                             path=wav_files_folder,
+                            resultados_folder=resultados_folder,
                             
                             id_micro=id_micro,
                             model_path=model_path,

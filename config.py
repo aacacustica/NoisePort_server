@@ -1,5 +1,7 @@
 # `20158.74Hz` DECIMAL(10,2),
 
+MEDIDAS_FOLDER = "3-Medidas"
+RESULTADOS_FOLDER = "5-Resultados"
 
 # ----------------------------------------
 #  SANDISK PATH
