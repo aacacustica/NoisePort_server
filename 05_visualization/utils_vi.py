@@ -214,6 +214,7 @@ def remove_row_out_timespan(df_LAeq, df_Pred):
 def apply_db_correction(df, coefficient, sufix_string, logger):
     """
     Applying correction to the dataframe based on the provided coefficient and suffix string."""
+    logger.info("")        
 
     if not "LC-LA" in df.columns and "LC" in df.columns and "LA" in df.columns:
         try:
@@ -233,6 +234,15 @@ def apply_db_correction(df, coefficient, sufix_string, logger):
             df["LAmax_corrected"] = df["LAmax"] - coefficient
             df["LAmin_corrected"] = df["LAmin"] - coefficient
             df["LCeq-LAeq_corrected"] = df["LC-LA"] - coefficient
+        elif "LA" in df.columns:
+            logger.info("Applying the correction to the LA column")
+            df["LA_corrected"] = df["LA"] - coefficient
+            df["LAmax_corrected"] = df["LAmax"] - coefficient
+            df["LAmin_corrected"] = df["LAmin"] - coefficient
+            df["LCeq-LAeq_corrected"] = df["LC-LA"] - coefficient
+        else:
+            logger.error("No column found to apply the correction for SONOMETRO data")
+            return None
 
     if sufix_string == "SONOMETRO":
         logger.info("Applying the correction to the SONOMETRO data")
@@ -242,6 +252,15 @@ def apply_db_correction(df, coefficient, sufix_string, logger):
             df["LAmax_corrected"] = df["LAFmax"] - coefficient
             df["LAmin_corrected"] = df["LAFmin"] - coefficient
             df["LCeq-LAeq_corrected"] = df["LCeq-LAeq"] - coefficient
+        elif "LA" in df.columns:
+            logger.info("Applying the correction to the LA column")
+            df["LA_corrected"] = df["LA"] - coefficient
+            df["LAmax_corrected"] = df["LAmax"] - coefficient
+            df["LAmin_corrected"] = df["LAmin"] - coefficient
+            df["LCeq-LAeq_corrected"] = df["LC-LA"] - coefficient
+        else:
+            logger.error("No column found to apply the correction for SONOMETRO data")
+            return None
     ######################################################################
 
 
@@ -392,6 +411,79 @@ def change_date_and_time(df, new_date, new_time, new_threshold_date, new_thresho
         logger.error(f"Error: {e}")
         return None
     return df
+
+
+
+
+def transform_1h(df, columns_dict, logger, agg_period):
+    """
+    Transform the dataframe to 1 hour period, using the columns_dict to select the columns"""
+    try:
+        df = df.dropna(subset=[columns_dict["LAEQ_COLUMN_COEFF"]])
+
+        # if there is just LAEQ_COLUMN_COEFF, then we use it for all the columns, otherwise use the max and min
+        if columns_dict["LAEQ_COLUMN"] == "Value":
+            agg_funcs = {
+                columns_dict["LAEQ_COLUMN_COEFF"]: [leq, lambda x: x.quantile(0.9)]
+            }
+            logger.info(
+                f"Using the columns_dict: df_LAeq[{columns_dict['LAEQ_COLUMN_COEFF']}]"
+            )
+
+        else:
+            agg_funcs = {
+                columns_dict["LAEQ_COLUMN_COEFF"]: [leq, lambda x: x.quantile(0.9)],
+                columns_dict["LAMAX_COLUMN_COEFF"]: "max",
+                columns_dict["LAMIN_COLUMN_COEFF"]: "min",
+                columns_dict["LC-LA_COLUMN_COEFF"]: leq,
+            }
+
+        logger.info(f"Using the agg_funcs: {agg_funcs}")
+        df_LAeq = df.resample(f"{agg_period}s").agg(agg_funcs)
+        df_LAeq.columns = ["_".join(col).strip() for col in df_LAeq.columns.values]
+
+        # rename column
+        if "LA_corrected_<lambda_0>" in df_LAeq.columns:
+            df_LAeq = df_LAeq.rename(columns={"LA_corrected_<lambda_0>": "90percentile"})
+
+        # logger.info(f"Resampled data with 90th percentile: {df_LAeq}")
+
+        return df_LAeq
+
+    except Exception as e:
+        logger.error(f"Error transforming data to 1 hour period: {e}")
+        return None
+
+
+
+def transformation(df, logger, oca_limits):
+    # transformation
+    df = add_datetime_columns(df, logger, date_col="datetime")
+    df = df.sort_values("datetime")
+    df.set_index("datetime", inplace=True, drop=False)
+    df = df.rename(columns={"datetime": "date_time"})
+    
+    
+    # add indicators column
+    logger.info(f"Adding indicators column")
+    df["indicador_str"] = df.apply(lambda x: evaluation_period_str(x["hour"]), axis=1)
+    # add nights column
+    logger.info(f"Adding nights column")
+    df["night_str"] = df.apply(
+        lambda x: add_night_column(x["hour"], x["weekday"]), axis=1
+    )
+
+    # removing nan values
+    df = df.dropna()
+    
+    
+    # oca column
+    df['oca'] = df['hour'].apply(
+                        lambda h: db_limit(h, **oca_limits)
+                   )
+
+    return df
+
 
 
 

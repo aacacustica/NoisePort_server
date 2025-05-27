@@ -99,6 +99,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
     
     for folder in tqdm(folders, desc="Processing folders"): # \\192.168.205.117\AAC_Server\OCIO\24052_ZARAUTZ\CAMPAÑA_1\3-Medidas\ZARAUTZ_C1_P1\AUDIOMOTH
         logger.info("")
+        logger.info(f"Suffix string: {sufix_string}")
         reg_folder = os.path.join(input_folder, folder) # \\192.168.205.117\AAC_Server\INDUSTRIA\23132-IRUÑA_OCA_CANTERA\5-Resultados\FAA205-P1_CAMPAÑA1\SPL
         folder = folder.split("\\")[:-1]
         folder = os.path.join('\\\\', *folder)
@@ -129,6 +130,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
         ##############################################################
         ########## GETTING PREDICTION FILE FOR EACH FOLDER ###########
+        logger.info("")
         predictions_folder = os.path.join(folder.replace('3-Medidas', '5-Resultados'), "AI_MODEL", "Predictions")
         prediction_csv_file = None
         if not os.path.exists(predictions_folder):
@@ -166,6 +168,10 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
         ###################################################################
 
 
+
+        ###################################################################
+        ###### GETTING THE DATAFRAME
+        ###################################################################
         try:
             logger.info("")
             logger.info(f"Processing folder {folder}") 
@@ -178,7 +184,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             complete_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_complete.csv")
             df.to_csv(complete_csv_path, index=False)
             logger.info(f"Saved complete dataframe to {complete_csv_path}")
-            
+            ###################################################################
+
+
 
             logger.info("\n")
             if TENERIFE_TIMEZONE:
@@ -203,6 +211,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
             # the same for the prediction file
             if prediction_csv_file is not None:
+                logger.info("")
                 logger.info(f"FOR PREDICTION FILE: Adding datetime columns, sorting by datetime and setting datetime as index")
                 
                 prediction_csv_file = add_datetime_columns_pred(prediction_csv_file, logger, date_col='date')
@@ -219,6 +228,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
             # the same for the peak prediction file
             if peak_prediction_csv_file is not None:
+                logger.info("")
                 logger.info(f"FOR PEAK PREDICTION FILE: Adding datetime columns, sorting by datetime and setting datetime as index")
 
                 peak_prediction_csv_file = add_datetime_columns_pred(peak_prediction_csv_file, logger, date_col='start_time')
@@ -234,6 +244,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
             
             try:
+                logger.info("")
                 # drop the beginning and ending of the measurement (15min)
                 df = df.loc[start_date + pd.Timedelta(REMOVE_START_TIME, unit='seconds'):end_date - pd.Timedelta(REMOVE_END_TIME, unit='seconds')]
                 logger.info(f"SPL df was trimmed, {REMOVE_START_TIME} secs from the beggining and {REMOVE_END_TIME} secs from the end")
@@ -263,12 +274,11 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
                 # add oca column
                 logger.info(f"Adding oca column")
-                logger.info(oca_limits)
+                logger.info(f"OCA Limits --> {oca_limits}")
 
                 df['oca'] = df['hour'].apply(
                         lambda h: db_limit(h, **oca_limits)
                    )
-                # df['oca'] = df.apply(lambda x: db_limit(x['hour'],ld_limit= LIMITE_DIA , le_limit= LIMITE_TARDE ,ln_limit= LIMITE_NOCHE) , axis=1)
 
                 # removing nan values
                 if prediction_csv_file is not None:
@@ -283,6 +293,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 #####################################################
                 ########## APPLYING DB CORRECTION TO THE DATA #########
                 #####################################################
+                logger.info("")
                 tuple_folder_coeff = []
                 logger.info(f"Applying db correction")
                 for key, value in folder_coefficients.items():
@@ -308,8 +319,8 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
             
             
-            logger.info("")        
-            logger.info(f"PLOTTING SECTION")
+            logger.info("")    
+            logger.info(f"Creating slm_dict")    
             folder = folder.split("\\")[-1]
             
             # add slm_dict column LAEQ_COLUMN_COEFF: with the value of LA_corrected
@@ -318,7 +329,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             slm_dict["LAMIN_COLUMN_COEFF"] = 'LAmin_corrected'
             #### NEW ONES ####
             slm_dict["LC-LA_COLUMN_COEFF"] = 'LCeq-LAeq_corrected'
-            slm_dict["L90_COLUMN_COEFF"] = '90percentile'
+            # slm_dict["L90_COLUMN_COEFF"] = '90percentile'
 
 
             # SAVE THE INFO IN A JSON FILE
@@ -339,19 +350,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
 
-            ################################################################
-            # TRANSFORMING 1 SECOND DATA TO 1 HOUR DATA
-            ##################################################################
-            logger.info(f"Transforming 1 second data to 1 hour data")
-            df_1h_trans = transform_1s_to_1h(df, logger, agg_period=PERIODO_AGREGACION, columns_dict=slm_dict)
-            logger.info(f"Transformed 1 second data to 1 hour data")
-            print(df_1h_trans)
-            exit()
 
-
-
-
-
+            logger.info("")        
+            logger.info(f"PLOTTING SECTION")
 
             # Plotting night evolution
             if PLOT_NIGHT_EVOLUTION:
@@ -439,6 +440,110 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.info(f"[15] Plotting spectrogram for folder {folder}")
                 # plt_spectrogram(df_oct, folder_output_dir, logger, plotname=folder)
                 plt_spectrogram(df, folder_output_dir, sufix_string, logger, plotname=folder)
+
+
+
+
+            #############################
+            ######### PLOTING ALARMS
+            ################################
+            ################################################################
+            # TRANSFORMING 1 SECOND DATA TO 1 HOUR DATA
+            ##################################################################
+            logger.info("")
+            logger.info(f"Transforming 1 second data to 1 hour data")
+            
+            df_1h = transform_1h(df, slm_dict, logger, agg_period=3600)
+            logger.info(f"Transformed 1 second data to 1 hour data")
+            df_1h = df_1h.round(2)
+
+
+            logger.info(f"MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA")
+            # remove the last part of the folder_output_dir
+            folder_output_dir_for_alarms = os.path.dirname(folder_output_dir)
+            folder_output_dir_1h = os.path.join(folder_output_dir_for_alarms, 'Graphics_ALARMS')
+            os.makedirs(folder_output_dir_1h, exist_ok=True)
+
+
+            logger.info("")
+            logger.info("")
+            logger.info(f"TRANSFORMATION SECTION")
+            logger.info(f"Adding oca column")
+            logger.info(f"OCA Limits --> {oca_limits}")
+            # set index (which is datetime) as column
+            df_1h.reset_index(inplace=True)
+            
+            df_1h = transformation(df_1h, logger, oca_limits)
+
+            #####
+            #ssave
+            df_1h_csv_path = os.path.join(folder_output_dir_1h, f"{actual_folder_name}_1h.csv")
+            df_1h.to_csv(df_1h_csv_path, index=False)
+            logger.info(f"Saved 1 hour dataframe to {df_1h_csv_path}")
+
+
+
+            logger.info("")
+            logger.info(f"PLOTTING ALARMS!!!")
+
+            if OCA_ALARM:
+                logger.info(f"[1] Plotting OCA alarm for folder {folder}")
+                oca_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder)
+            
+            
+            if LMAX_ALARM:
+                logger.info(f"[2] Plotting LMAX alarm for folder {folder}")
+                lmax_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold=95) # OCA +10
+
+            
+            if LC_LA_ALARM:
+                logger.info(f"[3] Plotting LC-LA alarm for folder {folder}")
+                LC_LA_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_norma=10, threshold_dB=3)
+
+
+            if L90_ALARM:
+                logger.info(f"[4] Plotting L90 alarm for folder {folder}")
+                l90_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_dB=5)
+
+
+            if L90_ALARM_DYNAMIC:
+                logger.info(f"[4] Plotting L90 alarm for folder {folder}")
+                l90_alarm_dynamic(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_dB=5)
+
+
+            # if FREQUENCY_COMPOSITION:
+            #     logger.info(f"[5] Plotting frequency composition for folder {folder}")            
+            #     frequency_composition(df_oct, folder_output_dir_1h, logger, plotname=folder, threshold_comp=5)
+
+
+            # if TONAL_FREQUENCY:
+            #     logger.info(f"[6] Plotting tonal frequency for folder {folder}")
+            #     tonal_frequency(df_oct, folder_output_dir_1h, logger, plotname=folder)
+
+
+            # if PLOT_PEAK_PREDICTION:
+            #     logger.info(f"[7] Plotting peak prediction for folder {folder}")
+            #     plot_peak_predictions(df_merged, predictions_peak_folder, start_date, end_date, logger, plotname=folder)
+
+
+            # if PLOT_PEAK_DISTRI_HEATMAP:
+            #     logger.info(f"[8] Plotting peak heatmap for folder {folder}")
+            #     plot_peak_distribution_heatmap(df_merged, folder_output_dir_graphic_analysis, logger, plotname=folder)
+
+
+            # if PLOT_PEAK_DISTRI:
+            #     logger.info(f"[9] Plotting peak distribution for folder {folder}")
+            #     plot_peak_distribution(df_merged, folder_output_dir_graphic_analysis, logger, plotname=folder)
+
+
+            # if PLOT_DENSITY_DISTRI:
+            #     logger.info(f"[10] Plotting density distribution for folder {folder}")
+            #     plot_density_distribution_peaks(df_merged, folder_output_dir_graphic_analysis, logger, plotname=folder)
+
+
+            # if PLOT_BOX_PLOT_PREDICTION:
+            #     logger.info(f"[11] Plotting box plot prediction for folder {folder}")
+            #     plot_box_plot_prediction(df_merged, folder_output_dir_graphic_analysis, logger, plotname=folder)
 
 
 

@@ -41,6 +41,11 @@ LE_SECONDS = 7200
 LN_SECONDS = 14400
 
 
+
+
+###################################################################
+### PLOTTING FLAGS
+###################################################################
 # Plotting Flags there are 15 flags to plot the following plots
 PLOT_NIGHT_EVOLUTION = False
 PLOT_NIGHT_EVOLUTION_15_MIN = False
@@ -68,6 +73,29 @@ PLOT_SPECTROGRAM_1_3 = False
 
 #### USING OCA
 SHOW_OCA = True
+########################
+
+
+########################## 
+# PLOTTING ALARMS 
+# ##########################################
+OCA_ALARM = True
+LMAX_ALARM = True
+LC_LA_ALARM = True
+L90_ALARM = True
+L90_ALARM_DYNAMIC = True
+FREQUENCY_COMPOSITION = True
+TONAL_FREQUENCY = True
+
+# peak
+# predictions
+PLOT_PEAK_PREDICTION = False
+
+# evolution
+PLOT_PEAK_DISTRI_HEATMAP = False
+PLOT_PEAK_DISTRI = False
+PLOT_DENSITY_DISTRI = False
+PLOT_BOX_PLOT_PREDICTION = False
 
 
 
