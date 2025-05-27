@@ -5,29 +5,32 @@ import datetime
 import time
 import csv
 import pandas as pd
-
+import tqdm
+ 
 import resampy
 import soundfile as sf
 import tflite_runtime.interpreter as tflite
-
+ 
 import warnings
-
+ 
 from utils import *
 from logging_config import setup_logging
-
-
-#removing 
-warnings.filterwarnings("ignore", 
+from config import *
+import json
+ 
+ 
+#removing
+warnings.filterwarnings("ignore",
                         message="FNV hashing is not implemented in Numba",
                         category=UserWarning
                         )
-
-
-
-
-def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, window_size, threshold, upload_s3, logging, output_wav_folder, output_predict_lt_folder, s3_bucket_name, cwd, yamnet_class_map_csv):
-    """Perform inference on one or more audio files.
-
+ 
+ 
+ 
+ 
+def inference(path,id_micro, model_path, sample_rate, chunk_size, window_size, threshold, upload_s3, logging, output_wav_folder, output_predict_lt_folder, s3_bucket_name, cwd, yamnet_class_map_csv):
+    """
+    Perform inference on one or more audio files.
     Args:
         file_list (list[str]): List of file paths to process.
         window_size (float, optional): Window size in seconds. If None, process the entire file at once.
@@ -35,78 +38,204 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
     """
     logging.info("")
     logging.info("Making inference")
-
+ 
     # ---------------------------
     # INIZIALATIN PROCESSING FILE
     # ---------------------------
     processed_files_txt = os.path.join(path, "processed_predictions.txt")
     processed_files_txt = processed_files_txt.replace("wav_files", "predictions_litle")
+    os.makedirs(os.path.dirname(processed_files_txt), exist_ok=True)
     logging.info(f"Saving the processed file txt here --> {processed_files_txt}")
-    
+   
     processed_files = load_processed_files(processed_files_txt)
-    
+ 
+ 
+   
     # --------------------------------------------------------
     # 1) create the TFLite interpreter
     # --------------------------------------------------------
     logging.info("Setting the TF Model and loading the classes")
-    
-    if model_path is not None:
-        interpreter = tflite.Interpreter(model_path=model_path)
-        logging.info(f"Model path --> {model_path}")
+    # checking if the model path exist
+    if os.path.exists(model_path):
+        logging.info(f"Model path exists --> {model_path}")
     else:
-        raise Exception('Model Path doesnt exist.')
-    
+        logging.error(f"Model path does not exist --> {model_path}")
+        raise ValueError(f'Model path does not exist --> {model_path}')
+
+    interpreter = tflite.Interpreter(model_path=model_path)
+   
+    # if model_path is not None:
+    #     logging.info(f"Model path --> {model_path}")
+    #     interpreter = tflite.Interpreter(model_path=model_path)
+    # else:
+    #     raise Exception('Model Path doesnt exist.')
+   
     yamnet_classes_csv = os.path.join(cwd, yamnet_class_map_csv)
     yamnet_classes = class_names_csv(yamnet_classes_csv)
     logging.info("Classes map loaded")
-
-
-    # --------------------
-    # Processing audio files
-    # --------------------
-    for audio_file in file_list:
+ 
+ 
+ 
+ 
+    # ----------------------------------
+    # COLLECTING AUDIO FILES TO PROCESS
+    # ----------------------------------
+    logging.info("")
+    full_paths= []
+    wav_folder_strs= []
+    diff_list= []
+ 
+ 
+    try:
+        # get all sub-folders in 'path'
+        wav_folders = [os.path.join(path, f)for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
+        len_folders = len(wav_folders)
+        logging.info(f"Found {len_folders} folders in {path}")
+       
+       
+        logging.info("")
+        for wav_folder in wav_folders:
+            logging.info(f"Processing folder: {wav_folder}")
+            wav_folder_strs.append(os.path.basename(wav_folder))
+ 
+            wav_files = [f for f in os.listdir(wav_folder)if f.lower().endswith('.wav')]
+            full_paths.extend(os.path.join(wav_folder, f) for f in wav_files)
+ 
+            found = len(wav_files)
+            if found == 60:
+                logging.info(f"Found {found} audio files. Folder complete.")
+            else:
+                missing = 60 - found
+                logging.info(f"Found {found} audio files. "
+                    f"Missing {missing} files.")
+ 
+                diff_list.append({
+                    "folder": wav_folder,
+                    "files_missing": missing
+                })
+ 
+ 
+    except Exception as e:
+        logging.error(f"Error getting the audio files: {e}")
+ 
+ 
+ 
+    # ----------------------------------
+    try:
+        expect_wav_files = len_folders * 60
+        total_audio_files = len(full_paths)
+        total_missing = expect_wav_files - total_audio_files
+ 
+ 
+        #convertinto to hours, minutes and seconds, 60x60 3600
+        # 1 audio files = 60 seconds
+        # 1 folder = 60 audio files
+        # 1 folder = 60 minutes
+        # 1 folder = 1 hour
+        total_audio_files_in_hours = total_audio_files / 3600
+        total_audio_files_in_minutes = total_audio_files / 60
+        total_audio_files_in_seconds = total_audio_files
+ 
+        #missing files
+        total_missing_in_hours = total_missing / 3600
+        total_missing_in_minutes = total_missing / 60
+        total_missing_in_seconds = total_missing
+ 
+ 
+        logging.info("")
+        logging.info(f"Expecting {expect_wav_files} wav files in total")
+        logging.info(f"There are {total_audio_files} total audio files to process")
+        logging.info(f"Missing {total_missing} wav files")
+        logging.info("")
+ 
+ 
+        logging.info(f"Total audio files in hours: {total_audio_files_in_hours:.2f} hours")
+        logging.info(f"Total audio files in minutes: {total_audio_files_in_minutes:.2f} minutes")
+        logging.info(f"Total audio files in seconds: {total_audio_files_in_seconds:.2f} seconds")
+        logging.info("")
+ 
+ 
+        logging.info(f"Total missing files in hours: {total_missing_in_hours:.2f} hours")
+        logging.info(f"Total missing files in minutes: {total_missing_in_minutes:.2f} minutes")
+        logging.info(f"Total missing files in seconds: {total_missing_in_seconds:.2f} seconds")
+        logging.info("")
+ 
+ 
+        # ----------------------------------
+        # saving the missing files information to the previous json file
+        report = {
+            "expected_wav_files": expect_wav_files,
+            "total_audio_files": total_audio_files,
+            "total_missing_files": total_missing,
+ 
+            "total_audio_duration": {
+                "hours": total_audio_files_in_hours,
+                "minutes": total_audio_files_in_minutes,
+                "seconds": total_audio_files_in_seconds
+            },
+            "missing_audio_duration": {
+                "hours": total_missing_in_hours,
+                "minutes": total_missing_in_minutes,
+                "seconds": total_missing_in_seconds
+            },
+            "folders_with_missing": diff_list
+        }
+ 
+        out_path = os.path.join(path, "wav_folder_report.json")
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(report, f, indent=2)
+        logging.info(f"Saved full report to {out_path}")
+   
+    except Exception as e:
+        logging.error(f"Error saving the report: {e}")
+           
+ 
+    # ----------------------------------
+    # PROCESSING
+    # ----------------------------------
+    for audio_file in tqdm.tqdm(full_paths, desc="Processing files", unit="file"):
         try:
-            logging.info("")
-            logging.info(f"Processing --> {audio_file}")
-
+ 
+            # filtering out the files that have already been processed
             if audio_file in processed_files:
                 logging.info(f"Skipping {audio_file}, already processed.")
                 continue
-            
-            file_start_time = time.time()
-
+       
+ 
+            logging.info(f"Processing file: {audio_file}")
+ 
             # -----------------------------------------------------------
             # csv file name and folder
             # -----------------------------------------------------------
             wav_filename = os.path.basename(audio_file)  # e.g. 20250108_142606.wav
             logging.info(f"WAV file name --> {wav_filename}")
-
+ 
             # name wave file
             wav_file_raw = os.path.splitext(wav_filename)[0]
-
+ 
             # setting time
             local_tz = datetime.datetime.now().astimezone().tzinfo
             start_timestamp = datetime.datetime.strptime(wav_file_raw, '%Y%m%d_%H%M%S')
             start_timestamp = start_timestamp.replace(tzinfo=local_tz)
             logging.info(f"Start_timestamp --> {start_timestamp}")
-            
-
+           
+ 
             if window_size is None:
                 csv_filename = wav_filename.replace(".wav", "_tflt.csv")  # e.g. 20250108_142606.csv
             else:
                 csv_filename = wav_filename.replace(".wav", f"_tflt_w_{window_size}.csv")  # e.g. 20250108_142606.csv
             logging.info(f"CSV filename --> {csv_filename}")
-
-
-
+ 
+ 
+ 
             prediction_folder = os.path.dirname(audio_file).replace(output_wav_folder, output_predict_lt_folder)
             os.makedirs(prediction_folder, exist_ok=True)
             logging.info(f"Making litRT prediction folder --> {prediction_folder}")
-
+ 
             csv_full_path = os.path.join(prediction_folder, csv_filename)
             logging.info(f"CSV FULL PATH --> {csv_full_path}")
-
-
+ 
+ 
             # --------------------------------------------------------
             # 2 get input/output details
             # --------------------------------------------------------
@@ -116,8 +245,8 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
             output_details = interpreter.get_output_details()
             waveform_input_index = input_details[0]['index']
             scores_output_index = output_details[0]['index']
-
-
+ 
+ 
             # --------------------------------------------------------
             # 3 prepare waveform input (0.975s @ 16kHz => 15600 samples)
             # Decode the WAV file
@@ -126,10 +255,10 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
             logging.info("Decoding WAV file")
             wav_data, sr = sf.read(audio_file, dtype=np.int16)
             assert wav_data.dtype == np.int16, f'Bad sample type: {wav_data.dtype}'
-
+ 
             waveform = wav_data / 32768.0  # Convert to [-1.0, +1.0]
             waveform = waveform.astype('float32')
-
+ 
             # convert to mono and the sample rate expected by YAMNet
             if len(waveform.shape) > 1:
                 waveform = np.mean(waveform, axis=1)
@@ -137,13 +266,13 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
             if sr != sample_rate:
                 waveform = resampy.resample(waveform, sr, sample_rate)
                 logging.info("Audio file resampled to 16KHz")
-
-
+ 
+ 
             # -----------------------------------------------------------
             # create a fresh CSV data list for this file
             # -----------------------------------------------------------
             csv_data = [["id_micro", "Filename", "Timestamp", "Unixtimestamp", "class", "probability"]]
-            
+           
             if window_size is None:
                 logging.info("")
                 logging.info("Processing the whole audio file")
@@ -152,16 +281,16 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
                 # --------------------------------------------------------
                 interpreter.resize_tensor_input(waveform_input_index, [waveform.size], strict=False)
                 interpreter.allocate_tensors()
-
-
+ 
+ 
                 # --------------------------------------------------------
                 # 5set input tensor and run inference
                 # --------------------------------------------------------
                 interpreter.set_tensor(waveform_input_index, waveform)
                 interpreter.invoke()
                 scores = interpreter.get_tensor(scores_output_index)  # shape (1, 521)
-
-    
+ 
+   
                 # ---------------------------------------------------------
                 # predcition
                 # ---------------------------------------------------------
@@ -171,10 +300,10 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
                 top3_classes = [str(yamnet_classes[i]) for i in top3_i]
                 top3_probs = [f"{prediction[i]:.4f}" for i in top3_i]
                 logging.info(f"top 3 prediction --> {top3_classes} \t{top3_probs}")
-
+ 
                 #unixtimestamp
                 unix_ts = int(start_timestamp.timestamp())
-
+ 
                 csv_data.append([
                     id_micro,
                     audio_file,
@@ -185,28 +314,28 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
                 ])
                 logging.info("Adding the result to the CSV file")
                 logging.info("")
-
-
+ 
+ 
             # -------------------------------
             # WINDOWED
             # -------------------------------
             else:
                 logging.info("")
                 logging.info("Processing windowed audio file")
-
+ 
                 window_size_samples = int(window_size * sample_rate)
                 logging.info(f"Window size --> {window_size_samples}")
-                
-                
+               
+               
                 start_idx = 0
                 while start_idx < len(waveform):
                     end_idx = min(start_idx + window_size_samples, len(waveform))
                     waveform_window = waveform[start_idx:end_idx]
                     logging.info(f"waveform_window --> {waveform_window}")
-
+ 
                     interpreter.resize_tensor_input(waveform_input_index, [waveform_window.size], strict=False)
                     interpreter.allocate_tensors()
-
+ 
                     # --------------------------------------------------------
                     # 5set input tensor and run inference
                     # --------------------------------------------------------
@@ -214,8 +343,8 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
                     interpreter.set_tensor(waveform_input_index, waveform_window)
                     interpreter.invoke()
                     scores = interpreter.get_tensor(scores_output_index)  # shape (1, 521)
-
-
+ 
+ 
                     # ---------------------------------------------------------
                     # predcition
                     # ---------------------------------------------------------
@@ -225,12 +354,12 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
                     top3_classes = [str(yamnet_classes[i]) for i in top3_i]
                     top3_probs = [f"{prediction[i]:.4f}" for i in top3_i]
                     logging.info(f"top 3 prediction --> {top3_classes} \t{top3_probs}")
-
+ 
                     # timestamp for this window
                     start_time_s = start_idx / sample_rate
                     window_timestamp_actual = start_timestamp + datetime.timedelta(seconds=int(start_time_s))
                     unix_ts = int(window_timestamp_actual.timestamp())
-                    
+                   
                     csv_data.append([
                         id_micro,
                         audio_file,
@@ -239,12 +368,12 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
                         str(top3_classes),
                         str(top3_probs)
                     ])
-
+ 
                     start_idx = end_idx
                     logging.info("Adding the result to the CSV file")
                     logging.info("")
-
-
+ 
+ 
             # -----------------------------------------------------------
             # save csv
             # -----------------------------------------------------------
@@ -252,10 +381,11 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
                 writer = csv.writer(final_csv)
                 writer.writerows(csv_data)
             logging.info(f"Final CSV file saved at {csv_full_path}")
-
-            # df = pd.read_csv(csv_full_path)
-
-
+ 
+            df = pd.read_csv(csv_full_path)
+            # print(df)
+ 
+ 
             # -------------------
             # UPLOAD TO BUCKET S3
             # -------------------
@@ -266,8 +396,8 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
                     logging.error(f"Failed to upload {csv_full_path} to S3: {e}")
             else:
                 logging.warning("The final CVS final will not be update to the bucket S3")
-
-            
+ 
+           
             # ----------------------------
             # MARKING FILE AS PROICESSED
             # ----------------------------
@@ -275,72 +405,66 @@ def inference(path,id_micro,file_list, model_path, sample_rate, chunk_size, wind
             processed_files.add(audio_file)
             logging.info(f"Final CSV file added to the processed file. {audio_file}")
             logging.info(f"Final CSV file added to the processed file. {csv_full_path}")
-
-            
-            file_end_time = time.time()
-            elapsed_time = file_end_time - file_start_time
-            logging.info(f"Processing of {audio_file} took {elapsed_time:.2f} seconds")
-            print(f"Processing of {audio_file} took {elapsed_time:.2f} seconds")
             # exit()
-
-
+ 
+           
         # -------------
         # END
         # ---------------
         except Exception as e:
                 logging.error(f"Error processing file {audio_file}: {e}")
                 continue
-
-
-
+ 
+ 
+ 
 def load_processed_files(processed_file_path):
     """Load the set of processed filenames from a text file."""
     if os.path.exists(processed_file_path):
         with open(processed_file_path, "r") as f:
             return {line.strip() for line in f if line.strip()}
     return set()
-
-
-
+ 
+ 
+ 
 def update_processed_files(processed_file_path, filename):
     """Append a processed filename to the text file."""
     with open(processed_file_path, "a") as f:
         f.write(filename + "\n")
-
-
-
+ 
+ 
+ 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Make prediction with YAMNet model for audio files')
     parser.add_argument('-p', '--path', type=str, required=False,help='Folder containing WAV files to process')
-    
+   
     parser.add_argument('-w', '--window-size', type=float, default=None,
                         help='Window size in seconds for processing audio files. '
                              'Default is None for processing the entire audio.')
-
+ 
     parser.add_argument('-t', '--threshold', type=float, default=None, help='Classification threshold for predictions.')
     parser.add_argument('-m', '--model-path', type=str, default=None, help='Insert the model path to make predictions.')
     parser.add_argument('-u', '--upload-S3', action='store_true',default=False, help='If provided, upload the final CSV to S3.')
     return parser.parse_args()
-
-
-
-
+ 
+ 
+ 
+ 
 def main():
     try:
         logging = setup_logging(script_name="inference_tflite")
         args = parse_arguments()
-        
+       
         logging.info("Staarting process!!")
         logging.info("")
-        
+       
         cwd = os.path.dirname(os.path.realpath(__file__))
         home_dir = os.getenv("HOME")
         logging.info(f"Current working dir --> {cwd}")
         logging.info(f"Home dir --> {home_dir}")
-        
-        
+       
+       
         logging.info("Getting the element form the yamnl file")
-        try: 
+        try:
             id_micro, location_record, location_place, location_point, storage_s3_bucket_name, \
             storage_output_wav_folder, storage_output_acoust_folder, storage_output_predict_folder, \
             storage_output_predict_lt_folder, prediction_yamnet_class_map_csv, prediction_sample_rate, \
@@ -349,8 +473,8 @@ def main():
         except Exception as e:
             logging.error(f"Error loading config: {e}")
             return
-
-
+ 
+ 
         # ----------------------------
         # PARSE ARGUMENTS & CONFIG
         # ----------------------------
@@ -358,95 +482,119 @@ def main():
         if args.path:
             path = args.path
         else:
-            path = os.path.join(home_dir, location_record, location_place, location_point, storage_output_wav_folder)
-            if os.path.exists(path):
-                logging.info(f"Path exists --> {path}")
-            else:
-                raise Exception('Path doesnt exist.')
-        
+            try:
+                path = SANDISK_PATH_LINUX
+            except Exception as e:
+                path = SANDISK_PATH_WINDOWS
+            try:
+                path = MOUNTED_PATH
+            except Exception as e:
+                logging.error(f"Error getting the path: {e}")
+
+        # check if it exist
+        isdir = os.path.isdir(path)
+        if isdir:
+            logging.info(f"Path exists --> {path}")
+            # continue
+        else:
+            raise ValueError(f'Path ({path}) doesnt exist.')
+       
+       
         # DEEP LEARNING MODEL PATH
         if args.model_path:
             model_path = args.model_path
         else:
             model_path = prediction_model_tflt
-
+        
+ 
         # WINDOW
         if args.window_size:
             window_size = args.window_size
         else:
             window_size = None
-
+ 
         # THRESHOLD
         if args.threshold:
             threshold = args.threshold
         else:
             threshold = None
-
+ 
         # UPLOAD BUCKET S3
         if args.upload_S3:
             upload_s3 = args.upload_S3
         else:
             upload_s3 = None
-
+ 
     except Exception as e:
         logging.error(f"Errorgetting the config info: {e}")
-
-
+ 
+ 
     logging.info(f"Path: {path}")
-    logging.info(f"ID Micro: {id_micro}")
     logging.info(f"Model path: {model_path}")
     logging.info(f"Window size: {window_size}")
     logging.info(f"Probability treshold: {threshold}")
     logging.info(f"Upload to bucket S3: {upload_s3}")
-
-
-
-    # -----------------------
-    # GETTING AUDIO FILES
-    # -----------------------
+ 
     try:
-        audio_files = [f for f in os.listdir(path) if f.lower().endswith('.wav')]
-        full_paths = [os.path.join(path, file) for file in audio_files]
-    except Exception as e:
-        logging.error(f"Errorgetting the audio files: {e}")
-
-    logging.info(f"Found {len(audio_files)} audio files: {audio_files}")
-
-
-
-    # ----------
-    # INFERENCE
-    # ----------
-    try:
-        inference(
-            path=path,
-            file_list=full_paths,
-            
-            id_micro=id_micro,
-            model_path=model_path,
-            yamnet_class_map_csv=prediction_yamnet_class_map_csv,
-            
-            sample_rate=prediction_sample_rate,
-            chunk_size=prediction_chunk_size,
-            window_size=window_size,
-            threshold=threshold,
-            
-            upload_s3=upload_s3,
-            
-            output_wav_folder=storage_output_wav_folder,
-            output_predict_lt_folder=storage_output_predict_lt_folder,
-            s3_bucket_name=storage_s3_bucket_name,
-            
-            cwd=cwd,
-            
-            logging=logging
-        )
-        logging.info("Inference finished.")
+        logging.info("")
+        for root, dirs, files in os.walk(path):
+                if storage_output_wav_folder in dirs:
+                    logging.info(f"Found folder: {storage_output_wav_folder} in {root}")
+                    point = os.path.basename(root)
+                    logging.info(f"Point: {point}")
     
+    
+                    if point == "P4_CONTENEDORES":
+                        logging.info("")
+                        # print("P2_CONTENEDORES")
+    
+                        if point in ID_MICROPHONE:
+                            id_micro = ID_MICROPHONE[point]
+                            logging.info(f"ID Microphone: {id_micro}")
+                        else:
+                            raise ValueError(f"ID Microphone for {point} not found in ID_MICROPHONE.")
+                
+                    
+                        wav_files_folder = os.path.join(root, storage_output_wav_folder)
+                        logging.info(f"WAV files folder: {wav_files_folder}")
+    
+    
+                        # ----------
+                        # INFERENCE
+                        # ----------
+                        try:
+                            logging.info("")
+                            inference(
+                                path=wav_files_folder,
+                            
+                                id_micro=id_micro,
+                                model_path=model_path,
+                                yamnet_class_map_csv=prediction_yamnet_class_map_csv,
+                            
+                                sample_rate=prediction_sample_rate,
+                                chunk_size=prediction_chunk_size,
+                                window_size=window_size,
+                                threshold=threshold,
+                            
+                                upload_s3=upload_s3,
+                            
+                                output_wav_folder=storage_output_wav_folder,
+                                output_predict_lt_folder=storage_output_predict_lt_folder,
+                                s3_bucket_name=storage_s3_bucket_name,
+                            
+                                cwd=cwd,
+                            
+                                logging=logging
+                            )
+                            logging.info("Inference finished.")
+                    
+                        except Exception as e:
+                            logging.error(f"Error making inference: {e}")
+
     except Exception as e:
-        logging.error(f"Error making inference: {e}")
-
-
-
+        logging.error(f"Error getting the path: {e}")
+        return   
+    
 if __name__ == '__main__':
     main()
+ 

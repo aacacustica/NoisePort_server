@@ -3,6 +3,8 @@
 # ----------------------------------------
 SANDISK_PATH_LINUX = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/"
 SANDISK_PATH_WINDOWS = r"\\192.168.205.122\Contenedores"
+MOUNTED_PATH = "/run/user/1000/gvfs/smb-share:server=192.168.205.122,share=contenedores/3-Medidas"
+
 
 
 # -------------------------
