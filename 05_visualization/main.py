@@ -1,8 +1,8 @@
 import argparse
 import os
 from logging_config import setup_logging
-import config
-from config import *
+from config_vi import *
+import config_vi
 from processing import *
 import re
 
@@ -56,7 +56,7 @@ def main():
     if args.agg_period:
         PERIODO_AGREGACION = args.agg_period
     else:
-        PERIODO_AGREGACION = config.PERIODO_AGREGACION
+        PERIODO_AGREGACION = config_vi.PERIODO_AGREGACION
     if args.percentiles:
         PERCENTILES = args.percentiles
 
@@ -70,15 +70,15 @@ def main():
     # CHOICE OCA TYPE
     oca_type = args.limit_oca
     if oca_type == 'OCA_RESIDENTIAL':
-        oca_limits = config.OCA_RESIDENTIAL
+        oca_limits = config_vi.OCA_RESIDENTIAL
     elif oca_type == 'OCA_LEISURE':
-        oca_limits = config.OCA_LEISURE
+        oca_limits = config_vi.OCA_LEISURE
     elif oca_type == 'OCA_OFFICE':
-        oca_limits = config.OCA_OFFICE
+        oca_limits = config_vi.OCA_OFFICE
     elif oca_type == 'OCA_INDUSTRIAL':
-        oca_limits = config.OCA_INDUSTRIAL
+        oca_limits = config_vi.OCA_INDUSTRIAL
     elif oca_type == 'OCA_CULTURE':
-        oca_limits = config.OCA_CULTURE
+        oca_limits = config_vi.OCA_CULTURE
     else:
         raise ValueError(f"Unknown OCA type {oca_type!r}, must be 'OCA_RESIDENTIAL', 'OCA_LEISURE', 'OCA_OFFICE', 'OCA_INDUSTRIAL', 'OCA_CULTURE'")
 

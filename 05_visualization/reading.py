@@ -1,7 +1,7 @@
 from datetime import datetime
 import os
 import pandas as pd
-from utils import change_date_and_time
+from utils_vi import *
 
 
 
@@ -388,6 +388,14 @@ def get_data_tenerife_TCT(file_path: str,logger, new_date=None, new_time=None, n
     
     except Exception as e:
         logger.error(f"Error: {e}")
+        return None
+    
+
+    try:
+        # create LC-LA colum --> LC - LA = LC_LA.
+        df['LC_LA'] = df['LC'] - df['LA']
+    except KeyError:
+        logger.error("KeyError: 'LC' or 'LA' column not found in the dataframe.")
         return None
     
     

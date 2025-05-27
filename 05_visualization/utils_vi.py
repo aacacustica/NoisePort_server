@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, time
 import subprocess
 import os
-from config import *
+from config_vi import *
 
 
 def calculate_duration(start_time, end_time):
@@ -211,7 +211,42 @@ def remove_row_out_timespan(df_LAeq, df_Pred):
 
 
 
-def apply_db_correction(df, coefficient, logger):
+def apply_db_correction(df, coefficient, sufix_string, logger):
+    """
+    Applying correction to the dataframe based on the provided coefficient and suffix string."""
+
+    if not "LC-LA" in df.columns and "LC" in df.columns and "LA" in df.columns:
+        try:
+            logger.info("Creating the LC-LA column")
+            df["LC-LA"] = df["LC"] - df["LA"]
+        except Exception as e:
+            logger.error(f"Error creating LC-LA column: {e}")
+            return df
+
+
+    ######################################################################
+    if sufix_string == "AUDIOMOTH":
+        logger.info("Applying the correction to the AUDIOMOTH data")
+        if "LA" in df.columns:
+            logger.info("Applying the correction to the LA column")
+            df["LA_corrected"] = df["LA"] - coefficient
+            df["LAmax_corrected"] = df["LAmax"] - coefficient
+            df["LAmin_corrected"] = df["LAmin"] - coefficient
+            df["LCeq-LAeq_corrected"] = df["LC-LA"] - coefficient
+
+    if sufix_string == "SONOMETRO":
+        logger.info("Applying the correction to the SONOMETRO data")
+        if "LAeq" in df.columns:
+            logger.info("Applying the correction to the LAeq column")
+            df["LA_corrected"] = df["LAeq"] - coefficient
+            df["LAmax_corrected"] = df["LAFmax"] - coefficient
+            df["LAmin_corrected"] = df["LAFmin"] - coefficient
+            df["LCeq-LAeq_corrected"] = df["LCeq-LAeq"] - coefficient
+    ######################################################################
+
+
+
+
     if 'LA' in df.columns:
         logger.info('Entering --> Entering LA')
         df['LA_corrected'] = df['LA'] - coefficient

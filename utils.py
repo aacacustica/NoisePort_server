@@ -321,6 +321,41 @@ def upload_file_to_s3(file_path, bucket_name, logging):
 
 
 
+
+def transform_1h(df, columns_dict, logger, agg_period):
+    df = df.dropna(subset=[columns_dict["LAEQ_COLUMN_COEFF"]])
+
+    # if there is just LAEQ_COLUMN_COEFF, then we use it for all the columns, otherwise use the max and min
+    if columns_dict["LAEQ_COLUMN"] == "Value":
+        agg_funcs = {
+            columns_dict["LAEQ_COLUMN_COEFF"]: [leq, lambda x: x.quantile(0.9)]
+        }
+        logger.info(
+            f"Using the columns_dict: df_LAeq[{columns_dict['LAEQ_COLUMN_COEFF']}]"
+        )
+
+    else:
+        agg_funcs = {
+            columns_dict["LAEQ_COLUMN_COEFF"]: [leq, lambda x: x.quantile(0.9)],
+            columns_dict["LAMAX_COLUMN_COEFF"]: "max",
+            columns_dict["LAMIN_COLUMN_COEFF"]: "min",
+            columns_dict["LC-LA_COLUMN_COEFF"]: leq,
+        }
+
+    logger.info(f"Using the agg_funcs: {agg_funcs}")
+    df_LAeq = df.resample(f"{agg_period}s").agg(agg_funcs)
+    df_LAeq.columns = ["_".join(col).strip() for col in df_LAeq.columns.values]
+
+    # rename column
+    if "LA_corrected_<lambda_0>" in df_LAeq.columns:
+        df_LAeq = df_LAeq.rename(columns={"LA_corrected_<lambda_0>": "90percentile"})
+
+    # logger.info(f"Resampled data with 90th percentile: {df_LAeq}")
+
+    return df_LAeq
+
+
+
 #----------------------------
 #  GIT
 #----------------------------

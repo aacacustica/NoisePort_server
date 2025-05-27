@@ -4,8 +4,8 @@ import os
 plt.style.use("bmh")
 from visualization import *
 from reading import *
-from utils import *
-from config import *
+from utils_vi import *
+from config_vi import *
 from tqdm import tqdm
 import glob
 import json
@@ -102,6 +102,8 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
         reg_folder = os.path.join(input_folder, folder) # \\192.168.205.117\AAC_Server\INDUSTRIA\23132-IRUÑA_OCA_CANTERA\5-Resultados\FAA205-P1_CAMPAÑA1\SPL
         folder = folder.split("\\")[:-1]
         folder = os.path.join('\\\\', *folder)
+        actual_folder_name = folder.split("\\")[-1]
+        logger.info(f"Processing folder: {actual_folder_name}")
         logger.info(f"Entering folder: {folder}")
         spl_string = "SPL"
         graphics_string = f"Graphics_{sufix_string}"
@@ -168,18 +170,16 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info("")
             logger.info(f"Processing folder {folder}") 
             logger.info(f"Getting the data from the dataframes")
-            
             df, slm_type, slm_dict = process_folder(reg_folder, folder_date_time, folder_threshold, logger)
             if df is None:
                 logger.warning(f"df is None")
                 continue
             # save df to csv file
-            # df.to_csv(os.path.join(folder_output_dir, "df_test.csv"), index=False)
-            start_time = df['datetime'].min()
-            end_time = df['datetime'].max()
-            logger.info(f"Data loaded from {start_time} to {end_time}")
+            complete_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_complete.csv")
+            df.to_csv(complete_csv_path, index=False)
+            logger.info(f"Saved complete dataframe to {complete_csv_path}")
             
-            
+
             logger.info("\n")
             if TENERIFE_TIMEZONE:
                 df['datetime'] = pd.to_datetime(df['datetime']) - pd.Timedelta(hours=1)
@@ -279,10 +279,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     logger.warning(f"There are nan values in the dataframe")
 
                 
-                # just for now
-                # create LCeq column which is LC - LA = LC_LA. I know the LC_LA and the LA
-                # df['LCeq'] = df['LAeq'] + df['LCeq-LAeq']
-
 
                 #####################################################
                 ########## APPLYING DB CORRECTION TO THE DATA #########
@@ -302,7 +298,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
                     # assign the value to the folder
                     if folder == key:
-                        df = apply_db_correction(df, value, logger)
+                        df = apply_db_correction(df, value, sufix_string, logger)
                         logger.info(f"Apply {value} correction coefficient to the folder {folder}")
 
 
@@ -320,8 +316,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             slm_dict["LAEQ_COLUMN_COEFF"] = 'LA_corrected'
             slm_dict["LAMAX_COLUMN_COEFF"] = 'LAmax_corrected'
             slm_dict["LAMIN_COLUMN_COEFF"] = 'LAmin_corrected'
-            # just for now
-            # slm_dict["LCEQ_COLUMN_COEFF"] = 'LC_corrected'
+            #### NEW ONES ####
+            slm_dict["LC-LA_COLUMN_COEFF"] = 'LCeq-LAeq_corrected'
+            slm_dict["L90_COLUMN_COEFF"] = '90percentile'
 
 
             # SAVE THE INFO IN A JSON FILE
@@ -339,6 +336,19 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             with open(os.path.join(folder_output_dir, "processing_parameters.json"), 'w') as f:
                 json.dump(info_dict, f)
             logger.info(f"Saved processing_parameters.json in {folder_output_dir}")
+
+
+
+            ################################################################
+            # TRANSFORMING 1 SECOND DATA TO 1 HOUR DATA
+            ##################################################################
+            logger.info(f"Transforming 1 second data to 1 hour data")
+            df_1h_trans = transform_1s_to_1h(df, logger, agg_period=PERIODO_AGREGACION, columns_dict=slm_dict)
+            logger.info(f"Transformed 1 second data to 1 hour data")
+            print(df_1h_trans)
+            exit()
+
+
 
 
 

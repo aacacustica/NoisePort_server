@@ -2,9 +2,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import seaborn as sns
-from utils import *
+from utils_vi import *
 import os
-from config import *
+from config_vi import *
 import plotly.express as px
 import matplotlib.colors as mcolors
 from matplotlib.patches import Patch
