@@ -12,18 +12,22 @@ import json
 
 
 def load_data(file_path, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None):
+    logger.info("")
     slm_type_function_mapping = {
-        "audiomoth": (get_data_audiomoth, audiopost_dict),
-        "814": (get_data_814, larson814_dict),
-        "824": (get_data_824, larson824_dict),
-        "lx_ES": (get_data_lx_ES, larsonlx_dict),
-        "lx_EN": (get_data_lx_EN, larsonlx_dict),
-        "cesva": (get_data_cesva, cesva_dict),
-        "sono-bilbo": (get_data_bilbo, sonometer_bilbo_dict),
-        "SV307": (get_data_SV307, sv307_dict),
-        "bruel&kjaer": (get_data_bruel_kjaer, bruel_kjaer_dict),
+        'tenerife_TCT': (get_data_tenerife_TCT, tenerife_tct_dict),
+        # "audiomoth": (get_data_audiomoth, audiopost_dict),
+        # "814": (get_data_814, larson814_dict),
+        # "824": (get_data_824, larson824_dict),
+        # "lx_ES": (get_data_lx_ES, larsonlx_dict),
+        # "lx_EN": (get_data_lx_EN, larsonlx_dict),
+        # "cesva": (get_data_cesva, cesva_dict),
+        # "sono-bilbo": (get_data_bilbo, sonometer_bilbo_dict),
+        # "SV307": (get_data_SV307, sv307_dict),
+        # "bruel&kjaer": (get_data_bruel_kjaer, bruel_kjaer_dict),
     } # SLM stands for Sound Level Meter
     # load the data for each SLM type until one works |  for each slm_type, (func, slm_dict) in slm_type_function_mapping.items(): means that for each key and value in the dictionary, the key is slm_type and the value is a tuple with the function and the dictionary | the function is the function to load the data and the dictionary is the dictionary with the column names for the SLM type
+
+
     for slm_type, (func, slm_dict) in slm_type_function_mapping.items():
         try:
             logger.info(f"Loading file {file_path} for SLM type {slm_type}")
@@ -36,6 +40,8 @@ def load_data(file_path, logger, new_date=None, new_time=None, new_threshold_dat
             logger.info(f"Data loaded for SLM type {slm_type}")
             return df, slm_type, slm_dict
         
+
+
         except Exception as e:
             clean_message = str(e).replace('\n', ' ')
             logger.warning(f"Failed to load data for SLM type {slm_type}: {clean_message}. Trying next SLM type")
@@ -46,6 +52,7 @@ def load_data(file_path, logger, new_date=None, new_time=None, new_threshold_dat
 
 
 def process_folder(folder_path, folder_date_time, folder_threshold, logger):
+    logger.info("")
     # folder contains a CESVA folder
     cesva_path = os.path.join(folder_path, 'CESVA')
     if os.path.isdir(cesva_path):
@@ -73,11 +80,14 @@ def process_folder(folder_path, folder_date_time, folder_threshold, logger):
 
         files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith(('.csv', '.xlsx', '.CSV'))]
         logger.info(f"Files found: {files}")
+        logger.info(f"Files found: {len(files)}")
+        
         
         if not files:
             logger.warning(f"No measurement files found in {folder_path}")
             return None, None, None
         
+
         return load_data(files[0], logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time)
     return None, None, None 
 
@@ -86,8 +96,9 @@ def process_folder(folder_path, folder_date_time, folder_threshold, logger):
 def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, taxonomy, yamnet_csv, sufix_string, folder_coefficients, folder_date_time, folder_threshold, oca_limits, oca_type, logger):
     print()
     stable_version = get_stable_version(logger)
-
+    
     for folder in tqdm(folders, desc="Processing folders"): # \\192.168.205.117\AAC_Server\OCIO\24052_ZARAUTZ\CAMPAÑA_1\3-Medidas\ZARAUTZ_C1_P1\AUDIOMOTH
+        logger.info("")
         reg_folder = os.path.join(input_folder, folder) # \\192.168.205.117\AAC_Server\INDUSTRIA\23132-IRUÑA_OCA_CANTERA\5-Resultados\FAA205-P1_CAMPAÑA1\SPL
         folder = folder.split("\\")[:-1]
         folder = os.path.join('\\\\', *folder)
@@ -97,13 +108,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
         result_dir_name = "5-Resultados"
         resultados_dir = reg_folder.split("\\")[:-3]
         resultados_dir = os.path.join('\\\\', *resultados_dir, result_dir_name)
-
-
-        ##############
-        # find the oct file in the folder
-        # oct_file = glob.glob(os.path.join(reg_folder, "leq_oct_*"))
-        # df_oct = pd.read_csv(oct_file[0])
-        ##############
+        logger.info(f"Resultados directory: {resultados_dir}")
 
 
         if not os.path.exists(resultados_dir):
@@ -168,6 +173,12 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             if df is None:
                 logger.warning(f"df is None")
                 continue
+            # save df to csv file
+            # df.to_csv(os.path.join(folder_output_dir, "df_test.csv"), index=False)
+            start_time = df['datetime'].min()
+            end_time = df['datetime'].max()
+            logger.info(f"Data loaded from {start_time} to {end_time}")
+            
             
             logger.info("\n")
             if TENERIFE_TIMEZONE:

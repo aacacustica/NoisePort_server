@@ -103,9 +103,9 @@ def main():
             
             spl_audiomoth_folders = []
             for root, dirs, files in os.walk(input_folder):
-                if "AUDIOMOTH" in dirs:
+                if "acoustic_params_query" in dirs:
 
-                    spl_audiomoth_folder = os.path.join(root, "AUDIOMOTH")
+                    spl_audiomoth_folder = os.path.join(root, "acoustic_params_query")
                     if os.path.exists(spl_audiomoth_folder):
                         # ask user for the correction coefficient
                         spl_audiomoth_folder_name = spl_audiomoth_folder.split("\\")[-2]
@@ -169,7 +169,7 @@ def main():
 
 
             # logger the info from the process_all_folders function
-            logger.info("Processing AUDIOMOTH data")
+            logger.info("")
             logger.info(f"Using percentiles {PERCENTILES}")
             logger.info(f"Using aggregation period {PERIODO_AGREGACION}")
             # logger.info(f"Using taxonomy {taxonomy}")
@@ -213,8 +213,8 @@ def main():
             
             spl_sonometer_folders = []
             for root, dirs, files in os.walk(input_folder):
-                if 'SONOMETRO' in dirs:
-                    spl_sonometer_folder = os.path.join(root, "SONOMETRO")
+                if 'acoustic_params_query' in dirs:
+                    spl_sonometer_folder = os.path.join(root, "acoustic_params_query")
                     if os.path.exists(spl_sonometer_folder):
                         
                         # correction coefficient
@@ -278,7 +278,7 @@ def main():
 
 
             # logger the info from the process_all_folders function
-            logger.info("Processing SONOMETER data")
+            logger.info("")
             logger.info(f"Using percentiles {PERCENTILES}")
             logger.info(f"Using aggregation period {PERIODO_AGREGACION}")
             # logger.info(f"Using taxonomy {taxonomy}")
@@ -287,6 +287,7 @@ def main():
             logger.info(f"Using folder date time {folder_date_time}")
             logger.info(f"Using folder threshold {folder_threshold}")
             logger.info(f"Using OCA type {oca_type}")
+            logger.info(f"Input folder {input_folder}")
 
 
             process_all_folders(

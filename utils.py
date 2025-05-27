@@ -321,11 +321,9 @@ def upload_file_to_s3(file_path, bucket_name, logging):
 
 
 
-# audio integrity
-
-
-
-# GIT
+#----------------------------
+#  GIT
+#----------------------------
 def list_git_tags():
     try:
         tags = tags = subprocess.check_output(["git", "tag"]).strip().decode()
@@ -344,7 +342,7 @@ def select_tag(tags):
     return tag_selected
 
 
-def get_stable_version():
+def get_stable_version(logging):
     tags = list_git_tags()
     # get the latest stable version
     tag_selected = tags[-1]
