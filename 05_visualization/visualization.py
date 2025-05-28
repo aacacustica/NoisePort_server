@@ -1789,8 +1789,8 @@ def l90_alarm_dynamic(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, p
 
 
     # save the plot
-    plt.savefig(f'{folder_output_dir}/{plotname}_L90_Alarm.png', dpi=150)
-    logger.info(f"Saved plot at {folder_output_dir}/{plotname}_L90_Alarm.png")
+    plt.savefig(f'{folder_output_dir}/{plotname}_L90_Dyn_Alarm.png', dpi=150)
+    logger.info(f"Saved plot at {folder_output_dir}/{plotname}_L90_Dyn_Alarm.png")
 
 
 

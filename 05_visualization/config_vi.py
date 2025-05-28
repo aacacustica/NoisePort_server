@@ -76,14 +76,16 @@ SHOW_OCA = True
 ########################
 
 
+
+
 ########################## 
 # PLOTTING ALARMS 
 # ##########################################
-OCA_ALARM = True
-LMAX_ALARM = True
-LC_LA_ALARM = True
-L90_ALARM = True
-L90_ALARM_DYNAMIC = True
+OCA_ALARM = False
+LMAX_ALARM = False
+LC_LA_ALARM = False
+L90_ALARM = False
+L90_ALARM_DYNAMIC = False
 FREQUENCY_COMPOSITION = True
 TONAL_FREQUENCY = True
 
@@ -99,6 +101,34 @@ PLOT_BOX_PLOT_PREDICTION = False
 
 
 
+######################### ALAMARMS ############################
+
+# CORRECTION FOR FREQUENCY COMPOSITION
+LOW_FREQ_CORRECTION = -21
+MEDIUM_FREQ_CORRECTION = -3
+HIGH_FREQ_CORRECTION = +1
+
+# '12.6Hz', '15.8Hz', '20.0Hz', '25.1Hz', '31.6Hz',
+# '39.8Hz', '50.1Hz', '63.1Hz', '79.4Hz', '100.0Hz', '125.9Hz', '158.5Hz',
+# '199.5Hz', '251.2Hz', '316.2Hz', '398.1Hz', '501.2Hz', '631.0Hz',
+# '794.3Hz', '1000.0Hz', '1258.9Hz', '1584.9Hz', '1995.3Hz', '2511.9Hz',
+# '3162.3Hz', '3981.1Hz', '5011.9Hz', '6309.6Hz', '7943.3Hz', '10000.0Hz',
+# '12589.3Hz', '15848.9Hz'
+
+# LOW_FREQ_BANDS = ["49.61Hz", "62.50Hz",  "78.75Hz", "99.21Hz", "125.00Hz", "157.49Hz"]
+# MEDIUM_FREQ_BANDS = ["198.43Hz", "250.00Hz", "314.98Hz", "396.85Hz", "500.00Hz", "629.96Hz", "793.70Hz", "1000.00Hz", "1259.92Hz"]
+# HIGH_FREQ_BANDS = ["2000.00Hz", "2519.84Hz", "3174.80Hz", "4000.00Hz", "5039.68Hz", "6349.60Hz", "8000.00Hz", "10079.37Hz", "12699.21Hz", "16000.00Hz", "20158.74Hz"]
+
+LOW_FREQ_BANDS = ['50.1Hz', '63.1Hz', '79.4Hz', '100.0Hz', '125.9Hz', '158.5Hz']
+MEDIUM_FREQ_BANDS = ['199.5Hz', '251.2Hz', '316.2Hz', '398.1Hz', '501.2Hz', '631.0Hz', '794.3Hz', '1000.0Hz', '1258.9Hz']
+HIGH_FREQ_BANDS = ['1995.3Hz', '2511.9Hz', '3162.3Hz', '3981.1Hz', '5011.9Hz', '6309.6Hz', '7943.3Hz', '10000.0Hz', '12589.3Hz']
+
+
+
+
+
+
+######################## OCA LIMITS #########################################
 #############
 OCA_RESIDENTIAL = {
     'ld_limit': 65,

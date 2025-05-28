@@ -184,6 +184,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             complete_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_complete.csv")
             df.to_csv(complete_csv_path, index=False)
             logger.info(f"Saved complete dataframe to {complete_csv_path}")
+
+            # taking just 1 day, which are the first 86400 rows
+            # df = df.iloc[:86400]
             ###################################################################
 
 
@@ -482,7 +485,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info(f"Saved 1 hour dataframe to {df_1h_csv_path}")
 
 
-
             logger.info("")
             logger.info(f"PLOTTING ALARMS!!!")
 
@@ -507,13 +509,14 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
             if L90_ALARM_DYNAMIC:
-                logger.info(f"[4] Plotting L90 alarm for folder {folder}")
+                # TODO
+                logger.info(f"[5] Plotting L90 alarm dynamic for folder {folder}")
                 l90_alarm_dynamic(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_dB=5)
 
 
-            # if FREQUENCY_COMPOSITION:
-            #     logger.info(f"[5] Plotting frequency composition for folder {folder}")            
-            #     frequency_composition(df_oct, folder_output_dir_1h, logger, plotname=folder, threshold_comp=5)
+            if FREQUENCY_COMPOSITION:
+                logger.info(f"[6] Plotting frequency composition for folder {folder}")            
+                frequency_composition(df, folder_output_dir_1h, logger, plotname=folder, threshold_comp=5)
 
 
             # if TONAL_FREQUENCY:

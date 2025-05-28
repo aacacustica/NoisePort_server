@@ -6,6 +6,10 @@ import os
 from config_vi import *
 
 
+def sum_dBs(dB_values):
+    return 10 * np.log10(np.sum(np.power(10, np.array(dB_values) / 10)))
+
+
 def calculate_duration(start_time, end_time):
     duration = end_time - start_time
     return duration.total_seconds()
