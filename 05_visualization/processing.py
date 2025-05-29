@@ -186,7 +186,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info(f"Saved complete dataframe to {complete_csv_path}")
 
             # taking just 1 day, which are the first 86400 rows
-            # df = df.iloc[:86400]
+            # df = df.iloc[:86400] # 1 day of data, 24 hours * 60 minutes * 60 seconds = 86400 seconds
             ###################################################################
 
 
@@ -519,33 +519,33 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 frequency_composition(df, folder_output_dir_1h, logger, plotname=folder, threshold_comp=5)
 
 
-            # if TONAL_FREQUENCY:
-            #     logger.info(f"[6] Plotting tonal frequency for folder {folder}")
-            #     tonal_frequency(df_oct, folder_output_dir_1h, logger, plotname=folder)
+            if TONAL_FREQUENCY:
+                logger.info(f"[7] Plotting tonal frequency for folder {folder}")
+                tonal_frequency(df, folder_output_dir_1h, logger, plotname=folder)
 
 
             # if PLOT_PEAK_PREDICTION:
-            #     logger.info(f"[7] Plotting peak prediction for folder {folder}")
+            #     logger.info(f"[8] Plotting peak prediction for folder {folder}")
             #     plot_peak_predictions(df_merged, predictions_peak_folder, start_date, end_date, logger, plotname=folder)
 
 
             # if PLOT_PEAK_DISTRI_HEATMAP:
-            #     logger.info(f"[8] Plotting peak heatmap for folder {folder}")
+            #     logger.info(f"[9] Plotting peak heatmap for folder {folder}")
             #     plot_peak_distribution_heatmap(df_merged, folder_output_dir_graphic_analysis, logger, plotname=folder)
 
 
             # if PLOT_PEAK_DISTRI:
-            #     logger.info(f"[9] Plotting peak distribution for folder {folder}")
+            #     logger.info(f"[10] Plotting peak distribution for folder {folder}")
             #     plot_peak_distribution(df_merged, folder_output_dir_graphic_analysis, logger, plotname=folder)
 
 
             # if PLOT_DENSITY_DISTRI:
-            #     logger.info(f"[10] Plotting density distribution for folder {folder}")
+            #     logger.info(f"[11] Plotting density distribution for folder {folder}")
             #     plot_density_distribution_peaks(df_merged, folder_output_dir_graphic_analysis, logger, plotname=folder)
 
 
             # if PLOT_BOX_PLOT_PREDICTION:
-            #     logger.info(f"[11] Plotting box plot prediction for folder {folder}")
+            #     logger.info(f"[12] Plotting box plot prediction for folder {folder}")
             #     plot_box_plot_prediction(df_merged, folder_output_dir_graphic_analysis, logger, plotname=folder)
 
 

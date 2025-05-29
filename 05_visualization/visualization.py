@@ -1797,28 +1797,26 @@ def l90_alarm_dynamic(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, p
 # FREQUENCY COMPOSITION
 def frequency_composition(df_oct: pd.DataFrame, folder_output_dir_1h_folder: str, logger, plotname: str, threshold_comp: int):
     sns.set_style("whitegrid")
-
-    df_oct["date"] = pd.to_datetime(df_oct["date"])
-    df_oct = df_oct.set_index("date", drop=True)
-
     df_oct_cp = df_oct.copy()
 
-    # for each row, select 1h values and sum for low, medium and high bands
+    # creating the columns for the frequency bands
     df_oct_cp["low_freq"] = df_oct_cp[LOW_FREQ_BANDS].apply(sum_dBs, axis=1)
     df_oct_cp["medium_freq"] = df_oct_cp[MEDIUM_FREQ_BANDS].apply(sum_dBs, axis=1)
     df_oct_cp["high_freq"] = df_oct_cp[HIGH_FREQ_BANDS].apply(sum_dBs, axis=1)
 
+    #     low_freq  medium_freq  high_freq
+    # datetime
+    #  for hour
     df_oct_cp[["low_freq", "medium_freq", "high_freq"]]
-
     df_oct_1hour = df_oct_cp.resample("h").agg(
         {"low_freq": leq, "medium_freq": leq, "high_freq": leq}
     )
-
 
     # apply correction
     df_oct_1hour["low_freq"] = df_oct_1hour["low_freq"] + LOW_FREQ_CORRECTION
     df_oct_1hour["medium_freq"] = df_oct_1hour["medium_freq"] + MEDIUM_FREQ_CORRECTION
     df_oct_1hour["high_freq"] = df_oct_1hour["high_freq"] + HIGH_FREQ_CORRECTION
+    
     # remove nan values
     df_oct_1hour = df_oct_1hour.dropna()
     
@@ -1838,7 +1836,6 @@ def frequency_composition(df_oct: pd.DataFrame, folder_output_dir_1h_folder: str
             df_oct_1hour.at[index, "predominant_freq"] = "No predominant frequency"
 
     df_oct_1hour = df_oct_1hour.dropna()
-
 
 
     plt.figure(figsize=(20, 6))
@@ -1925,8 +1922,6 @@ def tonal_frequency(df_oct: pd.DataFrame, folder_output_dir_1h_folder: str, logg
     """ Detect tonal frequencies in the dataframe and plot them """
     sns.set_style("whitegrid")
 
-    # df_oct = df_oct[:100000]
-
     tonal_frequency = []
     tonal_frequency_value = []
     previous_tonal_frequency = []
@@ -1944,8 +1939,8 @@ def tonal_frequency(df_oct: pd.DataFrame, folder_output_dir_1h_folder: str, logg
     for _, row in df_oct.iterrows():
         for i in range(len(df_oct.columns)):
             current_column = df_oct.columns[i]
-            current_filename = row["filename"]
-            current_date = row["date"]
+            current_filename = row["Filename"]
+            current_date = row["Timestamp"]
 
             if current_column in COLUMNS_DISCARD:
                 continue
