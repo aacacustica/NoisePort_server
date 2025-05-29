@@ -248,7 +248,7 @@ def apply_db_correction(df, coefficient, sufix_string, logger):
             logger.error("No column found to apply the correction for SONOMETRO data")
             return None
 
-    if sufix_string == "SONOMETRO":
+    if sufix_string == "SONOMETRO" or sufix_string == "RASPBERRY":
         logger.info("Applying the correction to the SONOMETRO data")
         if "LAeq" in df.columns:
             logger.info("Applying the correction to the LAeq column")

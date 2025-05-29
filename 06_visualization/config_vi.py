@@ -87,17 +87,18 @@ LC_LA_ALARM = False
 L90_ALARM = False
 L90_ALARM_DYNAMIC = False
 FREQUENCY_COMPOSITION = False
-TONAL_FREQUENCY = True
+TONAL_FREQUENCY = False
 
 # peak
+PLOT_PEAK_DISTRI = True
+PLOT_DENSITY_DISTRI = True
+PLOT_PEAK_DISTRI_HEATMAP = True
+
 # predictions
 PLOT_PEAK_PREDICTION = False
-
 # evolution
-PLOT_PEAK_DISTRI_HEATMAP = False
-PLOT_PEAK_DISTRI = False
-PLOT_DENSITY_DISTRI = False
 PLOT_BOX_PLOT_PREDICTION = False
+
 
 
 
@@ -142,6 +143,19 @@ HIGH_BAND_THRESHOLD = 5
 # Desire order bands
 # TONAL_FREQ_BANDS_ORDERED = ["12.40Hz", "15.62Hz", "19.69Hz", "24.80Hz", "31.25Hz", "39.37Hz", "49.61Hz", "62.50Hz", "78.75Hz", "99.21Hz", "125.00Hz", "157.49Hz", "198.43Hz", "250.00Hz", "314.98Hz", "396.85Hz", "500.00Hz", "629.96Hz", "793.70Hz", "1000.00Hz", "1259.92Hz", "1587.40Hz", "2000.00Hz", "2519.84Hz", "3174.80Hz", "4000.00Hz", "5039.68Hz", "6349.60Hz", "8000.00Hz", "10079.37Hz", "12699.21Hz", "16000.00Hz"]
 TONAL_FREQ_BANDS_ORDERED = ['12.6Hz', '15.8Hz', '20.0Hz', '25.1Hz', '31.6Hz','39.8Hz', '50.1Hz', '63.1Hz', '79.4Hz', '100.0Hz', '125.9Hz', '158.5Hz','199.5Hz', '251.2Hz', '316.2Hz', '398.1Hz', '501.2Hz', '631.0Hz', '794.3Hz', '1000.0Hz', '1258.9Hz', '1584.9Hz', '1995.3Hz', '2511.9Hz', '3162.3Hz', '3981.1Hz', '5011.9Hz', '6309.6Hz', '7943.3Hz', '10000.0Hz','12589.3Hz', '15848.9Hz']
+
+
+
+
+##################
+# PEAK ALARMS
+##################
+WINDOW_SIZE = 30  # seconds
+PROMINENCE = 1
+WIDTH = 1
+TOP_PREDIC = 3
+ADDING_THRESHOLD = 10  # seconds
+
 
 
 

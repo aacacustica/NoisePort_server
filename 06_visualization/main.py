@@ -11,23 +11,29 @@ def arg_parser():
     parser = argparse.ArgumentParser(description='Plotting AudioMoth data')
     parser.add_argument('-f', '--path_general', type=str, required=True, 
                         help='Path to sonometers folder')
-    parser.add_argument('-a', '--agg_period', type=int, required=False, default=900, 
-                        help='Aggregation period in seconds')
     parser.add_argument('-o', '--output-dir', type=str, required=False, 
                         help='Output directory, if not provided, the output directory is the same as the input directory')
+    
+    parser.add_argument('-a', '--agg_period', type=int, required=False, default=900, 
+                        help='Aggregation period in seconds')
     parser.add_argument('-p', '--percentiles', type=float, nargs='+', required=False, default=[90, 10],
                         help='Percentiles to plot [1 5 10 50 90] (L90 and L10 as default)')
     parser.add_argument('-l', '--limit_oca', type=str, required=False, default='OCA_RESIDENTIAL',
                         help='Limit OCA to plot [OCA_RESIDENTIAL, OCA_LEISURE, OCA_OFFICE, OCA_INDUSTRIAL, OCA_CULTURE]')
+    
     parser.add_argument('--audiomoth', action='store_true', 
                         help='Process audiomoth data')
     parser.add_argument('--sonometer', action='store_true', 
-                        help='Process sonometer data')
+                        help='Process sonometer data'),
+    parser.add_argument('--raspbery', action='store_true',
+                        help='Process Raspberry Pi like TCT Tenerife'),
+    
     #urban or port taxonomy
     parser.add_argument('--urban', action='store_true', 
                         help='Urban taxonomy')
     parser.add_argument('--port', action='store_true', 
                         help='Port taxonomy')
+    
     # ask the user to change the date/time
     parser.add_argument('--change-date', action='store_true',
                         help='Change the date and the time of the csv file')
@@ -298,6 +304,116 @@ def main():
                 taxonomy,
                 yamnet_csv,
                 'SONOMETRO',
+                folder_coefficients,
+                folder_date_time,
+                folder_threshold,
+                oca_limits,
+                oca_type,
+                logger
+            )
+
+
+
+        # -------------------------------------
+        # R A S P B E R Y   P R O C E S S I N G
+        # -------------------------------------
+        if args.raspbery:
+            logger.info("Processing raspbery data")
+            
+            if args.urban:
+                taxonomy = urban_taxonomy_map
+            elif args.port:
+                taxonomy = port_taxonomy_map
+            else:
+                taxonomy = urban_taxonomy_map
+            
+            spl_raspberry_folders = []
+            for root, dirs, files in os.walk(input_folder):
+                if 'acoustic_params_query' in dirs:
+                    spl_raspberry_folder = os.path.join(root, "acoustic_params_query")
+                    if os.path.exists(spl_raspberry_folder):
+                        
+                        # correction coefficient
+                        spl_raspberry_folder_name = spl_raspberry_folder.split("\\")[-2]
+                        coeff = float(input(f"Enter correction coefficient for {spl_raspberry_folder_name}: "))
+                        
+                        new_date = None
+                        new_time = None
+                        threshold_date = None
+                        threshold_time = None
+
+                        if CHANGE_DATE_TIME:
+                            # DATE
+                            date_to_change = input("Would you like to change the date of the csv file? (y/n): ").lower()
+                            while date_to_change not in ['y', 'n']:
+                                date_to_change = input("Would you like to change the date of the csv file? (y/n): ").lower()
+
+                            if date_to_change == 'y':
+                                new_date = input("Enter the new date (yyyy-mm-dd): ")
+                                while not re.match(r"\d{4}-\d{2}-\d{2}", new_date):
+                                    new_date = input("Enter the new date (yyyy-mm-dd): ")
+                            
+                            # TIME
+                            time_to_change = input("Would you like to change the time of the csv file? (y/n): ").lower()
+                            while time_to_change not in ['y', 'n']:
+                                time_to_change = input("Would you like to change the time of the csv file? (y/n): ").lower()
+
+                            if time_to_change == 'y':
+                                new_time = input("Enter the new time (hh:mm:ss): ")
+                                while not re.match(r"([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]", new_time):
+                                    new_time = input("Enter the new time (hh:mm:ss): ")
+                            
+                            # LIMIT DATE
+                            threshold_to_change = input("Would you like to set a limit on the date to process the data? (y/n): ").lower()
+                            while threshold_to_change not in ['y', 'n']:
+                                threshold_to_change = input("Would you like to set a limit on the date to process the data? (y/n): ").lower()
+
+                            if threshold_to_change == 'y':
+                                threshold_date = input("Enter the threshold date (yyyy-mm-dd): ")
+                                while not re.match(r"\d{4}-\d{2}-\d{2}", threshold_date):
+                                    threshold_date = input("Enter the threshold date (yyyy-mm-dd): ")
+                            
+                            # LIMIT TIME
+                            threshold_time_to_change = input("Would you like to set a limit on the time to process the data? (y/n): ").lower()
+                            while threshold_time_to_change not in ['y', 'n']:
+                                threshold_time_to_change = input("Would you like to set a limit on the time to process the data? (y/n): ").lower()
+
+                            if threshold_time_to_change == 'y':
+                                threshold_time = input("Enter the threshold time (hh:mm:ss): ")
+                                while not re.match(r"([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]", threshold_time):
+                                    threshold_time = input("Enter the threshold time (hh:mm:ss): ")
+
+                        
+                        
+                        # ADD TO THE DICTIONARIES
+                        folder_coefficients[spl_raspberry_folder] = coeff
+                        spl_raspberry_folders.append(spl_raspberry_folder)
+
+                        folder_date_time[spl_raspberry_folder] = (new_date, new_time)
+                        folder_threshold[spl_raspberry_folder] = (threshold_date, threshold_time)
+
+
+            # logger the info from the process_all_folders function
+            logger.info("")
+            logger.info(f"Using percentiles {PERCENTILES}")
+            logger.info(f"Using aggregation period {PERIODO_AGREGACION}")
+            # logger.info(f"Using taxonomy {taxonomy}")
+            logger.info(f"Using yamnet csv {yamnet_csv}")
+            logger.info(f"Using folder coefficients {folder_coefficients}")
+            logger.info(f"Using folder date time {folder_date_time}")
+            logger.info(f"Using folder threshold {folder_threshold}")
+            logger.info(f"Using OCA type {oca_type}")
+            logger.info(f"Input folder {input_folder}")
+
+
+            process_all_folders(
+                input_folder,
+                spl_raspberry_folders,
+                PERIODO_AGREGACION,
+                PERCENTILES,
+                taxonomy,
+                yamnet_csv,
+                'RASPBERRY',
                 folder_coefficients,
                 folder_date_time,
                 folder_threshold,

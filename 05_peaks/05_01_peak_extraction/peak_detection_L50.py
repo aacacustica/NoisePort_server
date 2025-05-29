@@ -12,7 +12,7 @@ import warnings
 import math
 import logging
 
-from visualization import *
+from visualization_peak import *
 import argparse
 
 import params as yamnet_params

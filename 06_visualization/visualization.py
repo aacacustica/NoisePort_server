@@ -2150,16 +2150,16 @@ def plot_peak_predictions(df_merged: pd.DataFrame, folder_output_dir: str, start
 
     
 
-def plot_peak_distribution_heatmap(df_merged: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
+def plot_peak_distribution_heatmap(df_peaks: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
     try:
         sns.set_style("whitegrid")
-        df_merged = df_merged.copy()
+        df_peaks = df_peaks.copy()
 
-        df_merged['full_date'] = pd.to_datetime(df_merged['start_time']).dt.strftime('%Y-%m-%d') + \
-                                 '\n' + pd.to_datetime(df_merged['start_time']).dt.day_name()
+        df_peaks['full_date'] = pd.to_datetime(df_peaks['start_time']).dt.strftime('%Y-%m-%d') + \
+                                 '\n' + pd.to_datetime(df_peaks['start_time']).dt.day_name()
         
     
-        pivot_table = df_merged.pivot_table(
+        pivot_table = df_peaks.pivot_table(
             index='full_date',
             columns='hour', 
             aggfunc='size',
@@ -2192,8 +2192,8 @@ def plot_peak_distribution_heatmap(df_merged: pd.DataFrame, folder_output_dir: s
         ########################################
         ########################################
         # create 4 hour blocks
-        df_merged['4HourBlock'] = (df_merged['start_time'].dt.hour // 4) * 4
-        pivot_table_4h = df_merged.pivot_table(
+        df_peaks['4HourBlock'] = (df_peaks['start_time'].dt.hour // 4) * 4
+        pivot_table_4h = df_peaks.pivot_table(
             index='full_date',
             columns='4HourBlock',
             aggfunc='size',

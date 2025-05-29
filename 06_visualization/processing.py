@@ -69,7 +69,7 @@ def process_folder(folder_path, folder_date_time, folder_threshold, logger):
             # subfolder contains measurement files
             files = [os.path.join(subfolder_path, f) for f in os.listdir(subfolder_path) if f.endswith(('.csv', '.xlsx', '.CSV', 'XLSX'))]
             if files:
-                logger.info(f"Files found: {files}")
+                # logger.info(f"Files found: {files}")
                 return load_data(files[0], logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time)
             else:
                 logger.warning(f"No measurement files found in {subfolder_path}")
@@ -79,7 +79,7 @@ def process_folder(folder_path, folder_date_time, folder_threshold, logger):
         new_threshold_date, new_threshold_time  = folder_threshold.get(folder_path, (None, None))
 
         files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith(('.csv', '.xlsx', '.CSV'))]
-        logger.info(f"Files found: {files}")
+        # logger.info(f"Files found: {files}")
         logger.info(f"Files found: {len(files)}")
         
         
@@ -314,6 +314,27 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     if folder == key:
                         df = apply_db_correction(df, value, sufix_string, logger)
                         logger.info(f"Apply {value} correction coefficient to the folder {folder}")
+                
+                
+
+                #####################################################
+                ########## ROLLING THE DATA #########
+                #####################################################
+                logger.info("")
+                logger.info(f"Rolling the data with a window of {WINDOW_SIZE} seconds")
+
+                print(df)
+
+                # rolling median for the LA values with a window of 30 seconds
+                df['LA_cor_median'] = df['LA_corrected'].rolling(window=WINDOW_SIZE, min_periods=1).quantile(0.5) + ADDING_THRESHOLD
+                logger.info(f"Calculating peaks above threshold")
+                df_peaks = df[df['LA'] > df['LA_cor_median']]
+                #save csv for peak filtering
+                
+
+                # Peaks filters
+                # [1] Take the isolated ones. There are the pekas which 
+
 
 
             except Exception as e:
@@ -450,6 +471,8 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             #############################
             ######### PLOTING ALARMS
             ################################
+
+
             ################################################################
             # TRANSFORMING 1 SECOND DATA TO 1 HOUR DATA
             ##################################################################
@@ -524,24 +547,36 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 tonal_frequency(df, folder_output_dir_1h, logger, plotname=folder)
 
 
+
+
+
+            ################################################################
+            # PEAK ANALYSIS
+            ##################################################################
+            # logger.info("")
+            # logger.info(f"Peak analysis section")
+            
+
+            if PLOT_PEAK_DISTRI_HEATMAP:
+                logger.info(f"[8] Plotting peak heatmap for folder {folder}")
+                plot_peak_distribution_heatmap(df_peaks, folder_output_dir_1h, logger, plotname=folder)
+
+
+            if PLOT_PEAK_DISTRI:
+                logger.info(f"[9] Plotting peak distribution for folder {folder}")
+                plot_peak_distribution(df_peaks, folder_output_dir_1h, logger, plotname=folder)
+
+
+            if PLOT_DENSITY_DISTRI:
+                logger.info(f"[10] Plotting density distribution for folder {folder}")
+                plot_density_distribution_peaks(df_peaks, folder_output_dir_1h, logger, plotname=folder)
+
+
+            # PREDICTION ANALYSIS
             # if PLOT_PEAK_PREDICTION:
-            #     logger.info(f"[8] Plotting peak prediction for folder {folder}")
+            #     logger.info(f"[11] Plotting peak prediction for folder {folder}")
             #     plot_peak_predictions(df_merged, predictions_peak_folder, start_date, end_date, logger, plotname=folder)
 
-
-            # if PLOT_PEAK_DISTRI_HEATMAP:
-            #     logger.info(f"[9] Plotting peak heatmap for folder {folder}")
-            #     plot_peak_distribution_heatmap(df_merged, folder_output_dir_graphic_analysis, logger, plotname=folder)
-
-
-            # if PLOT_PEAK_DISTRI:
-            #     logger.info(f"[10] Plotting peak distribution for folder {folder}")
-            #     plot_peak_distribution(df_merged, folder_output_dir_graphic_analysis, logger, plotname=folder)
-
-
-            # if PLOT_DENSITY_DISTRI:
-            #     logger.info(f"[11] Plotting density distribution for folder {folder}")
-            #     plot_density_distribution_peaks(df_merged, folder_output_dir_graphic_analysis, logger, plotname=folder)
 
 
             # if PLOT_BOX_PLOT_PREDICTION:
