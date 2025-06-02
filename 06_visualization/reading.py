@@ -341,7 +341,6 @@ def read_tenerife_TCT(file_path: str, logger):
 
 
     try:
-        logger.info("Converting 'Timestamp' column to 'datetime'")
         # date_time_format 2025-04-06 06:00:38
         df = df[pd.to_datetime(df['Timestamp'], format='%Y-%m-%d %H:%M:%S', errors='coerce').notnull()]
         df['datetime'] = pd.to_datetime(df['Timestamp'], format='%Y-%m-%d %H:%M:%S')
