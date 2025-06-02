@@ -48,6 +48,11 @@ def main():
     or
 
     python main.py -f \\192.168.205.117\AAC_Server\OCIO\OCIO_BILBAO\FASE_3 --audiomoth --urban -l OCA_LEISURE
+
+    or
+
+
+    python .\main.py -f "\\192.168.205.122\Contenedores\3-Medidas\P2_CONTENEDORES\" --raspbery --port
     """
     logger = setup_logging()
     args = arg_parser()
