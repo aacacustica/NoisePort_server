@@ -166,33 +166,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info(f"Created output folder: {folder_output_dir}")
             
 
-        ##############################################################
-        ########## GETTING PREDICTION FILE FOR EACH FOLDER ###########
-        # logger.info("")
-        # predictions_folder = os.path.join(folder.replace('3-Medidas', '5-Resultados'), "AI_MODEL", "Predictions")
-        # prediction_csv_file = None
-        # if not os.path.exists(predictions_folder):
-        #     logger.warning(f"Predictions folder not found: {predictions_folder}")
-        # if os.path.exists(predictions_folder):
-        #     # list csv files in the directory
-        #     predictions_files = glob.glob(os.path.join(predictions_folder, "*.csv"))
-        #     if predictions_files:
-        #         prediction_file = predictions_files[0]
-        #         prediction_csv_file = prediction_csv(prediction_file)
-        #     else:
-        #         logger.warning("No CSV files found in the predictions folder.")
-        
-        # predictions_visualization_folder = predictions_folder.replace("Predictions", "Visualizations")
-        # if not os.path.exists(predictions_visualization_folder):
-        #     os.makedirs(predictions_visualization_folder)
-        #     logger.info(f"Created output folder: {predictions_visualization_folder}")
-        ##############################################################
-
-
-
-        ###################################################################
-        ###### GETTING THE DATAFRAME
-        ###################################################################
+        #############################
+        ## GETTING THE DATAFRAME ###
+        #############################
         try:
             logger.info("")
             logger.info(f"Processing folder {folder}") 
@@ -212,6 +188,10 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             # taking just 1 day, which are the first 86400 rows
             # df = df.iloc[:86400] # 1 day of data, 24 hours * 60 minutes * 60 seconds = 86400 seconds
             
+
+            #############################
+            ### GETTING PREDICTION DF ###
+            #############################
             logger.info("")
             logger.info(f"Getting the prediction data from the dataframes")
             reg_folder_prediction = reg_folder.replace(ACOUSTIC_PARAMS_FOLDER, PREDICTION_LITTLE_FOLDER)
@@ -220,6 +200,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             if df_prediction is None:
                 logger.warning(f"df prediction is None")
                 continue
+            print(df_prediction)
             exit()
             ###################################################################
 

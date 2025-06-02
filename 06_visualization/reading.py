@@ -2,7 +2,8 @@ from datetime import datetime
 import os
 import pandas as pd
 from utils_vi import *
-
+#importing tqdm for progress bar
+from tqdm import tqdm
 
 
 def get_data_bilbo(file_path: str, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None):
@@ -324,44 +325,32 @@ def read_tenerife_TCT(file_path: str, logger):
     except Exception as e:
         logger.error(f"Error reading file: {file_path}")
 
-    print(df)
     
     try:
         # detect the time zone in the Timestamp column
         if 'Timestamp' not in df.columns:
-            logger.error("Timestamp column not found in the dataframe.")
             return None
         # if there are +__:__, take that as string
         if df['Timestamp'].str.contains(r'\+\d{2}:\d{2}').any():
-            logger.info("Timestamp column contains time zone information.")
-            logger.info(f"Time zone detected: {df['Timestamp'].str.extract(r'(\+\d{2}:\d{2})')[0].unique()}")
-        exit()
-
-        #create a new column called time_zone: +02:00
-        df['time_zone'] = '+02:00'
-        
-        # remove the +02:00 from the Timestamp column
-        df['Timestamp'] = df['Timestamp'].str.replace('+02:00', '', regex=False)
+            time_zone = df['Timestamp'].str.extract(r'(\+\d{2}:\d{2})')[0].iloc[0]
+            df['time_zone'] = time_zone
+            df['Timestamp'] = df['Timestamp'].str.replace(time_zone, '', regex=False)
     except KeyError:
         logger.error("KeyError: 'Timestamp' column not found in the dataframe.")
         return None
-    print(df)
+
 
     try:
         logger.info("Converting 'Timestamp' column to 'datetime'")
         # date_time_format 2025-04-06 06:00:38
-        # remove the +02:00 from the Timestamp column
-        # convert the Timestamp column to datetime
-        df['Timestamp'] = df['Timestamp'].str.replace('+02:00', '', regex=False)
         df = df[pd.to_datetime(df['Timestamp'], format='%Y-%m-%d %H:%M:%S', errors='coerce').notnull()]
         df['datetime'] = pd.to_datetime(df['Timestamp'], format='%Y-%m-%d %H:%M:%S')
+
+
     except KeyError:
         logger.error("KeyError: 'Timestamp' column not found in the dataframe.")
         return None
     
-    print(df)
-    exit()
-
     return df
 
 
@@ -452,14 +441,11 @@ def get_data_tenerife_TCT_predict(folder_path: str,logger, new_date=None, new_ti
         logger.info("Concatenating all the csv files in the folder and ordering them by date")
         
         df_all = []
-        for file in csv_predict_files:
+        for file in tqdm(csv_predict_files, desc="Reading TCT Prediction files"):
             file_path = os.path.join(folder_path, file)
         
             try:
                 df = read_tenerife_TCT(file_path, logger)
-                print(df)
-                exit()
-           
             except Exception as e:
                 filename = file_path.split('\\')[-1]
                 logger.error(f"Error reading file: {filename}")
@@ -492,5 +478,4 @@ def get_data_tenerife_TCT_predict(folder_path: str,logger, new_date=None, new_ti
     
 
     logger.info(f"Final length of the prediction file: {len(df)}")
-    exit()
     return df
