@@ -17,6 +17,7 @@ def load_data(file_path, logger, new_date=None, new_time=None, new_threshold_dat
     logger.info("")
     slm_type_function_mapping = {
         'tenerife_TCT': (get_data_tenerife_TCT, tenerife_tct_dict),
+        'tenerife_TCT_predict': (get_data_tenerife_TCT_predict, tenerife_tct_dict),
         # "audiomoth": (get_data_audiomoth, audiopost_dict),
         # "814": (get_data_814, larson814_dict),
         # "824": (get_data_824, larson824_dict),
@@ -53,6 +54,32 @@ def load_data(file_path, logger, new_date=None, new_time=None, new_threshold_dat
 
 
 
+def load_data_predict(folder_path, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None):
+    logger.info("")
+    slm_type_function_mapping = {
+        'tenerife_TCT_predict': (get_data_tenerife_TCT_predict, tenerife_tct_dict),
+    } 
+
+    for slm_type, (func, slm_dict) in slm_type_function_mapping.items():
+        try:
+            logger.info(f"Loading folder {folder_path} for prediction")
+            df = func(folder_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time)
+
+            # loggers
+            logger.info("")
+            logger.info(f"Data loaded for SLM type {slm_type}")
+            return df, slm_type, slm_dict
+
+
+        except Exception as e:
+            clean_message = str(e).replace('\n', ' ')
+            logger.warning(f"Failed to load data for SLM type {slm_type}: {clean_message}. Trying next SLM type")
+            continue
+    
+    raise ValueError("SLM type not found or file could not be loaded")
+
+
+
 def process_folder(folder_path, folder_date_time, folder_threshold, logger):
     logger.info("")
     # folder contains a CESVA folder
@@ -76,6 +103,7 @@ def process_folder(folder_path, folder_date_time, folder_threshold, logger):
             else:
                 logger.warning(f"No measurement files found in {subfolder_path}")
 
+
     else:
         new_date, new_time = folder_date_time.get(folder_path, (None, None))
         new_threshold_date, new_threshold_time  = folder_threshold.get(folder_path, (None, None))
@@ -86,7 +114,15 @@ def process_folder(folder_path, folder_date_time, folder_threshold, logger):
         
         
         if not files:
-            logger.warning(f"No measurement files found in {folder_path}")
+            try:
+                logger.info(f"No measurement files found in {folder_path}, trying to load prediction data")
+                # try to load prediction data
+                return load_data_predict(folder_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time)
+            except Exception as e:
+                logger.error(f"Error loading prediction data: {e}")
+            
+            # if no files found, return None
+            logger.error(f"No measurement files found in {folder_path}")
             return None, None, None
         
 
@@ -132,24 +168,24 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
         ##############################################################
         ########## GETTING PREDICTION FILE FOR EACH FOLDER ###########
-        logger.info("")
-        predictions_folder = os.path.join(folder.replace('3-Medidas', '5-Resultados'), "AI_MODEL", "Predictions")
-        prediction_csv_file = None
-        if not os.path.exists(predictions_folder):
-            logger.warning(f"Predictions folder not found: {predictions_folder}")
-        if os.path.exists(predictions_folder):
-            # list csv files in the directory
-            predictions_files = glob.glob(os.path.join(predictions_folder, "*.csv"))
-            if predictions_files:
-                prediction_file = predictions_files[0]
-                prediction_csv_file = prediction_csv(prediction_file)
-            else:
-                logger.warning("No CSV files found in the predictions folder.")
+        # logger.info("")
+        # predictions_folder = os.path.join(folder.replace('3-Medidas', '5-Resultados'), "AI_MODEL", "Predictions")
+        # prediction_csv_file = None
+        # if not os.path.exists(predictions_folder):
+        #     logger.warning(f"Predictions folder not found: {predictions_folder}")
+        # if os.path.exists(predictions_folder):
+        #     # list csv files in the directory
+        #     predictions_files = glob.glob(os.path.join(predictions_folder, "*.csv"))
+        #     if predictions_files:
+        #         prediction_file = predictions_files[0]
+        #         prediction_csv_file = prediction_csv(prediction_file)
+        #     else:
+        #         logger.warning("No CSV files found in the predictions folder.")
         
-        predictions_visualization_folder = predictions_folder.replace("Predictions", "Visualizations")
-        if not os.path.exists(predictions_visualization_folder):
-            os.makedirs(predictions_visualization_folder)
-            logger.info(f"Created output folder: {predictions_visualization_folder}")
+        # predictions_visualization_folder = predictions_folder.replace("Predictions", "Visualizations")
+        # if not os.path.exists(predictions_visualization_folder):
+        #     os.makedirs(predictions_visualization_folder)
+        #     logger.info(f"Created output folder: {predictions_visualization_folder}")
         ##############################################################
 
 
@@ -161,10 +197,13 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info("")
             logger.info(f"Processing folder {folder}") 
             logger.info(f"Getting the data from the dataframes")
-            df, slm_type, slm_dict = process_folder(reg_folder, folder_date_time, folder_threshold, logger)
-            if df is None:
-                logger.warning(f"df is None")
-                continue
+            
+            
+            # df, slm_type, slm_dict = process_folder(reg_folder, folder_date_time, folder_threshold, logger)
+            # if df is None:
+            #     logger.warning(f"df is None")
+            #     continue
+
             # save df to csv file
             # complete_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_complete.csv")
             # df.to_csv(complete_csv_path, index=False)
@@ -172,6 +211,16 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
             # taking just 1 day, which are the first 86400 rows
             # df = df.iloc[:86400] # 1 day of data, 24 hours * 60 minutes * 60 seconds = 86400 seconds
+            
+            logger.info("")
+            logger.info(f"Getting the prediction data from the dataframes")
+            reg_folder_prediction = reg_folder.replace(ACOUSTIC_PARAMS_FOLDER, PREDICTION_LITTLE_FOLDER)
+            
+            df_prediction, slm_type, slm_dict = process_folder(reg_folder_prediction, folder_date_time, folder_threshold, logger)
+            if df_prediction is None:
+                logger.warning(f"df prediction is None")
+                continue
+            exit()
             ###################################################################
 
 
@@ -308,9 +357,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.info(f"Saved peaks filtered dataframe to {df_peaks_csv_path}, with a lenght of {len(df_peaks)}")
 
                 #Timestamp to datetime
-                df_peaks['datetime'] = pd.to_datetime(df_peaks['datetime'])
+                df_peaks['Timestamp'] = pd.to_datetime(df_peaks['Timestamp'])
 
-                print(df_peaks.columns)
+                # print(df_peaks.columns)
 
 
             except Exception as e:

@@ -8,6 +8,8 @@ from config_vi import *
 import plotly.express as px
 import matplotlib.colors as mcolors
 from matplotlib.patches import Patch
+from scipy.stats import gaussian_kde
+
 
 
 plt.rc('font', size=MEDIUM_SIZE)          # controls default text sizes
@@ -2230,27 +2232,26 @@ def plot_peak_distribution_heatmap(df_peaks: pd.DataFrame, folder_output_dir: st
 def plot_peak_distribution(df_merged: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
     try:
         sns.set_style("whitegrid")
-        df_merged = df_merged.copy()
 
-        df_merged['start_time'] = pd.to_datetime(df_merged['start_time'])
-        df_merged.sort_values('start_time', inplace=True)
+        df_merged = df_merged.copy()
+        df_merged.sort_values('Timestamp', inplace=True)
 
         plt.figure(figsize=(25, 9))
         plt.plot(
-            df_merged['start_time'], 
-            df_merged['LAeq'], 
+            df_merged['Timestamp'], 
+            df_merged['LA_corrected'], 
             marker='o', 
             linestyle='-', 
             color='red'
         )
 
         
-        plt.title(f'{plotname} Peak Leq Values Over Time')
-        plt.xlabel('Time')
-        plt.ylabel('Leq (dB)')
+        plt.xlabel('Tiempo', fontsize=BIGGEST_SIZE)
+        plt.ylabel('LAeq', fontsize=BIGGEST_SIZE)
+        plt.title(f'{plotname} Valores LAeq a lo largo del tiempo', fontsize=BIGGEST_SIZE)
 
-        plt.xticks(rotation=90)
-        plt.xlim(df_merged['start_time'].iloc[0], df_merged['start_time'].iloc[-1])
+        plt.xticks(rotation=90, fontsize=BIGGEST_SIZE)
+        plt.xlim(df_merged['Timestamp'].iloc[0], df_merged['Timestamp'].iloc[-1])
         
         plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
@@ -2269,28 +2270,34 @@ def plot_peak_distribution(df_merged: pd.DataFrame, folder_output_dir: str, logg
         # plot the same informaiton but with shadow area for night time
         ########################################
         ########################################
-        min_date = df_merged['start_time'].dt.date.min()
-        max_date = df_merged['start_time'].dt.date.max()
+        min_date = df_merged['Timestamp'].dt.date.min()
+        max_date = df_merged['Timestamp'].dt.date.max()
 
         plt.figure(figsize=(25, 9))
-        plt.plot(df_merged['start_time'], df_merged['LAeq'], marker='o', linestyle='-', color='red')
+        plt.plot(df_merged['Timestamp'], df_merged['LA_corrected'], marker='o', linestyle='-', color='red')
+        
+        
         # highlighting night periods
         for single_date in pd.date_range(min_date, max_date):
             start_night = pd.Timestamp.combine(single_date, pd.Timestamp('20:00:00').time())
             end_night = pd.Timestamp.combine(single_date + pd.Timedelta(days=1), pd.Timestamp('07:00:00').time())
-            plt.fill_betweenx(y=[df_merged['LAeq'].min(), df_merged['LAeq'].max()], 
+            plt.fill_betweenx(y=[df_merged['LA_corrected'].min(), df_merged['LA_corrected'].max()], 
                             x1=start_night, x2=end_night, color='grey', alpha=0.3)
 
 
-        plt.title(f'{plotname} Leq Values Over Time with night periods highlighted (from 20h to 7h)')
-        plt.xlabel('Time')
-        plt.ylabel('Leq (dB)')
+        plt.title(f'{plotname} Valores LAeq a lo largo del tiempo con Distribución Nocturna', fontsize=BIGGEST_SIZE)
+        plt.xlabel('Tiempo', fontsize=BIGGEST_SIZE)
+        plt.ylabel('LAeq (dB)', fontsize=BIGGEST_SIZE)
 
         plt.grid(True)
         plt.xticks(rotation=90)
 
-        plt.xlim(df_merged['start_time'].iloc[0], df_merged['start_time'].iloc[-1])
-        plt.ylim(df_merged['LAeq'].min(), df_merged['LAeq'].max())
+        plt.xlim(df_merged['Timestamp'].iloc[0], df_merged['Timestamp'].iloc[-1])
+        plt.ylim(df_merged['LA_corrected'].min(), df_merged['LA_corrected'].max())
+        
+        
+        plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
         plt.tight_layout()
 
 
@@ -2316,11 +2323,11 @@ def plot_density_distribution_peaks(df_merged: pd.DataFrame, folder_output_dir: 
         plt.figure(figsize=(12, 6))
         hourly_peaks.plot(kind='bar')
 
-        plt.title('Peak Distribution per Hour')
-        plt.xlabel('Hour of the Day')
-        plt.ylabel('Number of Peaks')
+        plt.xlabel('Hora del Día', fontsize=BIGGEST_SIZE)
+        plt.ylabel('Número de Picos', fontsize=BIGGEST_SIZE)
+        plt.title('Distribución de Picos por Hora', fontsize=BIGGEST_SIZE)
         # rotate the x-axis labels
-        plt.xticks(rotation=0)
+        plt.xticks(rotation=0, fontsize=BIGGEST_SIZE)
         
         plt.grid(True)
         plt.tight_layout()
@@ -2336,7 +2343,7 @@ def plot_density_distribution_peaks(df_merged: pd.DataFrame, folder_output_dir: 
         # plot the same informaiton but with kernel density estimation
         ########################################
         ########################################
-        time_of_day = df_merged['start_time'].dt.hour + df_merged['start_time'].dt.minute/60
+        time_of_day = df_merged['Timestamp'].dt.hour + df_merged['Timestamp'].dt.minute/60
 
         density = gaussian_kde(time_of_day)
         xs = np.linspace(0,24,100)
@@ -2346,9 +2353,9 @@ def plot_density_distribution_peaks(df_merged: pd.DataFrame, folder_output_dir: 
         plt.figure(figsize=(12, 6))
         plt.plot(xs, density(xs))
         
-        plt.title(f'{plotname} Density Distribution of Peaks per Hour')
-        plt.xlabel('Hour of the Day')
-        plt.ylabel('Density')
+        plt.title(f'{plotname} Distribución de Densidad de Picos por Hora', fontsize=BIGGEST_SIZE)
+        plt.xlabel('Hora del Día', fontsize=BIGGEST_SIZE)
+        plt.ylabel('Densidad', fontsize=BIGGEST_SIZE)
 
         # plt.xticks(range(25))
         plt.xlim(0, 24)

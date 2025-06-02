@@ -43,6 +43,14 @@ LN_SECONDS = 14400
 
 
 
+########################
+# FOLDER RESULT NAMES
+########################
+ACOUSTIC_PARAMS_FOLDER = "acoustic_params_query"
+PREDICTION_LITTLE_FOLDER = "predictions_litle"
+
+
+
 ###################################################################
 ### PLOTTING FLAGS
 ###################################################################
@@ -91,8 +99,8 @@ TONAL_FREQUENCY = False
 
 # peak
 PLOT_PEAK_DISTRI_HEATMAP = True
-PLOT_PEAK_DISTRI = False
-PLOT_DENSITY_DISTRI = False
+PLOT_PEAK_DISTRI = True
+PLOT_DENSITY_DISTRI = True
 
 # predictions
 PLOT_PEAK_PREDICTION = False

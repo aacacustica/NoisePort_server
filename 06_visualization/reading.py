@@ -324,17 +324,44 @@ def read_tenerife_TCT(file_path: str, logger):
     except Exception as e:
         logger.error(f"Error reading file: {file_path}")
 
-    #create a new column called time_zone: +02:00
-    df['time_zone'] = '+02:00'
+    print(df)
     
-    # remove the +02:00 from the Timestamp column
-    df['Timestamp'] = df['Timestamp'].str.replace('+02:00', '', regex=False)
+    try:
+        # detect the time zone in the Timestamp column
+        if 'Timestamp' not in df.columns:
+            logger.error("Timestamp column not found in the dataframe.")
+            return None
+        # if there are +__:__, take that as string
+        if df['Timestamp'].str.contains(r'\+\d{2}:\d{2}').any():
+            logger.info("Timestamp column contains time zone information.")
+            logger.info(f"Time zone detected: {df['Timestamp'].str.extract(r'(\+\d{2}:\d{2})')[0].unique()}")
+        exit()
 
+        #create a new column called time_zone: +02:00
+        df['time_zone'] = '+02:00'
+        
+        # remove the +02:00 from the Timestamp column
+        df['Timestamp'] = df['Timestamp'].str.replace('+02:00', '', regex=False)
+    except KeyError:
+        logger.error("KeyError: 'Timestamp' column not found in the dataframe.")
+        return None
+    print(df)
 
-    # logger.info("Converting 'Timestamp' column to 'datetime'")
-    # date_time_format 2025-04-06 06:00:38
-    df = df[pd.to_datetime(df['Timestamp'], format='%Y-%m-%d %H:%M:%S', errors='coerce').notnull()]
-    df['datetime'] = pd.to_datetime(df['Timestamp'], format='%Y-%m-%d %H:%M:%S')
+    try:
+        logger.info("Converting 'Timestamp' column to 'datetime'")
+        # date_time_format 2025-04-06 06:00:38
+        # remove the +02:00 from the Timestamp column
+        # convert the Timestamp column to datetime
+        df['Timestamp'] = df['Timestamp'].str.replace('+02:00', '', regex=False)
+        df = df[pd.to_datetime(df['Timestamp'], format='%Y-%m-%d %H:%M:%S', errors='coerce').notnull()]
+        df['datetime'] = pd.to_datetime(df['Timestamp'], format='%Y-%m-%d %H:%M:%S')
+    except KeyError:
+        logger.error("KeyError: 'Timestamp' column not found in the dataframe.")
+        return None
+    
+    print(df)
+    exit()
+
     return df
 
 
@@ -400,4 +427,70 @@ def get_data_tenerife_TCT(file_path: str,logger, new_date=None, new_time=None, n
     
     
     logger.info(f"Final length of the file: {len(df)}")
+    return df
+
+
+
+
+
+
+
+
+
+def get_data_tenerife_TCT_predict(folder_path: str,logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None):
+    logger.info("Testing how many files are for TCT Prediction")
+
+    csv_predict_files = []
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            if file.endswith('_w_1.0.csv'):
+                csv_predict_files.append(os.path.join(root, file))
+    logger.info(f"Number of csv files in the folder: {len(csv_predict_files)}")
+    
+
+    if len(csv_predict_files) > 1:
+        logger.info("Concatenating all the csv files in the folder and ordering them by date")
+        
+        df_all = []
+        for file in csv_predict_files:
+            file_path = os.path.join(folder_path, file)
+        
+            try:
+                df = read_tenerife_TCT(file_path, logger)
+                print(df)
+                exit()
+           
+            except Exception as e:
+                filename = file_path.split('\\')[-1]
+                logger.error(f"Error reading file: {filename}")
+                logger.error(f"Error: {e}")
+                continue
+
+            df_all.append(df)
+
+        df = pd.concat(df_all)
+        # order it by datetime
+        df = df.sort_values(by='datetime')
+        # remove column name Unnamed:
+        df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+
+    else:
+        # read the only csv file in the folder
+        try:
+            df = read_tenerife_TCT(file_path, logger)
+        except Exception as e:
+            logger.error(f"Error reading file: {file_path}")
+            logger.error(f"Error: {e}")
+            return None
+        
+    try:    
+        df = change_date_and_time(df, new_date, new_time, new_threshold_date, new_threshold_time, logger)
+        logger.info("Changing date and time")
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        return None
+    
+
+    logger.info(f"Final length of the prediction file: {len(df)}")
+    exit()
     return df
