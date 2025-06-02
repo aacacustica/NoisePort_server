@@ -152,23 +152,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info(f"Created output folder: {predictions_visualization_folder}")
         ##############################################################
 
-        ###################################################################
-        ########## GETTING PEAK PREDICTION FILE FOR EACH FOLDER ###########
-        peak_predictions_folder = os.path.join(folder.replace('3-Medidas', '5-Resultados'), "SPL", "Peaks")
-        peak_prediction_csv_file = None
-        if not os.path.exists(peak_predictions_folder):
-            logger.warning(f"Peaks folder not found: {peak_predictions_folder}")
-        if os.path.exists(peak_predictions_folder):
-            # list csv files in the directory
-            peak_predictions_files = glob.glob(os.path.join(peak_predictions_folder, "*.csv"))
-            if peak_predictions_files:
-                # take the file which contains 'peak_prediction' in the name
-                peak_prediction_file = [f for f in peak_predictions_files if 'peak_prediction' in f][0]
-                peak_prediction_csv_file = pd.read_csv(peak_prediction_file)
-            else:
-                logger.warning("No CSV files found in the peaks folder.")
-        ###################################################################
-
 
 
         ###################################################################
@@ -190,7 +173,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             # taking just 1 day, which are the first 86400 rows
             # df = df.iloc[:86400] # 1 day of data, 24 hours * 60 minutes * 60 seconds = 86400 seconds
             ###################################################################
-
 
 
             logger.info("\n")
@@ -231,23 +213,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.warning(f"prediction_csv_file is None")
 
 
-            # the same for the peak prediction file
-            if peak_prediction_csv_file is not None:
-                logger.info("")
-                logger.info(f"FOR PEAK PREDICTION FILE: Adding datetime columns, sorting by datetime and setting datetime as index")
-
-                peak_prediction_csv_file = add_datetime_columns_pred(peak_prediction_csv_file, logger, date_col='start_time')
-                peak_prediction_csv_file = peak_prediction_csv_file.sort_values('start_time')
-                peak_prediction_csv_file.set_index('start_time', inplace=True, drop=False)
-                peak_pred_start_date = peak_prediction_csv_file.index[0]
-                peak_pred_end_date = peak_prediction_csv_file.index[-1]
-
-                logger.info(f"Start date {peak_pred_start_date} and end date {peak_pred_end_date}")
-                logger.info(f"df was sorted by datetime and datetime was set as index")
-            else:
-                logger.warning(f"peak_prediction_csv_file is None")
-
-            
             try:
                 logger.info("")
                 # drop the beginning and ending of the measurement (15min)
@@ -264,16 +229,12 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 df['indicador_str'] = df.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
                 if prediction_csv_file is not None:
                     prediction_csv_file['indicador_str'] = prediction_csv_file.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
-                if peak_prediction_csv_file is not None:
-                    peak_prediction_csv_file['indicador_str'] = peak_prediction_csv_file.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
 
                 # add nights column
                 logger.info(f"Adding nights column")
                 df['night_str'] = df.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
                 if prediction_csv_file is not None:
                     prediction_csv_file['night_str'] = prediction_csv_file.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
-                if peak_prediction_csv_file is not None:
-                    peak_prediction_csv_file['night_str'] = peak_prediction_csv_file.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
 
 
 
@@ -326,143 +287,30 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 #################################
                 ##################################
                 ##################################
-                # TODO 
-                # Apply find peaks function to thr whole dataframe
                 logger.info("")
                 logger.info(f"Applying find_peaks function to the whole dataframe")
                 peaks, properties=find_peaks(df['LA_corrected'], prominence=PROMINENCE, width=WIDTH)
-                df_peaks_filtered = df.iloc[peaks].copy()
-                print(f"Found {len(peaks)} peaks in the dataframe")
-                print(df_peaks_filtered)
+                df_peaks = df.iloc[peaks].copy()
 
                 logger.info("")
                 logger.info(f"Rolling the data with a window of {WINDOW_SIZE} seconds")
                 # rolling median for the LA values with a window of 30 seconds
-                df_peaks_filtered['LA_cor_median'] = df_peaks_filtered['LA_corrected'].rolling(window=WINDOW_SIZE, min_periods=1).quantile(0.5) + ADDING_THRESHOLD
-                print(df_peaks_filtered)
+                df_peaks['LA_cor_median'] = df_peaks['LA_corrected'].rolling(window=WINDOW_SIZE, min_periods=1).quantile(0.5) + ADDING_THRESHOLD
 
                 #above threshold
                 logger.info(f"Calculating peaks above threshold")
-                df_peaks_filtered = df_peaks_filtered[df_peaks_filtered['LA_corrected'] > df_peaks_filtered['LA_cor_median']]
-                logger.info(f"There are {len(df_peaks_filtered)} peaks in the dataframe after filtering")
+                df_peaks = df_peaks[df_peaks['LA_corrected'] > df_peaks['LA_cor_median']]
+                logger.info(f"There are {len(df_peaks)} peaks in the dataframe after filtering")
                 # 
 
-                # exit()
-                # saving the csv complete file
-                df_peaks_filtered_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_peaks_filtered.csv")
-                df_peaks_filtered.to_csv(df_peaks_filtered_csv_path, index=False)
-                logger.info(f"Saved peaks filtered dataframe to {df_peaks_filtered_csv_path}, with a lenght of {len(df_peaks_filtered)}")
-
-
-                exit()
-
-
-                ##################################
-                ##################################
-                ##################################
-                # ROLLING + PEAK ANALYSIS
-                ##################################
-                ##################################
-                ##################################
-
-                #####################################################
-                ########## ROLLING THE DATA #########
-                #####################################################
-                logger.info("")
-                logger.info(f"Rolling the data with a window of {WINDOW_SIZE} seconds")
-
-                # rolling median for the LA values with a window of 30 seconds
-                df['LA_cor_median'] = df['LA_corrected'].rolling(window=WINDOW_SIZE, min_periods=1).quantile(0.5) + ADDING_THRESHOLD
-                # saving the csv complete file
-                df_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_complete.csv")
-                df.to_csv(df_csv_path, index=False)
-                logger.info(f"Saved complete dataframe to {df_csv_path}, with a lenght of {len(df)}")
-                
-                
-                logger.info("")
-                logger.info(f"Calculating peaks above threshold")
-                df_peaks = df[df['LA'] > df['LA_cor_median']]
-                
-                
-                #save csv for peak filtering
-                df_peaks_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_L50.csv")
+                df_peaks_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_peaks_filtered.csv")
                 df_peaks.to_csv(df_peaks_csv_path, index=False)
-                logger.info(f"Saved peaks dattaframe to {df_peaks_csv_path}, with a lenght of {len(df_peaks)}")
-                logger.info(f"There are {len(df_peaks)} peaks in the dataframe")
-                print(df_peaks)
+                logger.info(f"Saved peaks filtered dataframe to {df_peaks_csv_path}, with a lenght of {len(df_peaks)}")
 
+                #Timestamp to datetime
+                df_peaks['datetime'] = pd.to_datetime(df_peaks['datetime'])
 
-                # TODO 
-                # Peaks filters
-                try:
-                    logger.info(f"Differentiating isolated peaks from non-isolated peaks")
-                    # [1] Those which are not isolated, detect them. points in a row. 
-                    # Look at the Timestamp column and check the difference between the timestamps. If the difference is less than 1 second, then they are not isolated.
-                    #converting the Timestamp column to datetime
-                    # df_peaks['Timestamp'] = pd.to_datetime(df_peaks['Timestamp'])
-                    # df_peaks['isolated'] = df_peaks['Timestamp'].diff().dt.total_seconds()
-                    # df_peaks = df_peaks.sort_values("Timestamp").copy()
-                    # (3) time until the next row:  .. > shift(-1) moves the next row’s timestamp up to the current row
-                    # next_ts = df_peaks["Timestamp"].shift(-1)
-                    # df_peaks["gap_to_next_s"] = (next_ts - df_peaks["Timestamp"]).dt.total_seconds()
-                    # # (4) isolated peaks: if the gap to the next row is greater than 1 second, then it is an isolated peak
-                    # df_peaks["isolated"] = df_peaks["gap_to_next_s"] > 5
-                    # df_peaks["isolated"] = df_peaks["isolated"].fillna(True) # the last row will be NaN, so we fill it with True
-                    # df_peaks = df_peaks.drop(columns="gap_to_next_s")
-                    # logger.info(f"Isolated peaks were detected, added a new column 'isolated' to the dataframe")
-                    
-
-                    df_peaks["Timestamp"] = pd.to_datetime(df_peaks["Timestamp"])
-                    df_peaks = df_peaks.sort_values("Timestamp").copy()
-                    df_peaks["gap_prev"] = df_peaks["Timestamp"].diff().dt.total_seconds().fillna(1e6)
-
-
-                    threshold = 5
-                    df_peaks["group_peak"] = df_peaks["gap_prev"] > threshold
-                    df_peaks["cluster_id"] = df_peaks["group_peak"].cumsum()
-
-                    counts = df_peaks["cluster_id"].value_counts()
-                    multi_clusters = counts[counts > 1].index
-                    singletons   = counts[counts == 1].index
-
-                    df_nonisolated = df_peaks[df_peaks["cluster_id"].isin(multi_clusters)].copy()
-
-
-                    cluster_peak_rows = []  
-                    for cid, block in df_nonisolated.groupby("cluster_id"):
-                        y = block["LA_corrected"].values
-                        peaks, props = find_peaks(y, prominence=PROMINENCE, width=WIDTH)
-                        if len(peaks):
-                            block_peak_rows = block.iloc[peaks]
-                            cluster_peak_rows.append(block_peak_rows)
-
-
-
-                    if cluster_peak_rows:
-                        df_cluster_peaks = pd.concat(cluster_peak_rows, ignore_index=False)
-                    else:
-                        df_cluster_peaks = pd.DataFrame(columns=df_peaks.columns)
-
-                    df_isolated = df_peaks[df_peaks["cluster_id"].isin(singletons)].copy()
-                    df_final_peaks = pd.concat([df_cluster_peaks, df_isolated], ignore_index=False)
-                    drop_cols = ["gap_prev", "group_peak", "cluster_id"]
-                    df_final_peaks = df_final_peaks.drop(columns=drop_cols)
-
-                    df_final_peaks = df_final_peaks.sort_values("Timestamp").reset_index(drop=True)
-                    df_peaks_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_peaks.csv")
-                    df_final_peaks.to_csv(df_peaks_csv_path, index=False)
-                    logger.info(f"Found {len(df_final_peaks)} total peaks; "
-                                f"{len(df_cluster_peaks)} from multi-row clusters, "
-                                f"{len(df_isolated)} isolated ones.")
-                    logger.info(f"Saved peaks dataframe to {df_peaks_csv_path}")
-
-
-
-                    exit()
-                    
-                except Exception as e:
-                    logger.error(f"An error occurred while differentiating isolated peaks: {e}")
-                    continue
+                print(df_peaks.columns)
 
 
             except Exception as e:
@@ -681,8 +529,8 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             ################################################################
             # PEAK ANALYSIS
             ##################################################################
-            # logger.info("")
-            # logger.info(f"Peak analysis section")
+            logger.info("")
+            logger.info(f"PEAKS PLOTTING!!!")
             
 
             if PLOT_PEAK_DISTRI_HEATMAP:

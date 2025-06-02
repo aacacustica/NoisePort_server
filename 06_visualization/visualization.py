@@ -2155,27 +2155,30 @@ def plot_peak_distribution_heatmap(df_peaks: pd.DataFrame, folder_output_dir: st
         sns.set_style("whitegrid")
         df_peaks = df_peaks.copy()
 
-        df_peaks['full_date'] = pd.to_datetime(df_peaks['start_time']).dt.strftime('%Y-%m-%d') + \
-                                 '\n' + pd.to_datetime(df_peaks['start_time']).dt.day_name()
+        df_peaks['Día'] = df_peaks['day_name'].replace(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'])
+        df_peaks['date_day'] = df_peaks['date'].astype(str) + ' ' + df_peaks['Día']
+
+        df_peaks['full_date'] = pd.to_datetime(df_peaks['Timestamp']).dt.strftime('%Y-%m-%d') + \
+                                 '\n' + pd.to_datetime(df_peaks['Timestamp']).dt.day_name()
         
     
         pivot_table = df_peaks.pivot_table(
-            index='full_date',
-            columns='hour', 
+            index=['date_day'],
+            columns=['hour'], 
             aggfunc='size',
             )
 
         pivot_table.replace(0, np.nan, inplace=True)
 
-        plt.figure(figsize=(20, 9))
+        plt.figure(figsize=(20, 10))
         sns.heatmap(pivot_table, annot=True, fmt=".0f", cmap=cmap_dict)
-        
-        plt.title(f'{plotname} Heatmap of Peak Occurrences')
-        plt.xlabel('Hour of Day')
-        # plt.ylabel('Day of Week')
 
-        plt.yticks(np.arange(len(pivot_table.index)) + 0.5, pivot_table.index, rotation=0)
-        plt.xticks(np.arange(0.5, len(pivot_table.columns), 1), range(24)) 
+        plt.xlabel('Hora', fontsize=BIGGEST_SIZE)
+        plt.ylabel('Día', fontsize=BIGGEST_SIZE)
+        plt.title(f'{plotname} Heatmap de Ocurrencias de Picos por Hora y Día', fontsize=BIGGEST_SIZE)
+
+        plt.yticks(np.arange(len(pivot_table.index)) + 0.5, pivot_table.index, rotation=0, fontsize=BIGGEST_SIZE)
+        plt.xticks(np.arange(0.5, len(pivot_table.columns), 1), range(24), fontsize=BIGGEST_SIZE) 
         
         plt.tight_layout()
         plt.grid(False)
@@ -2192,23 +2195,23 @@ def plot_peak_distribution_heatmap(df_peaks: pd.DataFrame, folder_output_dir: st
         ########################################
         ########################################
         # create 4 hour blocks
-        df_peaks['4HourBlock'] = (df_peaks['start_time'].dt.hour // 4) * 4
+        df_peaks['4HourBlock'] = (df_peaks['Timestamp'].dt.hour // 4) * 4
+
         pivot_table_4h = df_peaks.pivot_table(
-            index='full_date',
-            columns='4HourBlock',
-            aggfunc='size',
-            )
+            index='date_day',        
+            columns='4HourBlock',   
+            aggfunc='size'
+        )
         
         pivot_table_4h.replace(0, np.nan, inplace=True)
 
-        plt.figure(figsize=(20, 9))
+        plt.figure(figsize=(20, 10))
         sns.heatmap(pivot_table_4h, annot=True, fmt=".0f", cmap=cmap_dict)
 
-        plt.title(f'{plotname} Heatmap of Peak Occurrences in 4h intervals')
-        plt.xlabel('4 Hour Block')
-        # plt.ylabel('Day of Week')
-
-        plt.yticks(np.arange(len(pivot_table_4h.index)) + 0.5, pivot_table_4h.index, rotation=0)
+        plt.xlabel('Hora', fontsize=BIGGEST_SIZE)
+        plt.ylabel('Día', fontsize=BIGGEST_SIZE)
+        plt.title(f'{plotname} Heatmap de Ocurrencias de Picos por Hora y Día (4h)', fontsize=BIGGEST_SIZE)
+        plt.yticks(np.arange(len(pivot_table_4h.index)) + 0.5, pivot_table_4h.index, rotation=0, fontsize=BIGGEST_SIZE)
         plt.xticks(np.arange(0.5, len(pivot_table_4h.columns), 1), range(0, 24, 4))
 
         plt.tight_layout()
@@ -2217,9 +2220,6 @@ def plot_peak_distribution_heatmap(df_peaks: pd.DataFrame, folder_output_dir: st
         #save the plot
         plt.savefig(f"{folder_output_dir}/{plotname}_peak_distribution_heatmap_4h.png", dpi=150)
         logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_distribution_heatmap_4h.png")
-
-
-
 
     except Exception as e:
         logger.error(f"Error in plot_peak_distribution_heatmap: {e}")
