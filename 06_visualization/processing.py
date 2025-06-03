@@ -82,6 +82,9 @@ def load_data_predict(folder_path, logger, new_date=None, new_time=None, new_thr
 
 def process_folder(folder_path, folder_date_time, folder_threshold, logger):
     logger.info("")
+    point_folder = folder_path.split('\\')[-2]
+
+
     # folder contains a CESVA folder
     cesva_path = os.path.join(folder_path, 'CESVA')
     if os.path.isdir(cesva_path):
@@ -110,22 +113,39 @@ def process_folder(folder_path, folder_date_time, folder_threshold, logger):
 
         files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith(('.csv', '.xlsx', '.CSV'))]
         # logger.info(f"Files found: {files}")
-        logger.info(f"Files found: {len(files)}")
+        logger.info(f"Files found: {len(files)} at {folder_path}")
+        # exit()
         
+        
+        # precition_complete_path = os.path.join(folder_path, f'{point_folder}_prediction.csv')
+        # if files[0].endswith(f'{point_folder}_prediction.csv'):
+        #     logger.info(f"Loading prediction data from {files[0]}")
+        #     df = load_data_predict(folder_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time)
+        #     return df
+        
+
+        # elif files[0].endswith(f'{point_folder}_acoustic_params.csv'):
+        #     pass
+
         
         if not files:
+            logger.info(f"No measurement files found in {folder_path}")
             try:
-                logger.info(f"No measurement files found in {folder_path}, trying to load prediction data")
-                # try to load prediction data
-                return load_data_predict(folder_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time)
+                logger.info(f"Trying to load regular data")
+                # load_data regular files
+                return load_data(folder_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time)
+            
             except Exception as e:
+                logger.info(f"No measurement files found in {folder_path}, trying to load prediction data")
+                return load_data_predict(folder_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time)
+                # try to load prediction data
                 logger.error(f"Error loading prediction data: {e}")
             
             # if no files found, return None
             logger.error(f"No measurement files found in {folder_path}")
             return None, None, None
         
-
+        # this is the case where there are many files in the folder
         return load_data(files[0], logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time)
     return None, None, None 
 
@@ -138,15 +158,21 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
     for folder in tqdm(folders, desc="Processing folders"): # \\192.168.205.117\AAC_Server\OCIO\24052_ZARAUTZ\CAMPAÑA_1\3-Medidas\ZARAUTZ_C1_P1\AUDIOMOTH
         logger.info("")
         logger.info(f"Suffix string: {sufix_string}")
+
+
         reg_folder = os.path.join(input_folder, folder) # \\192.168.205.117\AAC_Server\INDUSTRIA\23132-IRUÑA_OCA_CANTERA\5-Resultados\FAA205-P1_CAMPAÑA1\SPL
         folder = folder.split("\\")[:-1]
         folder = os.path.join('\\\\', *folder)
         actual_folder_name = folder.split("\\")[-1]
         logger.info(f"Processing folder: {actual_folder_name}")
         logger.info(f"Entering folder: {folder}")
+
+
         spl_string = "SPL"
         graphics_string = f"Graphics_{sufix_string}"
         result_dir_name = "5-Resultados"
+
+
         resultados_dir = reg_folder.split("\\")[:-3]
         resultados_dir = os.path.join('\\\\', *resultados_dir, result_dir_name)
         logger.info(f"Resultados directory: {resultados_dir}")
@@ -175,10 +201,12 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info(f"Getting the data from the dataframes")
             
             
-            # df, slm_type, slm_dict = process_folder(reg_folder, folder_date_time, folder_threshold, logger)
-            # if df is None:
-            #     logger.warning(f"df is None")
-            #     continue
+            df, slm_type, slm_dict = process_folder(reg_folder, folder_date_time, folder_threshold, logger)
+            if df is None:
+                logger.warning(f"df is None")
+                continue
+            print(df)
+            exit()
 
             # save df to csv file
             # complete_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_complete.csv")
@@ -192,15 +220,15 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             #############################
             ### GETTING PREDICTION DF ###
             #############################
-            logger.info("")
-            logger.info(f"Getting the prediction data from the dataframes")
-            reg_folder_prediction = reg_folder.replace(ACOUSTIC_PARAMS_FOLDER, PREDICTION_LITTLE_FOLDER)
+            # logger.info("")
+            # logger.info(f"Getting the prediction data from the dataframes")
+            # reg_folder_prediction = reg_folder.replace(ACOUSTIC_PARAMS_FOLDER, PREDICTION_LITTLE_FOLDER)
             
-            df_prediction, slm_type, slm_dict = process_folder(reg_folder_prediction, folder_date_time, folder_threshold, logger)
-            if df_prediction is None:
-                logger.warning(f"df prediction is None")
-                continue
-            print(df_prediction)
+            # df_prediction, slm_type, slm_dict = process_folder(reg_folder_prediction, folder_date_time, folder_threshold, logger)
+            # if df_prediction is None:
+            #     logger.warning(f"df prediction is None")
+            #     continue
+            # print(df_prediction)
             exit()
             ###################################################################
 

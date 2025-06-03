@@ -46,7 +46,8 @@ LN_SECONDS = 14400
 ########################
 # FOLDER RESULT NAMES
 ########################
-ACOUSTIC_PARAMS_FOLDER = "acoustic_params_query"
+ACOUSTIC_PARAMS_FOLDER = "acoustic_params"
+ACOUSTIC_PARAMS_QUERY_FOLDER = "acoustic_params_query"
 PREDICTION_LITTLE_FOLDER = "predictions_litle"
 
 

@@ -70,8 +70,8 @@ def collect_folders(input_folder, change_time_flag):
     folders, coefficients, date_time, threshold = [], {}, {}, {}
 
     for root, dirs, _ in os.walk(input_folder):
-        if "acoustic_params_query" in dirs:
-            path = os.path.join(root, "acoustic_params_query")
+        if ACOUSTIC_PARAMS_FOLDER in dirs:
+            path = os.path.join(root, ACOUSTIC_PARAMS_FOLDER)
             folder_name = path.split("\\")[-2]
             coeff = float(input(f"Correction coefficient for {folder_name}: "))
             new_date = new_time = t_date = t_time = None
@@ -121,7 +121,7 @@ def main():
     for label, active in source_types.items():
         if not active:
             continue
-        logger.info(f"Processing {label.lower()} data...")
+        logger.info(f"Processing {label.lower()} data")
 
         folders, coeffs, date_map, thresh_map = collect_folders(input_folder, args.change_date)
 
