@@ -352,40 +352,52 @@ def read_tenerife_TCT(file_path: str, logger):
 
 
 
-def get_data_tenerife_TCT(folder_path: str,logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None):
+def get_data_tenerife_TCT(folder_path: str,logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None, selected_folder=None):
     logger.info("")
-
     logger.info("Testing how many files are for TCT")
     logger.info(f"Folder path: {folder_path}")
-    point_folder = folder_path.split('\\')[-2]
 
-    logger.info(f"Point folder: {point_folder}")
-    acoustic_params_csv_path = os.path.join(folder_path, f'{point_folder}_{ACOUSTIC_PARAMS_FOLDER}.csv')
-    logger.info(f"Acoustic params csv path: {acoustic_params_csv_path}")
-    
+
+    if selected_folder is ACOUSTIC_PARAMS_FOLDER:
+        point_folder = folder_path.split('\\')[-2]
+        csv_final_path = os.path.join(folder_path, f'{point_folder}_{ACOUSTIC_PARAMS_FOLDER}.csv')
+        logger.info(f"Saving the file at: {csv_final_path}")
+    elif selected_folder is PREDICTION_LITTLE_FOLDER:
+        point_folder = folder_path.split('\\')[-2]
+        csv_final_path = os.path.join(folder_path, f'{point_folder}_{PREDICTION_LITTLE_FOLDER}.csv')
+        logger.info(f"Saving the file at: {csv_final_path}")
+    else:
+        logger.error("Selected folder is not valid. Please select either ACOUSTIC_PARAMS_FOLDER or PREDICTION_LITTLE_FOLDER.")
+        return None
+
     
     # getting the acoustic params csv files
-    logger.info("Searching for acoutics params csv files")
+    logger.info("Searching for csv files")
     csv_files = []
     for root, dirs, files in os.walk(folder_path):
         for file in files:
-            if file.endswith('.csv'):
-                csv_path = os.path.abspath(os.path.join(root, file))
-                csv_files.append(csv_path)
+            if selected_folder is ACOUSTIC_PARAMS_FOLDER:
+                if file.endswith('.csv'):
+                    csv_path = os.path.abspath(os.path.join(root, file))
+                    csv_files.append(csv_path)
+            elif selected_folder is PREDICTION_LITTLE_FOLDER:
+                if file.endswith('_w_1.0.csv'):
+                    csv_path = os.path.abspath(os.path.join(root, file))
+                    csv_files.append(csv_path)
                 
     logger.info(f"Number of csv files in the folder: {len(csv_files)}")
-    # exit()
+
 
     if len(csv_files) > 1:
         logger.info("Concatenating all the csv files in the folder and ordering them by date")
         df_all = []
         for file in csv_files:
-            folder_path = os.path.join(folder_path, file)
+            csv_file_path = os.path.join(folder_path, file)
             try:
-                df = read_tenerife_TCT(folder_path, logger)
+                df = read_tenerife_TCT(csv_file_path, logger)
             except Exception as e:
-                filename = folder_path.split('\\')[-1]
-                logger.error(f"Error reading file: {filename}")
+                # filename = folder_path.split('\\')[-1]
+                logger.error(f"Error reading file: {csv_file_path}")
                 logger.error(f"Error: {e}")
                 continue
 
@@ -407,18 +419,22 @@ def get_data_tenerife_TCT(folder_path: str,logger, new_date=None, new_time=None,
             return None
         
 
-        try:
-            # create LC-LA colum --> LC - LA = LC_LA.
-            df['LC-LA'] = df['LC'] - df['LA']
-        except KeyError:
-            logger.error("KeyError: 'LC' or 'LA' column not found in the dataframe.")
-            return None
+        if selected_folder is ACOUSTIC_PARAMS_FOLDER:
+            logger.info("Creating LC, LA, and LC-LA columns")
+            try:
+                # create LC-LA colum --> LC - LA = LC_LA.
+                df['LC-LA'] = df['LC'] - df['LA']
+            except KeyError:
+                logger.error("KeyError: 'LC' or 'LA' column not found in the dataframe.")
+                return None
         
         logger.info(f"Final length of the file: {len(df)}")
 
+
+
         # save the file
-        logger.info(f"Saving the file at: {acoustic_params_csv_path}")
-        df.to_csv(acoustic_params_csv_path, index=False)
+        df.to_csv(folder_path, index=False)
+        logger.info(f"CSV final file saved at: {csv_final_path}")
 
 
 
@@ -446,6 +462,7 @@ def get_data_tenerife_TCT_predict(folder_path: str,logger, new_date=None, new_ti
     logger.info(f"Testing how many files are for TCT Prediction in folder: {folder_path}")
     point_folder = folder_path.split('\\')[-2]
     logger.info(f"Point folder: {point_folder}")
+    exit()
 
     csv_predict_files = []
     for root, dirs, files in os.walk(folder_path):
@@ -479,6 +496,24 @@ def get_data_tenerife_TCT_predict(folder_path: str,logger, new_date=None, new_ti
         # remove column name Unnamed:
         df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
 
+
+        try:    
+            df = change_date_and_time(df, new_date, new_time, new_threshold_date, new_threshold_time, logger)
+            logger.info("Changing date and time")
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            return None
+        
+        logger.info(f"Final length of the prediction file: {len(df)}")
+
+        #save the prediction file
+        prediction_csv_path = os.path.join(folder_path, f'{point_folder}_prediction.csv')
+        df.to_csv(prediction_csv_path, index=False)
+        logger.info(f"Saving the prediction file in: {prediction_csv_path}")
+
+
+
+
     else:
         # read the only csv file in the folder
         try:
@@ -488,17 +523,4 @@ def get_data_tenerife_TCT_predict(folder_path: str,logger, new_date=None, new_ti
             logger.error(f"Error: {e}")
             return None
         
-    try:    
-        df = change_date_and_time(df, new_date, new_time, new_threshold_date, new_threshold_time, logger)
-        logger.info("Changing date and time")
-    except Exception as e:
-        logger.error(f"Error: {e}")
-        return None
-    
-    logger.info(f"Final length of the prediction file: {len(df)}")
-
-    #save the prediction file
-    prediction_csv_path = os.path.join(folder_path, f'{point_folder}_prediction.csv')
-    df.to_csv(prediction_csv_path, index=False)
-    logger.info(f"Saving the prediction file in: {prediction_csv_path}")
     return df

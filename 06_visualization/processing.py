@@ -13,11 +13,10 @@ from scipy.signal import find_peaks
 
 
 
-def load_data(file_path, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None):
+def load_data(file_path, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None, selected_folder=None):
     logger.info("")
     slm_type_function_mapping = {
         'tenerife_TCT': (get_data_tenerife_TCT, tenerife_tct_dict),
-        'tenerife_TCT_predict': (get_data_tenerife_TCT_predict, tenerife_tct_dict),
         # "audiomoth": (get_data_audiomoth, audiopost_dict),
         # "814": (get_data_814, larson814_dict),
         # "824": (get_data_824, larson824_dict),
@@ -36,7 +35,7 @@ def load_data(file_path, logger, new_date=None, new_time=None, new_threshold_dat
             logger.info(f"Loading file {file_path} for SLM type {slm_type}")
 
             # this is the actual invocation of the function
-            df = func(file_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time)
+            df = func(file_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time, selected_folder=selected_folder)
 
             # loggers
             logger.info("\n")
@@ -54,33 +53,7 @@ def load_data(file_path, logger, new_date=None, new_time=None, new_threshold_dat
 
 
 
-def load_data_predict(folder_path, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None):
-    logger.info("")
-    slm_type_function_mapping = {
-        'tenerife_TCT_predict': (get_data_tenerife_TCT_predict, tenerife_tct_dict),
-    } 
-
-    for slm_type, (func, slm_dict) in slm_type_function_mapping.items():
-        try:
-            logger.info(f"Loading folder {folder_path} for prediction")
-            df = func(folder_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time)
-
-            # loggers
-            logger.info("")
-            logger.info(f"Data loaded for SLM type {slm_type}")
-            return df, slm_type, slm_dict
-
-
-        except Exception as e:
-            clean_message = str(e).replace('\n', ' ')
-            logger.warning(f"Failed to load data for SLM type {slm_type}: {clean_message}. Trying next SLM type")
-            continue
-    
-    raise ValueError("SLM type not found or file could not be loaded")
-
-
-
-def process_folder(folder_path, folder_date_time, folder_threshold, logger):
+def process_folder(folder_path, folder_date_time, folder_threshold, logger, selected_folder):
     logger.info("")
     point_folder = folder_path.split('\\')[-2]
 
@@ -112,34 +85,19 @@ def process_folder(folder_path, folder_date_time, folder_threshold, logger):
         new_threshold_date, new_threshold_time  = folder_threshold.get(folder_path, (None, None))
 
         files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith(('.csv', '.xlsx', '.CSV'))]
-        # logger.info(f"Files found: {files}")
         logger.info(f"Files found: {len(files)} at {folder_path}")
-        # exit()
         
-        
-        # precition_complete_path = os.path.join(folder_path, f'{point_folder}_prediction.csv')
-        # if files[0].endswith(f'{point_folder}_prediction.csv'):
-        #     logger.info(f"Loading prediction data from {files[0]}")
-        #     df = load_data_predict(folder_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time)
-        #     return df
-        
-
-        # elif files[0].endswith(f'{point_folder}_acoustic_params.csv'):
-        #     pass
-
         
         if not files:
             logger.info(f"No measurement files found in {folder_path}")
             try:
                 logger.info(f"Trying to load regular data")
                 # load_data regular files
-                return load_data(folder_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time)
+                return load_data(folder_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time, selected_folder=selected_folder)
             
             except Exception as e:
-                logger.info(f"No measurement files found in {folder_path}, trying to load prediction data")
-                return load_data_predict(folder_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time)
-                # try to load prediction data
                 logger.error(f"Error loading prediction data: {e}")
+                # 
             
             # if no files found, return None
             logger.error(f"No measurement files found in {folder_path}")
@@ -201,17 +159,11 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info(f"Getting the data from the dataframes")
             
             
-            df, slm_type, slm_dict = process_folder(reg_folder, folder_date_time, folder_threshold, logger)
+            df, slm_type, slm_dict = process_folder(reg_folder, folder_date_time, folder_threshold, logger, ACOUSTIC_PARAMS_FOLDER)
             if df is None:
                 logger.warning(f"df is None")
                 continue
             print(df)
-            exit()
-
-            # save df to csv file
-            # complete_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_complete.csv")
-            # df.to_csv(complete_csv_path, index=False)
-            # logger.info(f"Saved complete dataframe to {complete_csv_path}")
 
             # taking just 1 day, which are the first 86400 rows
             # df = df.iloc[:86400] # 1 day of data, 24 hours * 60 minutes * 60 seconds = 86400 seconds
@@ -220,15 +172,17 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             #############################
             ### GETTING PREDICTION DF ###
             #############################
-            # logger.info("")
-            # logger.info(f"Getting the prediction data from the dataframes")
-            # reg_folder_prediction = reg_folder.replace(ACOUSTIC_PARAMS_FOLDER, PREDICTION_LITTLE_FOLDER)
+            logger.info("")
+            logger.info(f"Getting the prediction data from the dataframes")
+            reg_folder_prediction = reg_folder.replace(ACOUSTIC_PARAMS_FOLDER, PREDICTION_LITTLE_FOLDER)
+            logger.info(f"Prediction folder: {reg_folder_prediction}")
             
-            # df_prediction, slm_type, slm_dict = process_folder(reg_folder_prediction, folder_date_time, folder_threshold, logger)
-            # if df_prediction is None:
-            #     logger.warning(f"df prediction is None")
-            #     continue
-            # print(df_prediction)
+            
+            df_prediction, slm_type, slm_dict = process_folder(reg_folder_prediction, folder_date_time, folder_threshold, logger, PREDICTION_LITTLE_FOLDER)
+            if df_prediction is None:
+                logger.warning(f"df prediction is None")
+                continue
+            print(df_prediction)
             exit()
             ###################################################################
 
