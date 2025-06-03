@@ -384,7 +384,6 @@ def get_data_tenerife_TCT(folder_path: str,logger, new_date=None, new_time=None,
                 if file.endswith('_w_1.0.csv'):
                     csv_path = os.path.abspath(os.path.join(root, file))
                     csv_files.append(csv_path)
-                
     logger.info(f"Number of csv files in the folder: {len(csv_files)}")
 
 
@@ -404,10 +403,7 @@ def get_data_tenerife_TCT(folder_path: str,logger, new_date=None, new_time=None,
             df_all.append(df)
 
         df = pd.concat(df_all)
-        # order it by datetime
         df = df.sort_values(by='datetime')
-        # remove column name Unnamed:
-        df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
 
 
         try:    
@@ -428,13 +424,13 @@ def get_data_tenerife_TCT(folder_path: str,logger, new_date=None, new_time=None,
                 logger.error("KeyError: 'LC' or 'LA' column not found in the dataframe.")
                 return None
         
+
         logger.info(f"Final length of the file: {len(df)}")
 
 
-
         # save the file
-        df.to_csv(folder_path, index=False)
         logger.info(f"CSV final file saved at: {csv_final_path}")
+        df.to_csv(folder_path, index=False)
 
 
 
