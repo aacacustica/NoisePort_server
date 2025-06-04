@@ -159,7 +159,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             ai_prediction_folder = os.path.join(folder.replace('3-Medidas', '5-Resultados'), "AI_MODEL", "Predictions")
             os.makedirs(ai_prediction_folder, exist_ok=True)
             logger.info(f"Created AI prediction folder: {ai_prediction_folder}")
-            
+            # CREATING THE PREDICTION VISUALIZATION FOLDER
             ia_visualization_folder = ai_prediction_folder.replace("Predictions", "Visualizations")
             os.makedirs(ia_visualization_folder, exist_ok=True)
             logger.info(f"Created AI visualization folder: {ia_visualization_folder}")
@@ -483,38 +483,40 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 plot_night_evolution_15_min(df, folder_output_dir, logger, name_extension="15_min", laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder, indicador_noche="Ln")
 
 
+            ############################ PREDICTION PLOTTING SECTION ####################################################################################
             # Plotting LEq power average with predictions
             if PLOT_PREDIC_LAEQ_15_MIN:
                 logger.info(f"[3] Plotting PLOT_PREDIC_LAEQ for folder {folder}")
-                plot_predic_laeq_15_min(df, yamnet_csv, taxonomy, df_prediction, predictions_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
+                plot_predic_laeq_15_min(df, yamnet_csv, taxonomy, df_prediction, ia_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
 
             
             if PLOT_PREDIC_LAEQ_15_MIN_PERIOD:
                 logger.info(f"[4] Plotting PLOT_PREDIC_LAEQ_15_MIN_PERIOD for folder {folder}")
-                plot_predic_laeq_15_min_period(df, yamnet_csv, taxonomy, df_prediction, predictions_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
+                plot_predic_laeq_15_min_period(df, yamnet_csv, taxonomy, df_prediction, ia_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
 
 
             if PLOT_PREDIC_LAEQ_15_MIN_4H:
                 logger.info(f"[5] Plotting PLOT_PREDIC_LAEQ_4H for folder {folder}")
-                plot_predic_laeq_15_min_4h(df, yamnet_csv,taxonomy, df_prediction, predictions_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
+                plot_predic_laeq_15_min_4h(df, yamnet_csv,taxonomy, df_prediction, ia_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
 
 
             # Plotting stack bar with predictions class
             if PLOT_PREDICTION_STACK_BAR:
                 logger.info(f"[6] Plotting PLOT_PREDICTION_STACK_BAR for folder {folder}")
-                plot_prediction_stack_bar(df_prediction, yamnet_csv, taxonomy, predictions_visualization_folder, logger, plotname=folder)
+                plot_prediction_stack_bar(df_prediction, yamnet_csv, taxonomy, ia_visualization_folder, logger, plotname=folder)
             
 
             # Plotting prediction map
             if PLOT_PREDICTION_MAP:
                 logger.info(f"[7] Plotting PLOT_PREDICTION_MAP for folder {folder}")
-                plot_prediction_map(df_prediction, taxonomy, predictions_visualization_folder, logger, plotname=folder)
+                plot_prediction_map(df_prediction, taxonomy, ia_visualization_folder, logger, plotname=folder)
+            ##############################################################################################################################################
 
             
             # Plotting tree map
             if PLOT_TREE_MAP:
                 logger.info(f"[8] Plotting PLOT_TREE_MAP for folder {folder}")
-                plot_tree_map(df_prediction,taxonomy,predictions_visualization_folder, logger, plotname=folder)
+                plot_tree_map(df_prediction,taxonomy,ia_visualization_folder, logger, plotname=folder)
 
             
             # Plotting time plot
