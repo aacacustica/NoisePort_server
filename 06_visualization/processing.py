@@ -117,37 +117,61 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
         logger.info(f"Suffix string: {sufix_string}")
 
 
-        reg_folder = os.path.join(input_folder, folder) # \\192.168.205.117\AAC_Server\INDUSTRIA\23132-IRUÑA_OCA_CANTERA\5-Resultados\FAA205-P1_CAMPAÑA1\SPL
-        folder = folder.split("\\")[:-1]
-        folder = os.path.join('\\\\', *folder)
-        actual_folder_name = folder.split("\\")[-1]
-        logger.info(f"Processing folder: {actual_folder_name}")
-        logger.info(f"Entering folder: {folder}")
+        #####################################
+        # SETTING UP THE FOLDER PATHS
+        #####################################
+        try:
+            reg_folder = os.path.join(input_folder, folder) # \\192.168.205.117\AAC_Server\INDUSTRIA\23132-IRUÑA_OCA_CANTERA\5-Resultados\FAA205-P1_CAMPAÑA1\SPL
+            folder = folder.split("\\")[:-1]
+            folder = os.path.join('\\\\', *folder)
+            actual_folder_name = folder.split("\\")[-1]
+            logger.info(f"Processing folder: {actual_folder_name}")
+            logger.info(f"Entering folder: {folder}")
 
 
-        spl_string = "SPL"
-        graphics_string = f"Graphics_{sufix_string}"
-        result_dir_name = "5-Resultados"
+            spl_string = "SPL"
+            graphics_string = f"Graphics_{sufix_string}"
+            result_dir_name = "5-Resultados"
 
 
-        resultados_dir = reg_folder.split("\\")[:-3]
-        resultados_dir = os.path.join('\\\\', *resultados_dir, result_dir_name)
-        logger.info(f"Resultados directory: {resultados_dir}")
-
-
-        if not os.path.exists(resultados_dir):
-            os.makedirs(resultados_dir)
-            logger.info(f"Created output folder: {resultados_dir}")
-        
-        folder_output_dir = os.path.join(resultados_dir, folder, spl_string, graphics_string)
-        logger.info(f"folder_output_dir: {folder_output_dir}")
-        if '3-Medidas' in folder_output_dir:
-            folder_output_dir = folder_output_dir.replace('3-Medidas', '5-Resultados')
-
-        if not os.path.exists(folder_output_dir):
-            os.makedirs(folder_output_dir)
-            logger.info(f"Created output folder: {folder_output_dir}")
+            # 5-Resultados directory
+            resultados_dir = reg_folder.split("\\")[:-3]
+            resultados_dir = os.path.join('\\\\', *resultados_dir, result_dir_name)
+            logger.info(f"Resultados directory: {resultados_dir}")
+            if not os.path.exists(resultados_dir):
+                os.makedirs(resultados_dir)
+                logger.info(f"Created output folder: {resultados_dir}")
             
+
+
+            # CREATING THE FOLDER OUTPUT DIR --> GRAPHICS_SUFFIX
+            folder_output_dir = os.path.join(resultados_dir, folder, spl_string, graphics_string)
+            logger.info(f"folder_output_dir: {folder_output_dir}")
+            if '3-Medidas' in folder_output_dir:
+                folder_output_dir = folder_output_dir.replace('3-Medidas', '5-Resultados')
+            if not os.path.exists(folder_output_dir):
+                os.makedirs(folder_output_dir)
+                logger.info(f"Created output folder: {folder_output_dir}")
+            
+
+
+            # CREATING THE PREDICTION FOLDER
+            ai_prediction_folder = os.path.join(folder.replace('3-Medidas', '5-Resultados'), "AI_MODEL", "Predictions")
+            os.makedirs(ai_prediction_folder, exist_ok=True)
+            logger.info(f"Created AI prediction folder: {ai_prediction_folder}")
+            
+            ia_visualization_folder = ai_prediction_folder.replace("Predictions", "Visualizations")
+            os.makedirs(ia_visualization_folder, exist_ok=True)
+            logger.info(f"Created AI visualization folder: {ia_visualization_folder}")
+            
+
+
+        except Exception as e:
+            logger.error(f"An error occurred while setting up the folder paths: {e}")
+            continue
+        ########################################################
+
+
 
         #############################
         ## GETTING THE DATAFRAME ###
