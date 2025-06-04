@@ -62,21 +62,6 @@ def add_datetime_columns(df,logging, date_col):
     return df
 
 
-def add_datetime_columns_pred(df,logging, date_col):
-    logging.info(f"Adding datetime columns to {date_col}...")
-    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-
-    if df[date_col].dtype == 'datetime64[ns]':
-        df['datetime'] = df[date_col].dt.date
-        df['day'] = df[date_col].dt.day
-        df['hour'] = df[date_col].dt.hour
-        df['weekday'] = df[date_col].dt.weekday
-        df['day_name'] = df[date_col].dt.day_name()
-    else:
-        logging.error(f"Failed to convert {date_col} to datetime in some rows.")
-
-    return df
-
 
 def db_limit(hour_column,ld_limit,le_limit,ln_limit):
     limit = 0

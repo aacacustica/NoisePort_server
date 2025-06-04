@@ -192,41 +192,51 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             #take data from 06/05/2025  16:00:00
             # df = df.loc[df['datetime'] >= '2025-05-06 16:00:00']
 
-            # add datetime columns, sort by datetime and set datetime as index
-            logger.info(f"FOR SPL FILE: Adding datetime columns, sorting by datetime and setting datetime as index")
-            df = add_datetime_columns(df,logger, date_col='datetime')
-            df = df.sort_values('datetime')
-            df.set_index('datetime', inplace=True, drop=False)
-            start_date = df.index[0]
-            end_date = df.index[-1]
+            try:
+                if df is not None:
+                    logger.info("")
+                    # add datetime columns, sort by datetime and set datetime as index
+                    logger.info(f"FOR SPL FILE: Adding datetime columns, sorting by datetime and setting datetime as index")
+                    df = add_datetime_columns(df,logger, date_col='datetime')
+                    df = df.sort_values('datetime')
+                    df.set_index('datetime', inplace=True, drop=False)
+                    start_date = df.index[0]
+                    end_date = df.index[-1]
 
-            logger.info(f"Start date {start_date} and end date {end_date}")
-            logger.info(f"df was sorted by datetime and datetime was set as index")
+                    logger.info(f"Start date {start_date} and end date {end_date}")
+                    logger.info(f"df was sorted by datetime and datetime was set as index")
+                else:
+                    logger.warning(f"df is None")
+                    continue
+                    
 
 
+                # the same for the prediction file
+                if df_prediction is not None:
+                    logger.info("")
+                    logger.info(f"FOR PREDICTION FILE: Adding datetime columns, sorting by datetime and setting datetime as index")
+                    
+                    df_prediction = add_datetime_columns(df_prediction, logger, date_col='datetime')
+                    df_prediction = df_prediction.sort_values('datetime')
+                    df_prediction.set_index('datetime', inplace=True, drop=False)
+                    pred_start_date = df_prediction.index[0]
+                    pred_end_date = df_prediction.index[-1]
 
-            # the same for the prediction file
-            if df_prediction is not None:
-                logger.info("")
-                logger.info(f"FOR PREDICTION FILE: Adding datetime columns, sorting by datetime and setting datetime as index")
-                
-                df_prediction = add_datetime_columns_pred(df_prediction, logger, date_col='date')
-                df_prediction = df_prediction.sort_values('date')
-                df_prediction.set_index('date', inplace=True, drop=False)
-                pred_start_date = df_prediction.index[0]
-                pred_end_date = df_prediction.index[-1]
-
-                logger.info(f"Start date {pred_start_date} and end date {pred_end_date}")
-                logger.info(f"df was sorted by datetime and datetime was set as index")
-            else:
-                logger.warning(f"df_prediction is None")
+                    logger.info(f"Start date {pred_start_date} and end date {pred_end_date}")
+                    logger.info(f"df was sorted by datetime and datetime was set as index")
+                else:
+                    logger.warning(f"df_prediction is None")
+            
+            except Exception as e:
+                logger.error(f"An error occurred while adding datetime columns: {e}")
 
 
             try:
                 logger.info("")
-                # drop the beginning and ending of the measurement (15min)
-                df = df.loc[start_date + pd.Timedelta(REMOVE_START_TIME, unit='seconds'):end_date - pd.Timedelta(REMOVE_END_TIME, unit='seconds')]
-                logger.info(f"SPL df was trimmed, {REMOVE_START_TIME} secs from the beggining and {REMOVE_END_TIME} secs from the end")
+                if df is not None:
+                    # drop the beginning and ending of the measurement (15min)
+                    df = df.loc[start_date + pd.Timedelta(REMOVE_START_TIME, unit='seconds'):end_date - pd.Timedelta(REMOVE_END_TIME, unit='seconds')]
+                    logger.info(f"SPL df was trimmed, {REMOVE_START_TIME} secs from the beggining and {REMOVE_END_TIME} secs from the end")
                 
                 if df_prediction is not None:
                     df_prediction = df_prediction.loc[pred_start_date + pd.Timedelta(REMOVE_START_TIME, unit='seconds'):pred_end_date - pd.Timedelta(REMOVE_END_TIME, unit='seconds')]
@@ -234,37 +244,49 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
                 # add indicators column
-                logger.info(f"Adding indicators column")
-                df['indicador_str'] = df.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
+                if df is not None:
+                    logger.info(f"Adding indicators column")
+                    df['indicador_str'] = df.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
                 if df_prediction is not None:
                     df_prediction['indicador_str'] = df_prediction.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
 
+                
                 # add nights column
-                logger.info(f"Adding nights column")
-                df['night_str'] = df.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
+                if df is not None:
+                    logger.info(f"Adding nights column")
+                    df['night_str'] = df.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
                 if df_prediction is not None:
                     df_prediction['night_str'] = df_prediction.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
 
+            except Exception as e:
+                logger.error(f"An error occurred while adding indicators and nights columns: {e}")
 
 
+
+            try:
                 # add oca column
                 logger.info(f"Adding oca column")
                 logger.info(f"OCA Limits --> {oca_limits}")
 
-                df['oca'] = df['hour'].apply(
-                        lambda h: db_limit(h, **oca_limits)
-                   )
+                if df is not None:
+                    df['oca'] = df['hour'].apply(
+                            lambda h: db_limit(h, **oca_limits)
+                    )
+                if df.isnull().values.any():
+                # check if there is nan values
+                    logger.warning(f"There are nan values in the dataframe")
 
                 # removing nan values
                 if df_prediction is not None:
                     df_prediction = df_prediction.dropna()
                     logger.info(f"Removing nan values")
-                # check if there is nan values
-                if df.isnull().values.any():
-                    logger.warning(f"There are nan values in the dataframe")
 
+            except Exception as e:
+                logger.error(f"An error occurred while adding oca column: {e}")
                 
 
+
+            try:
                 #####################################################
                 ########## APPLYING DB CORRECTION TO THE DATA #########
                 #####################################################
@@ -277,24 +299,96 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
                     # save tupples folder name, coefficient value
                     folder_name_coeff_value = (folder_name, value)
-
                     tuple_folder_coeff.append(folder_name_coeff_value)
-
                     key = os.path.join('\\\\', *key)
 
                     # assign the value to the folder
                     if folder == key:
                         df = apply_db_correction(df, value, sufix_string, logger)
                         logger.info(f"Apply {value} correction coefficient to the folder {folder}")
-                
+            
+            except Exception as e:
+                logger.error(f"An error occurred while processing folder {folder}: {e}")
                 
 
-                ##################################
-                ##################################
+
+            try:
+                logger.info("")    
+                logger.info(f"Creating slm_dict")    
+                folder = folder.split("\\")[-1]
+                
+                # add slm_dict column LAEQ_COLUMN_COEFF: with the value of LA_corrected
+                slm_dict["LAEQ_COLUMN_COEFF"] = 'LA_corrected'
+                slm_dict["LAMAX_COLUMN_COEFF"] = 'LAmax_corrected'
+                slm_dict["LAMIN_COLUMN_COEFF"] = 'LAmin_corrected'
+                #### NEW ONES ####
+                slm_dict["LC-LA_COLUMN_COEFF"] = 'LCeq-LAeq_corrected'
+                # slm_dict["L90_COLUMN_COEFF"] = '90percentile'
+
+
+                # SAVE THE INFO IN A JSON FILE
+                info_dict = {
+                    "PERIODO_AGREGACION": PERIODO_AGREGACION,
+                    "PERCENTILES": PERCENTILES,
+                    "folder_coeff": tuple_folder_coeff,
+                    "stable_version": stable_version,
+                    "slm_type": slm_type,
+                    "oca_limits": oca_limits,
+                    "oca_type": oca_type,
+                }
+
+                # save the info in a json file
+                with open(os.path.join(folder_output_dir, "processing_parameters.json"), 'w') as f:
+                    json.dump(info_dict, f)
+                logger.info(f"Saved processing_parameters.json in {folder_output_dir}")
+            except Exception as e:
+                logger.error(f"An error occurred while creating slm_dict: {e}")
+                continue
+
+
+            try:
+                ################################################################
+                # TRANSFORMING 1 SECOND DATA TO 1 HOUR DATA
+                ##################################################################
+                logger.info("")
+                logger.info(f"Transforming 1 second data to 1 hour data")
+                
+                df_1h = transform_1h(df, slm_dict, logger, agg_period=3600)
+                logger.info(f"Transformed 1 second data to 1 hour data")
+                df_1h = df_1h.round(2)
+
+
+                logger.info(f"MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA")
+                # remove the last part of the folder_output_dir
+                folder_output_dir_for_alarms = os.path.dirname(folder_output_dir)
+                folder_output_dir_1h = os.path.join(folder_output_dir_for_alarms, 'Graphics_ALARMS')
+                os.makedirs(folder_output_dir_1h, exist_ok=True)
+
+
+                logger.info("")
+                logger.info("")
+                logger.info(f"TRANSFORMATION SECTION")
+                logger.info(f"Adding oca column")
+                logger.info(f"OCA Limits --> {oca_limits}")
+                # set index (which is datetime) as column
+                df_1h.reset_index(inplace=True)
+                
+                df_1h = transformation(df_1h, logger, oca_limits)
+
+                #####
+                #ssave
+                df_1h_csv_path = os.path.join(folder_output_dir_1h, f"{actual_folder_name}_1h.csv")
+                df_1h.to_csv(df_1h_csv_path, index=False)
+                logger.info(f"Saved 1 hour dataframe to {df_1h_csv_path}")
+            except Exception as e:
+                logger.error(f"An error occurred while transforming 1 second data to 1 hour data: {e}")
+                continue
+
+
+
+            try:
                 ##################################
                 # PEAK + ROLLING ANALYSIS
-                #################################
-                ##################################
                 ##################################
                 logger.info("")
                 logger.info(f"Applying find_peaks function to the whole dataframe")
@@ -318,44 +412,35 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
                 #Timestamp to datetime
                 df_peaks['Timestamp'] = pd.to_datetime(df_peaks['Timestamp'])
-
-                # print(df_peaks.columns)
-
-
             except Exception as e:
                 logger.error(f"An error occurred while trimming the dataframe {e}")
                 continue
 
-            
-            
-            logger.info("")    
-            logger.info(f"Creating slm_dict")    
-            folder = folder.split("\\")[-1]
-            
-            # add slm_dict column LAEQ_COLUMN_COEFF: with the value of LA_corrected
-            slm_dict["LAEQ_COLUMN_COEFF"] = 'LA_corrected'
-            slm_dict["LAMAX_COLUMN_COEFF"] = 'LAmax_corrected'
-            slm_dict["LAMIN_COLUMN_COEFF"] = 'LAmin_corrected'
-            #### NEW ONES ####
-            slm_dict["LC-LA_COLUMN_COEFF"] = 'LCeq-LAeq_corrected'
-            # slm_dict["L90_COLUMN_COEFF"] = '90percentile'
+
+            try:
+                logger.info("Merging the prediction dataframe with the acoustic dataframe")
+                df = df.merge(
+                    df_prediction[['class', 'probability']],
+                    left_index=True,
+                    right_index=True,
+                    how='left'
+                )
+                logger.info("Merge successful")
+            except Exception as e:
+                logger.error(f"An error occurred while merging the ACOUSTIC dataframE: {e}")
 
 
-            # SAVE THE INFO IN A JSON FILE
-            info_dict = {
-                "PERIODO_AGREGACION": PERIODO_AGREGACION,
-                "PERCENTILES": PERCENTILES,
-                "folder_coeff": tuple_folder_coeff,
-                "stable_version": stable_version,
-                "slm_type": slm_type,
-                "oca_limits": oca_limits,
-                "oca_type": oca_type,
-            }
-
-            # save the info in a json file
-            with open(os.path.join(folder_output_dir, "processing_parameters.json"), 'w') as f:
-                json.dump(info_dict, f)
-            logger.info(f"Saved processing_parameters.json in {folder_output_dir}")
+            try:
+                logger.info("Merging the prediction dataframe with the PEAK dataframe")
+                df_peaks_prediction = df_peaks.merge(
+                    df_prediction[['class', 'probability']],
+                    left_index=True,
+                    right_index=True,
+                    how='left'
+                )
+                logger.info("Merge successful")
+            except Exception as e:
+                logger.error(f"An error occurred while merging the dataframes: {e}")
 
 
 
@@ -456,43 +541,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             #############################
             ######### PLOTING ALARMS
             ################################
-
-
-            ################################################################
-            # TRANSFORMING 1 SECOND DATA TO 1 HOUR DATA
-            ##################################################################
-            logger.info("")
-            logger.info(f"Transforming 1 second data to 1 hour data")
-            
-            df_1h = transform_1h(df, slm_dict, logger, agg_period=3600)
-            logger.info(f"Transformed 1 second data to 1 hour data")
-            df_1h = df_1h.round(2)
-
-
-            logger.info(f"MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA")
-            # remove the last part of the folder_output_dir
-            folder_output_dir_for_alarms = os.path.dirname(folder_output_dir)
-            folder_output_dir_1h = os.path.join(folder_output_dir_for_alarms, 'Graphics_ALARMS')
-            os.makedirs(folder_output_dir_1h, exist_ok=True)
-
-
-            logger.info("")
-            logger.info("")
-            logger.info(f"TRANSFORMATION SECTION")
-            logger.info(f"Adding oca column")
-            logger.info(f"OCA Limits --> {oca_limits}")
-            # set index (which is datetime) as column
-            df_1h.reset_index(inplace=True)
-            
-            df_1h = transformation(df_1h, logger, oca_limits)
-
-            #####
-            #ssave
-            df_1h_csv_path = os.path.join(folder_output_dir_1h, f"{actual_folder_name}_1h.csv")
-            df_1h.to_csv(df_1h_csv_path, index=False)
-            logger.info(f"Saved 1 hour dataframe to {df_1h_csv_path}")
-
-
             logger.info("")
             logger.info(f"PLOTTING ALARMS!!!")
 
