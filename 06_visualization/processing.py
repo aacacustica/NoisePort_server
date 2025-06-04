@@ -55,7 +55,6 @@ def load_data(file_path, logger, new_date=None, new_time=None, new_threshold_dat
 
 def process_folder(folder_path, folder_date_time, folder_threshold, logger, selected_folder):
     logger.info("")
-    point_folder = folder_path.split('\\')[-2]
 
 
     # folder contains a CESVA folder
@@ -144,7 +143,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             
 
 
-            # CREATING THE FOLDER OUTPUT DIR --> GRAPHICS_SUFFIX
+            # CREATING THE FOLDER OUTPUT DIR --> /5-RESULTAODS/P1/SPL/GRAPHICS_SUFFIX/
             folder_output_dir = os.path.join(resultados_dir, folder, spl_string, graphics_string)
             logger.info(f"folder_output_dir: {folder_output_dir}")
             if '3-Medidas' in folder_output_dir:
@@ -155,11 +154,14 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             
 
 
-            # CREATING THE PREDICTION FOLDER
+            # PREDICTION FOLDERS
+            # CREATING THE PREDICTION FOLDER --> /5-RESULTAODS/P1/AI_MODEL/Predictions/
             ai_prediction_folder = os.path.join(folder.replace('3-Medidas', '5-Resultados'), "AI_MODEL", "Predictions")
             os.makedirs(ai_prediction_folder, exist_ok=True)
             logger.info(f"Created AI prediction folder: {ai_prediction_folder}")
-            # CREATING THE PREDICTION VISUALIZATION FOLDER
+            
+            
+            # CREATING THE PREDICTION VISUALIZATION FOLDER--> /5-RESULTAODS/P1/AI_MODEL/Visualizations/
             ia_visualization_folder = ai_prediction_folder.replace("Predictions", "Visualizations")
             os.makedirs(ia_visualization_folder, exist_ok=True)
             logger.info(f"Created AI visualization folder: {ia_visualization_folder}")
@@ -423,6 +425,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.info(f"Rolling the data with a window of {WINDOW_SIZE} seconds")
                 # rolling median for the LA values with a window of 30 seconds
                 df_peaks['LA_cor_median'] = df_peaks['LA_corrected'].rolling(window=WINDOW_SIZE, min_periods=1).quantile(0.5) + ADDING_THRESHOLD
+                df_peaks['Peak'] = 1
 
                 #above threshold
                 logger.info(f"Calculating peaks above threshold")
@@ -440,16 +443,40 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.error(f"An error occurred while trimming the dataframe {e}")
                 continue
 
-
             try:
                 logger.info("Merging the prediction dataframe with the acoustic dataframe")
-                df = df.merge(
+                df_acustic_pred = df.merge(
                     df_prediction[['class', 'probability']],
                     left_index=True,
                     right_index=True,
                     how='left'
                 )
-                logger.info("Merge successful")
+                logger.info("Merge successful for the acoustic and prediction dataframes")
+
+
+                logger.info("Saving the merged dataframe to the prediction folder")
+                df_merged_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_all.csv")
+                df_acustic_pred.to_csv(df_merged_csv_path, index=False)
+                logger.info(f"Saved merged dataframe to {df_merged_csv_path}")
+
+
+
+                logger.info("")
+                logger.info("Merging the peaks dataframe with the acoustic dataframe")
+                df_all = df_acustic_pred.merge(
+                    df_peaks[['Peak']],
+                    left_index=True,
+                    right_index=True,
+                    how='left'
+                )
+                logger.info("Merge successful for the peaks and acoustic dataframes")
+
+                logger.info(f"Saving the merged dataframe to the prediction folder")
+                df_all_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_all_peaks.csv")
+                df_all.to_csv(df_all_csv_path, index=False)
+                logger.info(f"Saved merged dataframe to {df_all_csv_path}")
+
+
             except Exception as e:
                 logger.error(f"An error occurred while merging the ACOUSTIC dataframE: {e}")
 
@@ -462,7 +489,13 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     right_index=True,
                     how='left'
                 )
-                logger.info("Merge successful")
+                logger.info("Merge successful for the peaks and prediction dataframes")
+
+                logger.info(f"Saving the merged peaks dataframe to the prediction folder")
+                predictions_peak_folder = os.path.join(ai_prediction_folder, f"{actual_folder_name}_peaks_prediction.csv")
+                df_peaks_prediction.to_csv(predictions_peak_folder, index=False)
+                logger.info(f"Saved merged peaks dataframe to {predictions_peak_folder}")
+
             except Exception as e:
                 logger.error(f"An error occurred while merging the dataframes: {e}")
 
