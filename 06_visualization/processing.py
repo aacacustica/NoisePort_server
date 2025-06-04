@@ -91,20 +91,19 @@ def process_folder(folder_path, folder_date_time, folder_threshold, logger, sele
         if not files:
             logger.info(f"No measurement files found in {folder_path}")
             try:
-                logger.info(f"Trying to load regular data")
+                logger.info(f"Trying to load data")
                 # load_data regular files
                 return load_data(folder_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time, selected_folder=selected_folder)
-            
             except Exception as e:
-                logger.error(f"Error loading prediction data: {e}")
-                # 
+                logger.error(f"Error loading data: {e}")
+                
             
             # if no files found, return None
             logger.error(f"No measurement files found in {folder_path}")
             return None, None, None
         
         # this is the case where there are many files in the folder
-        return load_data(files[0], logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time)
+        return load_data(files[0], logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time,selected_folder=selected_folder)
     return None, None, None 
 
 
@@ -159,11 +158,11 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info(f"Getting the data from the dataframes")
             
             
+            logger.info(f"Getting the acoustic data from the dataframes")
             df, slm_type, slm_dict = process_folder(reg_folder, folder_date_time, folder_threshold, logger, ACOUSTIC_PARAMS_FOLDER)
             if df is None:
                 logger.warning(f"df is None")
                 continue
-            print(df)
 
             # taking just 1 day, which are the first 86400 rows
             # df = df.iloc[:86400] # 1 day of data, 24 hours * 60 minutes * 60 seconds = 86400 seconds
@@ -182,12 +181,10 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             if df_prediction is None:
                 logger.warning(f"df prediction is None")
                 continue
-            print(df_prediction)
-            exit()
             ###################################################################
 
 
-            logger.info("\n")
+            logger.info("")
             if TENERIFE_TIMEZONE:
                 df['datetime'] = pd.to_datetime(df['datetime']) - pd.Timedelta(hours=1)
                 logger.info(f"Time zone was set to Tenerife")
@@ -209,20 +206,20 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
             # the same for the prediction file
-            if prediction_csv_file is not None:
+            if df_prediction is not None:
                 logger.info("")
                 logger.info(f"FOR PREDICTION FILE: Adding datetime columns, sorting by datetime and setting datetime as index")
                 
-                prediction_csv_file = add_datetime_columns_pred(prediction_csv_file, logger, date_col='date')
-                prediction_csv_file = prediction_csv_file.sort_values('date')
-                prediction_csv_file.set_index('date', inplace=True, drop=False)
-                pred_start_date = prediction_csv_file.index[0]
-                pred_end_date = prediction_csv_file.index[-1]
+                df_prediction = add_datetime_columns_pred(df_prediction, logger, date_col='date')
+                df_prediction = df_prediction.sort_values('date')
+                df_prediction.set_index('date', inplace=True, drop=False)
+                pred_start_date = df_prediction.index[0]
+                pred_end_date = df_prediction.index[-1]
 
                 logger.info(f"Start date {pred_start_date} and end date {pred_end_date}")
                 logger.info(f"df was sorted by datetime and datetime was set as index")
             else:
-                logger.warning(f"prediction_csv_file is None")
+                logger.warning(f"df_prediction is None")
 
 
             try:
@@ -231,22 +228,22 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 df = df.loc[start_date + pd.Timedelta(REMOVE_START_TIME, unit='seconds'):end_date - pd.Timedelta(REMOVE_END_TIME, unit='seconds')]
                 logger.info(f"SPL df was trimmed, {REMOVE_START_TIME} secs from the beggining and {REMOVE_END_TIME} secs from the end")
                 
-                if prediction_csv_file is not None:
-                    prediction_csv_file = prediction_csv_file.loc[pred_start_date + pd.Timedelta(REMOVE_START_TIME, unit='seconds'):pred_end_date - pd.Timedelta(REMOVE_END_TIME, unit='seconds')]
+                if df_prediction is not None:
+                    df_prediction = df_prediction.loc[pred_start_date + pd.Timedelta(REMOVE_START_TIME, unit='seconds'):pred_end_date - pd.Timedelta(REMOVE_END_TIME, unit='seconds')]
                     logger.info(f"Prediction df was trimmed, {REMOVE_START_TIME} secs from the beggining and {REMOVE_END_TIME} secs from the end")
 
 
                 # add indicators column
                 logger.info(f"Adding indicators column")
                 df['indicador_str'] = df.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
-                if prediction_csv_file is not None:
-                    prediction_csv_file['indicador_str'] = prediction_csv_file.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
+                if df_prediction is not None:
+                    df_prediction['indicador_str'] = df_prediction.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
 
                 # add nights column
                 logger.info(f"Adding nights column")
                 df['night_str'] = df.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
-                if prediction_csv_file is not None:
-                    prediction_csv_file['night_str'] = prediction_csv_file.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
+                if df_prediction is not None:
+                    df_prediction['night_str'] = df_prediction.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
 
 
 
@@ -259,8 +256,8 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                    )
 
                 # removing nan values
-                if prediction_csv_file is not None:
-                    prediction_csv_file = prediction_csv_file.dropna()
+                if df_prediction is not None:
+                    df_prediction = df_prediction.dropna()
                     logger.info(f"Removing nan values")
                 # check if there is nan values
                 if df.isnull().values.any():
@@ -380,35 +377,35 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             # Plotting LEq power average with predictions
             if PLOT_PREDIC_LAEQ_15_MIN:
                 logger.info(f"[3] Plotting PLOT_PREDIC_LAEQ for folder {folder}")
-                plot_predic_laeq_15_min(df, yamnet_csv, taxonomy, prediction_csv_file, predictions_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
+                plot_predic_laeq_15_min(df, yamnet_csv, taxonomy, df_prediction, predictions_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
 
             
             if PLOT_PREDIC_LAEQ_15_MIN_PERIOD:
                 logger.info(f"[4] Plotting PLOT_PREDIC_LAEQ_15_MIN_PERIOD for folder {folder}")
-                plot_predic_laeq_15_min_period(df, yamnet_csv, taxonomy, prediction_csv_file, predictions_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
+                plot_predic_laeq_15_min_period(df, yamnet_csv, taxonomy, df_prediction, predictions_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
 
 
             if PLOT_PREDIC_LAEQ_15_MIN_4H:
                 logger.info(f"[5] Plotting PLOT_PREDIC_LAEQ_4H for folder {folder}")
-                plot_predic_laeq_15_min_4h(df, yamnet_csv,taxonomy, prediction_csv_file, predictions_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
+                plot_predic_laeq_15_min_4h(df, yamnet_csv,taxonomy, df_prediction, predictions_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
 
 
             # Plotting stack bar with predictions class
             if PLOT_PREDICTION_STACK_BAR:
                 logger.info(f"[6] Plotting PLOT_PREDICTION_STACK_BAR for folder {folder}")
-                plot_prediction_stack_bar(prediction_csv_file, yamnet_csv, taxonomy, predictions_visualization_folder, logger, plotname=folder)
+                plot_prediction_stack_bar(df_prediction, yamnet_csv, taxonomy, predictions_visualization_folder, logger, plotname=folder)
             
 
             # Plotting prediction map
             if PLOT_PREDICTION_MAP:
                 logger.info(f"[7] Plotting PLOT_PREDICTION_MAP for folder {folder}")
-                plot_prediction_map(prediction_csv_file, taxonomy, predictions_visualization_folder, logger, plotname=folder)
+                plot_prediction_map(df_prediction, taxonomy, predictions_visualization_folder, logger, plotname=folder)
 
             
             # Plotting tree map
             if PLOT_TREE_MAP:
                 logger.info(f"[8] Plotting PLOT_TREE_MAP for folder {folder}")
-                plot_tree_map(prediction_csv_file,taxonomy,predictions_visualization_folder, logger, plotname=folder)
+                plot_tree_map(df_prediction,taxonomy,predictions_visualization_folder, logger, plotname=folder)
 
             
             # Plotting time plot
