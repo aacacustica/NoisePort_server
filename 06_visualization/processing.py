@@ -443,7 +443,16 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.error(f"An error occurred while trimming the dataframe {e}")
                 continue
 
+
+
+            ###################################
+            ###################################
+            ###################################
+            logger.info("")
+            logger.info(f"MERGING SECTION")
+            
             try:
+                ################################### MERGING ACOUSTIC WITH PREDICTION DATAFRAME ###################################
                 logger.info("Merging the prediction dataframe with the acoustic dataframe")
                 df_acustic_pred = df.merge(
                     df_prediction[['class', 'probability']],
@@ -459,8 +468,14 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 df_acustic_pred.to_csv(df_merged_csv_path, index=False)
                 logger.info(f"Saved merged dataframe to {df_merged_csv_path}")
 
+            except Exception as e:
+                logger.error(f"An error occurred while merging the ACOUSTIC dataframE: {e}")
+                ###################################
 
 
+
+            try:
+                ############# MERGING PEAKS WITH ACOUSTIC DATAFRAME ##################
                 logger.info("")
                 logger.info("Merging the peaks dataframe with the acoustic dataframe")
                 df_all = df_acustic_pred.merge(
@@ -476,12 +491,13 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 df_all.to_csv(df_all_csv_path, index=False)
                 logger.info(f"Saved merged dataframe to {df_all_csv_path}")
 
-
             except Exception as e:
                 logger.error(f"An error occurred while merging the ACOUSTIC dataframE: {e}")
 
 
             try:
+                ################################### MERGING PEAKS WITH PREDICTION DATAFRAME ###################################
+                logger.info("")
                 logger.info("Merging the prediction dataframe with the PEAK dataframe")
                 df_peaks_prediction = df_peaks.merge(
                     df_prediction[['class', 'probability']],
@@ -498,6 +514,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
             except Exception as e:
                 logger.error(f"An error occurred while merging the dataframes: {e}")
+            ###################################
+            ###################################
+            ###################################
 
 
 
@@ -520,12 +539,12 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             # Plotting LEq power average with predictions
             if PLOT_PREDIC_LAEQ_15_MIN:
                 logger.info(f"[3] Plotting PLOT_PREDIC_LAEQ for folder {folder}")
-                plot_predic_laeq_15_min(df, yamnet_csv, taxonomy, df_prediction, ia_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
+                plot_predic_laeq_15_min_new(df_acustic_pred, taxonomy, ia_visualization_folder, logger, plotname=folder)
 
             
             if PLOT_PREDIC_LAEQ_15_MIN_PERIOD:
                 logger.info(f"[4] Plotting PLOT_PREDIC_LAEQ_15_MIN_PERIOD for folder {folder}")
-                plot_predic_laeq_15_min_period(df, yamnet_csv, taxonomy, df_prediction, ia_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
+                plot_predic_laeq_15_min_period(df, yamnet_csv, taxonomy, ia_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
 
 
             if PLOT_PREDIC_LAEQ_15_MIN_4H:

@@ -9,6 +9,7 @@ import plotly.express as px
 import matplotlib.colors as mcolors
 from matplotlib.patches import Patch
 from scipy.stats import gaussian_kde
+import ast
 
 
 
@@ -265,6 +266,87 @@ def plot_predic_laeq_15_min(df: pd.DataFrame, yamnet_csv:pd.DataFrame, taxonomy_
         df_all = df_all.dropna(subset=['display_name'])
     
 
+
+        #########################################################
+        #### Plotting the data ####
+        
+        display_name = 'display_name'
+        iso_taxonomy = 'iso_taxonomy'
+        classes = 'class'
+
+        brown_2 = 'Brown_Level_2'
+        brown_3 = 'Brown_Level_3'
+        noiseport_1 = 'NoisePort_Level_1'
+        noiseport_2 = 'NoisePort_Level_2'
+
+        if 'Siren' in set(taxonomy_map.values()):
+            class_to_plot = noiseport_1
+            color_palet = COLOR_PALLET_PORT_L1
+            logger.info("Using 'NoisePort_Level_1' class for plotting")
+        else:
+            class_to_plot = brown_2
+            color_palet = COLOR_PALLET_URBAN
+            logger.info("Using 'Brown_Level_2' class for plotting")
+
+
+        grouped_df = df_all.groupby(class_to_plot).agg(
+            number=(classes, 'size'),
+            LAeq=('LA_corrected', lambda x: leq(x))
+        ).reset_index()
+
+        fig = px.treemap(
+                grouped_df,
+                path=[class_to_plot],  
+                values='number',
+                color=class_to_plot,#color by category
+                color_discrete_map= color_palet,
+                hover_data={'LAeq': True, 'number': True},
+                custom_data=['LAeq']                  
+            )
+
+        # title and hover settings
+        fig.update_layout(title=f'{plotname} | Promedio Energético (LAeq) por Clases')
+        fig.update_traces(
+            hovertemplate=(
+                '<b>%{label}</b><br>'
+                'LAeq: %{customdata[0]:.2f} dB<br>'
+                'Count: %{value}'
+            ),
+            texttemplate='%{label}<br><br>LAeq: %{customdata[0]:.2f} dB'
+        )
+            
+        # Save plot
+        os.makedirs(folder_output_dir, exist_ok=True)
+        fig.write_html(f"{folder_output_dir}/{plotname}_LAeq_class_mean.html")
+        grouped_df.to_csv(f"{folder_output_dir}/{plotname}_LAeq_class_mean.csv", index=False)
+        
+        logger.info(f"LAeq class mean plot saved to {folder_output_dir}/{plotname}_LAeq_class_mean.html")
+        logger.info(f"LAeq class mean data saved to {folder_output_dir}/{plotname}_LAeq_class_mean.csv")
+
+    except Exception as e:
+        logger.error(f"Error in plot_predic_laeq_15_min: {e}")
+
+
+
+def plot_predic_laeq_15_min_new(df_all: pd.DataFrame, taxonomy_map, folder_output_dir: str, logger, plotname: str):
+    try:
+        print(df_all)
+        # df_exploded = df_all.explode('class')
+        # df_exploded['class'] = df_exploded['class'].apply(lambda x: x[0] if isinstance(x, tuple) else x)
+        # df_exploded['probability'] = df_exploded['probability'].apply(lambda x: x[1] if isinstance(x, tuple) else None)
+        
+        # [1] convert the string‐representations into reallists
+        df_all = df_all.copy()
+        df_all['class'] = df_all['class'].apply(ast.literal_eval)
+        df_all['probability'] = df_all['probability'].apply(ast.literal_eval)
+
+        # [2]exploding both columns at once
+        df_exploded = (df_all.explode(['class', 'probability']).reset_index(drop=True)# true is to avoid the index being added as a column and false is to keep the index
+                       )
+
+        print(df_exploded.head(6))
+        print(df_exploded.columns)
+        ####################################################################
 
         #########################################################
         #### Plotting the data ####
