@@ -328,25 +328,51 @@ def plot_predic_laeq_15_min(df: pd.DataFrame, yamnet_csv:pd.DataFrame, taxonomy_
 
 
 
-def plot_predic_laeq_15_min_new(df_all: pd.DataFrame, taxonomy_map, folder_output_dir: str, logger, plotname: str):
+def plot_predic_laeq_15_min_new(df_all: pd.DataFrame, yamnet_csv: pd.DataFrame, taxonomy_map: dict, ai_prediction_folder:str, folder_output_dir: str, logger, plotname: str):
     try:
-        print(df_all)
-        # df_exploded = df_all.explode('class')
-        # df_exploded['class'] = df_exploded['class'].apply(lambda x: x[0] if isinstance(x, tuple) else x)
-        # df_exploded['probability'] = df_exploded['probability'].apply(lambda x: x[1] if isinstance(x, tuple) else None)
-        
+        ####################################################################
         # [1] convert the string‐representations into reallists
         df_all = df_all.copy()
         df_all['class'] = df_all['class'].apply(ast.literal_eval)
         df_all['probability'] = df_all['probability'].apply(ast.literal_eval)
 
         # [2]exploding both columns at once
-        df_exploded = (df_all.explode(['class', 'probability']).reset_index(drop=True)# true is to avoid the index being added as a column and false is to keep the index
-                       )
-
-        print(df_exploded.head(6))
-        print(df_exploded.columns)
+        df_exploded = (df_all.explode(['class', 'probability']).reset_index(drop=True))
+        # true is to avoid the index being added as a column and false is to keep the index
         ####################################################################
+
+
+        ####################################################################
+        try:
+            ############# MERGING ALL WITH  DATAFRAME ##################
+            logger.info("")
+            logger.info("Merging the peaks dataframe with the acoustic dataframe")
+            df_all_yamnet = df_exploded.merge(
+                # yamnet_csv[['display_name']],
+                yamnet_csv,
+                how="left",
+                left_on="class",         # en df_exploded la etiqueta está en 'class'
+                right_on="display_name"
+            )
+            # df_all_yamnet = df_exploded.merge(yamnet_csv, how='left', on='class')
+            logger.info("Merge successful for the peaks and acoustic dataframes")
+
+            # save the csv here
+            # df_all_yamnet.to_csv("test_df_all_yamnet.csv", index=False)
+
+        except Exception as e:
+            logger.error(f"An error occurred while merging the ACOUSTIC dataframE: {e}")
+        
+        print(yamnet_csv)
+        print(yamnet_csv.columns)
+        print(df_exploded)
+        print(df_exploded.columns)
+        print(df_all_yamnet)
+        #printing all the unique values of the display_name column
+        print(df_all_yamnet['display_name'].unique())
+        exit()
+        ####################################################################
+
 
         #########################################################
         #### Plotting the data ####
@@ -370,7 +396,7 @@ def plot_predic_laeq_15_min_new(df_all: pd.DataFrame, taxonomy_map, folder_outpu
             logger.info("Using 'Brown_Level_2' class for plotting")
 
 
-        grouped_df = df_all.groupby(class_to_plot).agg(
+        grouped_df = df_exploded.groupby(class_to_plot).agg(
             number=(classes, 'size'),
             LAeq=('LA_corrected', lambda x: leq(x))
         ).reset_index()
