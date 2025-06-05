@@ -2020,124 +2020,6 @@ def tonal_frequency(df_oct: pd.DataFrame, folder_output_dir_1h_folder: str, logg
 
 
 
-def plot_predic_peak_laeq_mean(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
-    try:
-        # select just the row which has a 1 value on the "Peak" column
-        df_all_yamnet = df_all_yamnet[df_all_yamnet['Peak'] == 1].copy()
-        print(f"Number of peaks found: {len(df_all_yamnet)}")
-        # exit()
-        #########################################################
-        #### Plotting the data ####
-        
-        display_name = 'display_name'
-        iso_taxonomy = 'iso_taxonomy'
-        classes = 'class'
-
-        brown_2 = 'Brown_Level_2'
-        brown_3 = 'Brown_Level_3'
-        noiseport_1 = 'NoisePort_Level_1'
-        noiseport_2 = 'NoisePort_Level_2'
-
-        if 'Siren' in set(taxonomy_map.values()):
-            class_to_plot = noiseport_1
-            color_palet = COLOR_PALLET_PORT_L1
-            logger.info("Using 'NoisePort_Level_1' class for plotting")
-        else:
-            class_to_plot = brown_2
-            color_palet = COLOR_PALLET_URBAN
-            logger.info("Using 'Brown_Level_2' class for plotting")
-
-
-        ####################################
-        grouped_df = df_all_yamnet.groupby(class_to_plot).agg(
-            number=(classes, 'size'),
-            LAeq=('LA_corrected', lambda x: leq(x))
-        ).reset_index()
-
-        fig = px.treemap(
-                grouped_df,
-                path=[class_to_plot],  
-                values='number',
-                color=class_to_plot,#color by category
-                color_discrete_map= color_palet,
-                hover_data={'LAeq': True, 'number': True},
-                custom_data=['LAeq']                  
-            )
-
-        # title and hover settings
-        fig.update_layout(title=f'{plotname} | Promedio Energético (LAeq) de Picos por Clases')
-        fig.update_traces(
-            hovertemplate=(
-                '<b>%{label}</b><br>'
-                'LAeq: %{customdata[0]:.2f} dB<br>'
-                'Count: %{value}'
-            ),
-            texttemplate='%{label}<br><br>LAeq: %{customdata[0]:.2f} dB'
-        )
-            
-        # Save plot
-        os.makedirs(folder_output_dir, exist_ok=True)
-        fig.write_html(f"{folder_output_dir}/{plotname}_LAeq_Peak_class_mean.html")
-        grouped_df.to_csv(f"{folder_output_dir}/{plotname}_LAeq_Peak_class_mean.csv", index=False)
-        
-        logger.info(f"LAeq class Peak mean plot saved to {folder_output_dir}/{plotname}_LAeq_Peak_class_mean.html")
-        logger.info(f"LAeq class Peak mean data saved to {folder_output_dir}/{plotname}_LAeq_Peak_class_mean.csv")
-
-    except Exception as e:
-        logger.error(f"Error in plot_predic_laeq_15_min: {e}")
-
-def plot_peak_predictions(df_merged: pd.DataFrame, folder_output_dir: str, start_date, end_date,logger, plotname: str):
-    try:
-        df_merged = df_merged.copy()
-
-        grouped_df = df_merged.groupby(TAXONOMY).agg(
-                    number=(CLASS, 'size'),
-                    LAeq=('LAeq', lambda x: leq(x))
-                ).reset_index()
-
-        fig = px.treemap(grouped_df, 
-                        path=[TAXONOMY],  
-                        values='number',
-                        color='LAeq',
-                        color_continuous_scale=custom_color_scale,
-                        range_color=[30, 85],
-                        hover_data={'LAeq': True, 'number': True},
-                        custom_data=['LAeq'],                  
-                        )
-
-        fig.update_layout(title=f'{plotname} Promedio Energético (LAeq) por Clases de Picos encontrados')
-        fig.update_traces(hovertemplate='<b>%{label}</b><br>LAeq: %{customdata[0]:.2f} dB<br>Count: %{value}')
-        fig.update_traces(texttemplate='%{label}<br><br>LAeq: %{customdata[0]:.2f} dB')
-
-        # save the plot
-        fig.write_html(f"{folder_output_dir}/{plotname}_peak_analysis.html")
-        logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_analysis.html")
-
-
-        ##############################
-        ##############################
-        dfg = df_merged.groupby([TAXONOMY, 'day']).count().reset_index()
-        fig = px.bar(
-            dfg, 
-            x='day',
-            y='start_time',
-            color=TAXONOMY,
-            title=f'{plotname} Clases por día desde {start_date} hasta {end_date}',
-            color_discrete_sequence=px.colors.qualitative.Alphabet, 
-            color_discrete_map=COLOR_PALLET_PORT_L1,
-            height=900,
-            width=2000
-        )
-
-        # save the plot
-        fig.write_html(f"{folder_output_dir}/{plotname}_peak_analysis_day.html")
-        logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_analysis_day.html")
-
-
-    except Exception as e:
-        logger.error(f"Error in plot_peak_analysis: {e}")
-
-    
 
 def plot_peak_distribution_heatmap(df_peaks: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
     try:
@@ -2362,15 +2244,85 @@ def plot_density_distribution_peaks(df_merged: pd.DataFrame, folder_output_dir: 
 
 
 
-def plot_box_plot_prediction(df_merged: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
+def plot_predic_peak_laeq_mean(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
+    try:
+        # select just the row which has a 1 value on the "Peak" column
+        df_all_yamnet = df_all_yamnet[df_all_yamnet['Peak'] == 1].copy()
+        # print(f"Number of peaks found: {len(df_all_yamnet)}")
+        # exit()
+        #########################################################
+        #### Plotting the data ####
+        
+        display_name = 'display_name'
+        iso_taxonomy = 'iso_taxonomy'
+        classes = 'class'
+
+        brown_2 = 'Brown_Level_2'
+        brown_3 = 'Brown_Level_3'
+        noiseport_1 = 'NoisePort_Level_1'
+        noiseport_2 = 'NoisePort_Level_2'
+
+        if 'Siren' in set(taxonomy_map.values()):
+            class_to_plot = noiseport_1
+            color_palet = COLOR_PALLET_PORT_L1
+            logger.info("Using 'NoisePort_Level_1' class for plotting")
+        else:
+            class_to_plot = brown_2
+            color_palet = COLOR_PALLET_URBAN
+            logger.info("Using 'Brown_Level_2' class for plotting")
+
+
+        ####################################
+        grouped_df = df_all_yamnet.groupby(class_to_plot).agg(
+            number=(classes, 'size'),
+            LAeq=('LA_corrected', lambda x: leq(x))
+        ).reset_index()
+
+        fig = px.treemap(
+                grouped_df,
+                path=[class_to_plot],  
+                values='number',
+                color=class_to_plot,#color by category
+                color_discrete_map= color_palet,
+                hover_data={'LAeq': True, 'number': True},
+                custom_data=['LAeq']                  
+            )
+
+        # title and hover settings
+        fig.update_layout(title=f'{plotname} | Promedio Energético (LAeq) de Picos por Clases')
+        fig.update_traces(
+            hovertemplate=(
+                '<b>%{label}</b><br>'
+                'LAeq: %{customdata[0]:.2f} dB<br>'
+                'Count: %{value}'
+            ),
+            texttemplate='%{label}<br><br>LAeq: %{customdata[0]:.2f} dB'
+        )
+            
+        # Save plot
+        os.makedirs(folder_output_dir, exist_ok=True)
+        fig.write_html(f"{folder_output_dir}/{plotname}_LAeq_Peak_class_mean.html")
+        grouped_df.to_csv(f"{folder_output_dir}/{plotname}_LAeq_Peak_class_mean.csv", index=False)
+        
+        logger.info(f"LAeq class Peak mean plot saved to {folder_output_dir}/{plotname}_LAeq_Peak_class_mean.html")
+        logger.info(f"LAeq class Peak mean data saved to {folder_output_dir}/{plotname}_LAeq_Peak_class_mean.csv")
+
+    except Exception as e:
+        logger.error(f"Error in plot_predic_laeq_15_min: {e}")
+
+
+
+
+def plot_box_plot_prediction(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
     try:
         sns.set_style("whitegrid")
-        df_merged = df_merged.copy()
+        df_all_yamnet = df_all_yamnet.copy()
 
-        print(df_merged.columns)
-        print(df_merged.head())
+        print(df_all_yamnet)
+        print(df_all_yamnet.columns)
+        # exit()
 
-        sns.boxplot(data=df_merged, x=TAXONOMY, y='LAeq')
+        sns.boxplot(data=df_all_yamnet, x='NoisePort_Level_1', y='LA_corrected')
 
         plt.title(f'{plotname} Peak Predictions')
         plt.xlabel('Class')
@@ -2390,40 +2342,32 @@ def plot_box_plot_prediction(df_merged: pd.DataFrame, folder_output_dir: str, lo
 
         ########################################
         ########################################
-        bins = [0, 60, 70, 80, 90, 100, 110]
-        labels = ['0-60', '60-70', '70-80', '80-90', '90-100', '100-110']
-        df_merged['LAeq_bins'] = pd.cut(df_merged['LAeq'], bins=bins, labels=labels, include_lowest=True)
+        # bins = [0, 60, 70, 80, 90, 100, 110]
+        # labels = ['0-60', '60-70', '70-80', '80-90', '90-100', '100-110']
+        # df_merged['LAeq_bins'] = pd.cut(df_merged['LAeq'], bins=bins, labels=labels, include_lowest=True)
 
-        heatmap_data = df_merged.pivot_table(
-            index='NoisePort_Level_1', 
-            columns='LAeq_bins', 
-            values='LAeq', 
-            aggfunc='count'
-            ).fillna(0)
+        # heatmap_data = df_merged.pivot_table(
+        #     index='NoisePort_Level_1', 
+        #     columns='LAeq_bins', 
+        #     values='LAeq', 
+        #     aggfunc='count'
+        #     ).fillna(0)
         
-        plt.figure(figsize=(10, 8))
-        sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap='Blues')
+        # plt.figure(figsize=(10, 8))
+        # sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap='Blues')
         
-        plt.title(f'{plotname} Heatmap of Sound Classes by LAeq Bins')
+        # plt.title(f'{plotname} Heatmap of Sound Classes by LAeq Bins')
         
-        plt.xlabel('LAeq Bins (dB)')
-        plt.ylabel('Class')
+        # plt.xlabel('LAeq Bins (dB)')
+        # plt.ylabel('Class')
 
-        plt.tight_layout()
+        # plt.tight_layout()
 
-        # save the plot
-        plt.savefig(f"{folder_output_dir}/{plotname}_peak_heatmap.png", dpi=150)
-        logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_heatmap.png")
+        # # save the plot
+        # plt.savefig(f"{folder_output_dir}/{plotname}_peak_heatmap.png", dpi=150)
+        # logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_heatmap.png")
 
 
-
-        ########################################
-        ########################################
-        # plot on x axies date
-        # on y axis prediction and dB values
-        ########################################
-        plt.figure(figsize=(25, 9))
-        
 
     except Exception as e:
         logger.error(f"Error in plot_box_plot_prediction: {e}")

@@ -754,9 +754,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 plot_predic_peak_laeq_mean(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
 
 
-            # if PLOT_BOX_PLOT_PREDICTION:
-            #     logger.info(f"[12] Plotting box plot prediction for folder {folder}")
-            #     plot_box_plot_prediction(df_merged, folder_output_dir_graphic_analysis, logger, plotname=folder)
+            if PLOT_BOX_PLOT_PREDICTION:
+                logger.info(f"[12] Plotting box plot prediction for folder {folder}")
+                plot_box_plot_prediction(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
 
 
 
