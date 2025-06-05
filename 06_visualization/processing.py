@@ -458,11 +458,11 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 ################################### MERGING ACOUSTIC WITH PREDICTION DATAFRAME ###################################
                 acoustic_pred_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_acoustic_pred.csv")
                 if os.path.exists(acoustic_pred_csv_path):
-                    logger.info(f"[]File {acoustic_pred_csv_path} already exists, skipping merge")
-                    
+                    logger.info(f"[1] File {acoustic_pred_csv_path} already exists, skipping merge")
+                    df_acustic_pred = pd.read_csv(acoustic_pred_csv_path)
                 
                 else:
-                    logger.info("Merging the prediction dataframe with the acoustic dataframe")
+                    logger.info("[1] Merging the prediction dataframe with the acoustic dataframe")
                     df_acustic_pred = df.merge(
                         df_prediction[['class', 'probability']],
                         left_index=True,
@@ -486,12 +486,12 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     ############# MERGING PEAKS WITH ACOUSTIC DATAFRAME ##################
                 acoustic_pred_peak_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_acoustic_pred_peak.csv")
                 if os.path.exists(acoustic_pred_peak_csv_path):
-                    logger.info(f"File {acoustic_pred_peak_csv_path} already exists, skipping merge")
-                    
+                    logger.info(f"[2] File {acoustic_pred_peak_csv_path} already exists, skipping merge")
+                    df_all = pd.read_csv(acoustic_pred_peak_csv_path)
 
                 else:
                     logger.info("")
-                    logger.info("Merging the peaks dataframe with the acoustic dataframe")
+                    logger.info("[2] Merging the peaks dataframe with the acoustic dataframe")
                     df_all = df_acustic_pred.merge(
                         df_peaks[['Peak']],
                         left_index=True,
@@ -513,12 +513,12 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 ################################### MERGING PEAKS WITH PREDICTION DATAFRAME ###################################
                 acoustic_pred_peak_folder = os.path.join(ai_prediction_folder, f"{actual_folder_name}_acoustic_pred_peak.csv")
                 if os.path.exists(acoustic_pred_peak_folder):
-                    logger.info(f"File {acoustic_pred_peak_folder} already exists, skipping merge")
-
+                    logger.info(f"[3] File {acoustic_pred_peak_folder} already exists, skipping merge")
+                    df_acoustic_pred_peak = pd.read_csv(acoustic_pred_peak_folder)
 
                 else:
                     logger.info("")
-                    logger.info("Merging the prediction dataframe with the PEAK dataframe")
+                    logger.info("[3] Merging the prediction dataframe with the PEAK dataframe")
                     df_acoustic_pred_peak = df_peaks.merge(
                         df_prediction[['class', 'probability']],
                         left_index=True,
@@ -542,12 +542,13 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 ################################### MERGING ALL WITH YAMNET DATAFRAME ###################################
                 yamnet_all_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_all_yamnet.csv")              
                 if os.path.exists(yamnet_all_csv_path):
-                    logger.info(f"File {yamnet_all_csv_path} already exists, skipping merget")
+                    logger.info(f"[4] File {yamnet_all_csv_path} already exists, skipping merget")
+                    df_all_yamnet = pd.read_csv(yamnet_all_csv_path)
 
 
                 else:
                     logger.info("")
-                    logger.info("Merging the peaks dataframe with the yamnet dataframe")
+                    logger.info("[4] Merging the peaks dataframe with the yamnet dataframe")
                     # [1] convert the string‐representations into reallists
                     df_all_cp = df_all.copy()
                     df_all_cp['class'] = df_all_cp['class'].apply(ast.literal_eval)
@@ -566,6 +567,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                         right_on="display_name"
                     )
                     # df_all_yamnet = df_exploded.merge(yamnet_csv, how='left', on='class')
+                    df_all_yamnet.drop(columns=['display_name'], inplace=True, errors='ignore')
                     logger.info("Merge successful for the peaks and acoustic dataframes")
 
 
@@ -596,11 +598,12 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 plot_night_evolution_15_min(df, folder_output_dir, logger, name_extension="15_min", laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder, indicador_noche="Ln")
 
 
+
             ############################ PREDICTION PLOTTING SECTION ####################################################################################
             # Plotting LEq power average with predictions
-            if PLOT_PREDIC_LAEQ_15_MIN:
-                logger.info(f"[3] Plotting PLOT_PREDIC_LAEQ for folder {folder}")
-                plot_predic_laeq_15_min_new(df_acustic_pred, yamnet_csv, taxonomy,ai_prediction_folder, ia_visualization_folder, logger, plotname=folder)
+            if PLOT_PREDIC_LAEQ_MEAN:
+                logger.info(f"[3] Plotting PLOT_PREDIC_LAEQ_MEAN for folder {folder}")
+                plot_predic_laeq_mean(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
 
             
             if PLOT_PREDIC_LAEQ_15_MIN_PERIOD:
@@ -624,6 +627,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.info(f"[7] Plotting PLOT_PREDICTION_MAP for folder {folder}")
                 plot_prediction_map(df_prediction, taxonomy, ia_visualization_folder, logger, plotname=folder)
             ##############################################################################################################################################
+
 
             
             # Plotting tree map
@@ -744,11 +748,10 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 plot_density_distribution_peaks(df_peaks, folder_output_dir_1h, logger, plotname=folder)
 
 
-            # PREDICTION ANALYSIS
-            # if PLOT_PEAK_PREDICTION:
-            #     logger.info(f"[11] Plotting peak prediction for folder {folder}")
-            #     plot_peak_predictions(df_merged, predictions_peak_folder, start_date, end_date, logger, plotname=folder)
-
+            # PREDICTION peak ANALYSIS
+            if PLOT_PREDIC_LAEQ_PEAK_MEAN:
+                logger.info(f"[11] Plotting PLOT_PREDIC_LAEQ for folder {folder}")
+                plot_predic_peak_laeq_mean(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
 
 
             # if PLOT_BOX_PLOT_PREDICTION:
