@@ -606,34 +606,34 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 plot_predic_laeq_mean(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
 
             
-            if PLOT_PREDIC_LAEQ_15_MIN_PERIOD:
-                logger.info(f"[4] Plotting PLOT_PREDIC_LAEQ_15_MIN_PERIOD for folder {folder}")
-                plot_predic_laeq_15_min_period(df, yamnet_csv, taxonomy, ia_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
+            # if PLOT_PREDIC_LAEQ_15_MIN_PERIOD:
+            #     logger.info(f"[4] Plotting PLOT_PREDIC_LAEQ_15_MIN_PERIOD for folder {folder}")
+            #     plot_predic_laeq_15_min_period(df, yamnet_csv, taxonomy, ia_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
 
 
-            if PLOT_PREDIC_LAEQ_15_MIN_4H:
-                logger.info(f"[5] Plotting PLOT_PREDIC_LAEQ_4H for folder {folder}")
-                plot_predic_laeq_15_min_4h(df, yamnet_csv,taxonomy, df_prediction, ia_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
+            # if PLOT_PREDIC_LAEQ_15_MIN_4H:
+            #     logger.info(f"[5] Plotting PLOT_PREDIC_LAEQ_4H for folder {folder}")
+            #     plot_predic_laeq_15_min_4h(df, yamnet_csv,taxonomy, df_prediction, ia_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
 
 
-            # Plotting stack bar with predictions class
-            if PLOT_PREDICTION_STACK_BAR:
-                logger.info(f"[6] Plotting PLOT_PREDICTION_STACK_BAR for folder {folder}")
-                plot_prediction_stack_bar(df_prediction, yamnet_csv, taxonomy, ia_visualization_folder, logger, plotname=folder)
+            # # Plotting stack bar with predictions class
+            # if PLOT_PREDICTION_STACK_BAR:
+            #     logger.info(f"[6] Plotting PLOT_PREDICTION_STACK_BAR for folder {folder}")
+            #     plot_prediction_stack_bar(df_prediction, yamnet_csv, taxonomy, ia_visualization_folder, logger, plotname=folder)
             
 
-            # Plotting prediction map
-            if PLOT_PREDICTION_MAP:
-                logger.info(f"[7] Plotting PLOT_PREDICTION_MAP for folder {folder}")
-                plot_prediction_map(df_prediction, taxonomy, ia_visualization_folder, logger, plotname=folder)
+            # # Plotting prediction map
+            # if PLOT_PREDICTION_MAP:
+            #     logger.info(f"[7] Plotting PLOT_PREDICTION_MAP for folder {folder}")
+            #     plot_prediction_map(df_prediction, taxonomy, ia_visualization_folder, logger, plotname=folder)
+
+
+            # # Plotting tree map
+            # if PLOT_TREE_MAP:
+            #     logger.info(f"[8] Plotting PLOT_TREE_MAP for folder {folder}")
+            #     plot_tree_map(df_prediction,taxonomy,ia_visualization_folder, logger, plotname=folder)
             ##############################################################################################################################################
 
-
-            
-            # Plotting tree map
-            if PLOT_TREE_MAP:
-                logger.info(f"[8] Plotting PLOT_TREE_MAP for folder {folder}")
-                plot_tree_map(df_prediction,taxonomy,ia_visualization_folder, logger, plotname=folder)
 
             
             # Plotting time plot
@@ -673,10 +673,10 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             
 
             # I dont know why I commented this out
-            if PLOT_SPECTROGRAM_1_3:
-                logger.info(f"[15] Plotting spectrogram for folder {folder}")
-                # plt_spectrogram(df_oct, folder_output_dir, logger, plotname=folder)
-                plt_spectrogram(df, folder_output_dir, sufix_string, logger, plotname=folder)
+            # if PLOT_SPECTROGRAM_1_3:
+            #     logger.info(f"[15] Plotting spectrogram for folder {folder}")
+            #     # plt_spectrogram(df_oct, folder_output_dir, logger, plotname=folder)
+            #     plt_spectrogram(df, folder_output_dir, sufix_string, logger, plotname=folder)
 
 
 
@@ -707,10 +707,10 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 l90_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_dB=5)
 
 
-            if L90_ALARM_DYNAMIC:
-                # TODO
-                logger.info(f"[5] Plotting L90 alarm dynamic for folder {folder}")
-                l90_alarm_dynamic(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_dB=5)
+            # if L90_ALARM_DYNAMIC:
+            #     # TODO
+            #     logger.info(f"[5] Plotting L90 alarm dynamic for folder {folder}")
+            #     l90_alarm_dynamic(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_dB=5)
 
 
             if FREQUENCY_COMPOSITION:
@@ -733,30 +733,37 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info(f"PEAKS PLOTTING!!!")
             
 
-            if PLOT_PEAK_DISTRI_HEATMAP:
+            if PLOT_PEAK_DISTRIBUTION_HEATMAP:
                 logger.info(f"[8] Plotting peak heatmap for folder {folder}")
                 plot_peak_distribution_heatmap(df_peaks, folder_output_dir_1h, logger, plotname=folder)
 
 
-            if PLOT_PEAK_DISTRI:
+            if PLOT_PEAK_DISTRIBUTION:
                 logger.info(f"[9] Plotting peak distribution for folder {folder}")
                 plot_peak_distribution(df_peaks, folder_output_dir_1h, logger, plotname=folder)
 
 
-            if PLOT_DENSITY_DISTRI:
+            if PLOT_PEAK_DENSITY_DISTRIBUTION:
                 logger.info(f"[10] Plotting density distribution for folder {folder}")
                 plot_density_distribution_peaks(df_peaks, folder_output_dir_1h, logger, plotname=folder)
 
 
-            # PREDICTION peak ANALYSIS
-            if PLOT_PREDIC_LAEQ_PEAK_MEAN:
+            # #####################################################
+            # PLOTTING PREDICTION SECTION
+            # #####################################################
+            if PLOT_PEAK_PREDIC_LAEQ_MEAN:
                 logger.info(f"[11] Plotting PLOT_PREDIC_LAEQ for folder {folder}")
                 plot_predic_peak_laeq_mean(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
 
-
-            if PLOT_BOX_PLOT_PREDICTION:
+            
+            if PLOT_PEAK_BOX_PLOT_PREDICTION:
                 logger.info(f"[12] Plotting box plot prediction for folder {folder}")
                 plot_box_plot_prediction(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+
+
+            if PLOT_PEAK_HEATMAT_PREDICTION:
+                logger.info(f"[13] Plotting heatmap prediction for folder {folder}")
+                plot_heat_map_prediction(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
 
 
 

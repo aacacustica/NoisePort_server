@@ -2318,17 +2318,14 @@ def plot_box_plot_prediction(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, fo
         sns.set_style("whitegrid")
         df_all_yamnet = df_all_yamnet.copy()
 
-        print(df_all_yamnet)
-        print(df_all_yamnet.columns)
-        # exit()
-
         sns.boxplot(data=df_all_yamnet, x='NoisePort_Level_1', y='LA_corrected')
 
-        plt.title(f'{plotname} Peak Predictions')
-        plt.xlabel('Class')
-        plt.ylabel('LAeq (dB)')
+        plt.title(f'{plotname} Predicciones de Picos por Clases')
+        plt.xlabel('Clase', fontsize=BIGGEST_SIZE)
+        plt.ylabel('LAeq (dB)', fontsize=BIGGEST_SIZE)
 
-        plt.xticks(rotation=90)
+        plt.xticks(rotation=90, fontsize=BIGGEST_SIZE)
+        plt.yticks(fontsize=BIGGEST_SIZE)
         plt.grid(True)
 
         plt.ylim([30, 110])
@@ -2338,36 +2335,50 @@ def plot_box_plot_prediction(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, fo
         plt.savefig(f"{folder_output_dir}/{plotname}_peak_box_plot.png", dpi=150)
         logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_box_plot.png")
 
+    except Exception as e:
+        logger.error(f"Error in plot_box_plot_prediction: {e}")
 
 
-        ########################################
-        ########################################
-        # bins = [0, 60, 70, 80, 90, 100, 110]
-        # labels = ['0-60', '60-70', '70-80', '80-90', '90-100', '100-110']
-        # df_merged['LAeq_bins'] = pd.cut(df_merged['LAeq'], bins=bins, labels=labels, include_lowest=True)
 
-        # heatmap_data = df_merged.pivot_table(
-        #     index='NoisePort_Level_1', 
-        #     columns='LAeq_bins', 
-        #     values='LAeq', 
-        #     aggfunc='count'
-        #     ).fillna(0)
-        
-        # plt.figure(figsize=(10, 8))
-        # sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap='Blues')
-        
-        # plt.title(f'{plotname} Heatmap of Sound Classes by LAeq Bins')
-        
-        # plt.xlabel('LAeq Bins (dB)')
-        # plt.ylabel('Class')
 
-        # plt.tight_layout()
+def plot_heat_map_prediction(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
+    try:
+        df_all_yamnet = df_all_yamnet.copy()
 
-        # # save the plot
-        # plt.savefig(f"{folder_output_dir}/{plotname}_peak_heatmap.png", dpi=150)
-        # logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_heatmap.png")
+        bins = [0, 60, 70, 80, 90, 100, 110]
+        labels = ['0-60 dBs', '60-70 dBs', '70-80 dBs', '80-90 dBs', '90-100 dBs', '100-110 dBs']
 
+        df_all_yamnet['LAeq_bins'] = pd.cut(df_all_yamnet['LA_corrected'], bins=bins, labels=labels, include_lowest=True)
+
+        heatmap_data = df_all_yamnet.pivot_table(
+            index='NoisePort_Level_1', 
+            columns='LAeq_bins', 
+            values='LA_corrected', 
+            aggfunc='count'
+            ).fillna(0)
+
+        heatmap_data = heatmap_data.T
+
+        reversed_bins = labels[::-1]  
+        heatmap_data = heatmap_data.reindex(index=reversed_bins)
+
+        plt.figure(figsize=(15, 8))
+        sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap='Blues')
+
+        plt.title(f'{plotname} | Heatmap de Clases y LAeq', fontsize=BIGGEST_SIZE)
+        plt.xlabel('', rotation=0)
+        plt.ylabel('', rotation=0)
+        plt.yticks(rotation=0)
+        plt.grid(False)
+
+        plt.tight_layout()
+
+
+        # save the plot
+        plt.savefig(f"{folder_output_dir}/{plotname}_peak_heatmap.png", dpi=150)
+        logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_heatmap.png")
 
 
     except Exception as e:
-        logger.error(f"Error in plot_box_plot_prediction: {e}")
+        logger.error(f"Error in plot_heat_map_prediction: {e}")
+        
