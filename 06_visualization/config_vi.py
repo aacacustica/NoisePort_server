@@ -62,7 +62,7 @@ PLOT_NIGHT_EVOLUTION_15_MIN = False
 
 # prediction
 PLOT_PREDIC_LAEQ_MEAN = False
-PLOT_PREDIC_LAEQ_15_MIN_PERIOD = True
+PLOT_PREDIC_LAEQ_15_MIN_PERIOD = False
 PLOT_PREDIC_LAEQ_15_MIN_4H = False
 PLOT_PREDICTION_STACK_BAR = False
 PLOT_PREDICTION_MAP = False
@@ -94,7 +94,7 @@ OCA_ALARM = False
 LMAX_ALARM = False
 LC_LA_ALARM = False
 L90_ALARM = False
-L90_ALARM_DYNAMIC = False
+L90_ALARM_DYNAMIC = True
 FREQUENCY_COMPOSITION = False
 TONAL_FREQUENCY = False
 
@@ -128,7 +128,7 @@ HIGH_FREQ_CORRECTION = +1
 
 LOW_FREQ_BANDS = ['50.1Hz', '63.1Hz', '79.4Hz', '100.0Hz', '125.9Hz', '158.5Hz']
 MEDIUM_FREQ_BANDS = ['199.5Hz', '251.2Hz', '316.2Hz', '398.1Hz', '501.2Hz', '631.0Hz', '794.3Hz', '1000.0Hz', '1258.9Hz']
-HIGH_FREQ_BANDS = ['1995.3Hz', '2511.9Hz', '3162.3Hz', '3981.1Hz', '5011.9Hz', '6309.6Hz', '7943.3Hz', '10000.0Hz', '12589.3Hz']
+HIGH_FREQ_BANDS = ['1584.9Hz','1995.3Hz', '2511.9Hz', '3162.3Hz', '3981.1Hz', '5011.9Hz', '6309.6Hz', '7943.3Hz', '10000.0Hz', '12589.3Hz']
 
 
 # tonal freq
@@ -199,6 +199,22 @@ OCA_CULTURE = {
     'le_limit': 60,
     'ln_limit': 50,
 }
+
+
+
+
+######################## UTILS THINGS #####################################
+WEEKDAY_TRANSLATION = {
+        "Monday": " Lunes",
+        "Tuesday": " Martes",
+        "Wednesday": " Miércoles",
+        "Thursday": " Jueves",
+        "Friday": " Viernes",
+        "Saturday": " Sábado",
+        "Sunday": " Domingo"
+    }
+
+
 
 
 ######################## SLM COLUMN MAPS #####################################

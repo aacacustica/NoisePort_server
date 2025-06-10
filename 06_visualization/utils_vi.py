@@ -50,17 +50,53 @@ def add_datetime_columns(df,logging, date_col):
 
     #df['day_hour'] = df.apply(lambda x: str(x[date_col].day) + '-' + str(x[date_col].hour),axis=1)
     if df[date_col].dtype == 'datetime64[ns]':
+        df["year"] = df[date_col].dt.year
+        df["month"] = df[date_col].dt.month
         df['date'] = df[date_col].dt.date
         df['day'] = df[date_col].dt.day
         df['hour'] = df[date_col].dt.hour
         df['weekday'] = df[date_col].dt.weekday
         df['day_name'] = df[date_col].dt.day_name()
+
+        # df["weekday"] = df["weekday"].replace(WEEKDAY_TRANSLATION)
+        # df["weekday"] = df["weekday"].astype(str)
+        # df["day"] = df["day"].astype(str).str.zfill(2)
+        # df["fullday"] = df["day"] + df["weekday"]
+
+        # print(df)
+        # exit()
+
     else:
         logging.error(f"Failed to convert {date_col} to datetime in some rows.")
     #df['min_sec_str'] = df.apply(lambda x: datetime.datetime.strftime(x[date_col],'%M:%S'),axis=1)
     #df['min_sec_15_str'] = df.apply(lambda x: str(x[date_col].minute % 15) + '-'+str(x[date_col].second),axis=1)
     return df
 
+
+
+def insert_dates(df):
+    df["year"] = df.index.year
+    df["month"] = df.index.month
+    df["day"] = df.index.day
+    df["hour"] = df.index.hour
+    df["minute"] = df.index.minute
+    df["second"] = df.index.second
+    df["weekday"] = df.index.day_name()
+
+    weekday_translation = {
+        "Monday": " Lunes",
+        "Tuesday": " Martes",
+        "Wednesday": " Miércoles",
+        "Thursday": " Jueves",
+        "Friday": " Viernes",
+        "Saturday": " Sábado",
+        "Sunday": " Domingo"
+    }
+    df["weekday"] = df["weekday"].replace(weekday_translation)
+    df["weekday"] = df["weekday"].astype(str)
+    df["day"] = df["day"].astype(str).str.zfill(2)
+    df["fullday"] = df["day"] + df["weekday"]
+    return df
 
 
 def db_limit(hour_column,ld_limit,le_limit,ln_limit):
@@ -163,30 +199,6 @@ def prediction_csv(path_input):
 
     return df_prediction
 
-
-def insert_dates(df):
-    df["year"] = df.index.year
-    df["month"] = df.index.month
-    df["day"] = df.index.day
-    df["hour"] = df.index.hour
-    df["minute"] = df.index.minute
-    df["second"] = df.index.second
-    df["weekday"] = df.index.day_name()
-
-    weekday_translation = {
-        "Monday": " Lunes",
-        "Tuesday": " Martes",
-        "Wednesday": " Miércoles",
-        "Thursday": " Jueves",
-        "Friday": " Viernes",
-        "Saturday": " Sábado",
-        "Sunday": " Domingo"
-    }
-    df["weekday"] = df["weekday"].replace(weekday_translation)
-    df["weekday"] = df["weekday"].astype(str)
-    df["day"] = df["day"].astype(str).str.zfill(2)
-    df["fullday"] = df["day"] + df["weekday"]
-    return df
 
 
 def remove_row_out_timespan(df_LAeq, df_Pred):

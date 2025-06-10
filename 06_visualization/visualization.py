@@ -8,6 +8,7 @@ from config_vi import *
 import plotly.express as px
 import matplotlib.colors as mcolors
 from matplotlib.patches import Patch
+from matplotlib.colors import ListedColormap
 from scipy.stats import gaussian_kde
 import ast
 
@@ -404,7 +405,7 @@ def plot_predic_laeq_15_min_period(df: pd.DataFrame, yamnet_csv:pd.DataFrame, ta
             logger.info(f"LAeq class period plot saved to {folder_output_dir}/{plotname}_LAeq_class_period_{period}.html")
 
             logger.info(f"Saving the data {plotname}")
-            period_df.to_csv(f"{folder_output_dir}/{plotname}_LAeq_class_period_{period}.csv", index=False)
+            period_df.to_csv(f"{folder_output_dir}/{plotname}_LAeq_class_period_{period}.csv", index=False)     
             logger.info(f"LAeq class period data saved to {folder_output_dir}/{plotname}_LAeq_class_period_{period}.csv")
 
     except Exception as e:
@@ -788,6 +789,88 @@ def plot_prediction_map(df_Pred:pd.DataFrame, taxonomy_map, folder_output_dir: s
     except Exception as e:
         logger.error(f"Error in plot_prediction_map: {e}")
 
+
+
+
+def plot_prediction_map_new(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
+    try:
+        df_copy = df_all_yamnet.copy()
+
+        #######################################
+        df_copy = add_datetime_columns(df_copy, logger, date_col='Timestamp')
+        df_copy['mapped_class'] = df_copy['class'].map(taxonomy_map)
+        df_copy = df_copy.dropna(subset=['mapped_class'])
+
+        #class names to numbers
+        class_to_num = {cls: i+1 for i, cls in enumerate(df_copy['mapped_class'].unique())}
+        df_copy['class_num'] = df_copy['mapped_class'].map(class_to_num)
+        name_class = {v: k for k, v in class_to_num.items()}
+        df_copy['Timestamp'] = pd.to_datetime(df_copy['Timestamp'])
+        df_copy.set_index('Timestamp', inplace=True)
+
+        #######################################
+        #resample 15 min
+        resampled = df_copy.resample('15min').agg(lambda x: x.mode().iloc[0] if not x.mode().empty else None)
+        resampled = resampled.dropna(subset=['class_num'])
+
+
+        #######################################
+        #time
+        resampled['date'] = resampled.index.date
+        resampled['time_block'] = resampled.index.time  # Or .strftime('%H:%M') for cleaner strings
+        pivot = resampled.pivot(index='date', columns='time_block', values='class_num')
+
+        #######################################
+        #color mapping
+        if 'Siren' in set(taxonomy_map.values()):
+            num_to_color = {num: COLOR_PALLET_PORT_L1[cls] for cls, num in class_to_num.items()}
+            logger.info("Using 'NoisePort_Level_1' class for plotting")
+
+        ordered_colors = [num_to_color[i] for i in sorted(name_class.keys())]
+        cmap = ListedColormap(ordered_colors)
+
+        #######################################
+        #plotting
+        plt.figure(figsize=(20, 10))
+        ax = sns.heatmap(pivot, cmap=cmap, linewidth=0.3, cbar=False, linecolor='gray')
+
+        ax.set_title("Sound Class Predictions — Daily 15min Timeline")
+        ax.set_xlabel("Hora del Día", fontsize=14)
+        ax.set_ylabel("Fecha", fontsize=14)
+
+        label_step = 1 # 15 min 96 
+        # label_step = 2 #30 min
+        # label_step = 4  # 1h
+
+
+        xtick_locs = list(range(0, len(pivot.columns), label_step))
+        xtick_labels = [t.strftime('%H:%M') for i, t in enumerate(pivot.columns) if i % label_step == 0]
+
+        ax.set_xticks(xtick_locs)
+        ax.set_xticklabels(xtick_labels, rotation=90, fontsize=8)
+
+
+        # lwegend
+        legend_elements = [
+            Patch(facecolor=num_to_color[num], label=f"{num} - {name_class.get(num)}")
+            for num in sorted(name_class.keys())
+        ]
+
+        plt.legend(handles=legend_elements, title="Clases", bbox_to_anchor=(1.01, 1), loc='upper left')
+        plt.tight_layout()
+        plt.title(f"{plotname} | Clases 15 min")
+
+
+        #######################################
+        plt.savefig(f"{folder_output_dir}/{plotname}_prediction_map.png", bbox_inches='tight')
+        logger.info(f"Saved image at {folder_output_dir}/{plotname}_prediction_map.png")
+
+        # save csv with the data
+        pivot.to_csv(f"{folder_output_dir}/{plotname}_prediction_map.csv")
+        logger.info(f"Saved csv at {folder_output_dir}/{plotname}_prediction_map.csv")
+          
+    except Exception as e:
+        logger.error(f"Error in plot_prediction_map: {e}")
 
 
 
@@ -1660,62 +1743,47 @@ def l90_alarm(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname:
 
 
 ########## L90 ALARM DYNAMIC ##########
-def l90_alarm_dynamic(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold_dB: int):
+def l90_alarm_dynamic(df_1h: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold_dB: int):
     sns.set_style("whitegrid")
 
-    l90_column = df_1h_leq["90percentile"].dropna()
-    
-    print(l90_column)
 
-    # making a rolling window of 3 hours
-    df_1h_leq["90percentile_median"] = (
-        df_1h_leq["90percentile"].rolling(window=3, min_periods=1).median()
-    )
-    print(df_1h_leq)
-    exit()
+    #######################
+    df_1h = df_1h.copy()
+    df_1h.rename(columns={"90percentile": "L90"}, inplace=True)
+
+    df_1h["L90_rolling_median"] = df_1h["L90"].rolling(window=3, min_periods=1).median()
+    df_1h["alarm"] = df_1h["L90"] > df_1h["L90_rolling_median"] + threshold_dB
 
 
-    # l90_column['90percentile_median'] = l90_column.rolling(window=10800, min_periods=1).quantile(0.5)
-    print(l90_column)
-    # l90_column['90percentile_median'] = l90_column['90percentile'].rolling(window=10800, min_periods=1).quantile(0.5)
-    # print(l90_column)
 
-    # average of the week and jump when it exceeds a specific value (+5?)
-    # [1] average of the week (leq function)
-    avg_week = leq(l90_column).round(2)
-    # print(f"Leq of the 90th percentile: {avg_week}")
-
-    # [2] alarm when the difference is greater than 5 dB
-    # filter df
-    filter_df = l90_column > avg_week + threshold_dB
-    # print(filter_df)
-
-
+    #######################
     plt.figure(figsize=(15, 8))
-    plt.plot(df_1h_leq.index, l90_column, label="90th Percentile")
-    plt.plot(df_1h_leq[filter_df].index, df_1h_leq[filter_df]["90percentile"], "ro", label="Alarm")
-    
-    # horizontal line for the average of the week
-    plt.axhline(avg_week, color="r", linestyle="--", label="avg", linewidth=2)
-    plt.axhline(avg_week + threshold_dB, color="g", linestyle="--", label=f"avg + {threshold_dB}", linewidth=2)
+    plt.plot(df_1h.index, df_1h["L90"], label="L90")
+    plt.plot(df_1h.index, df_1h["L90_rolling_median"] + threshold_dB, "--", color="green", label=f"+{threshold_dB} dB")
+    # plt.plot(df_1h.index, df_1h["L90_rolling_median"], "--", color="orange", label="Rolling Median")
+    plt.plot(df_1h[df_1h["alarm"]].index, df_1h[df_1h["alarm"]]["L90"], "ro", label="Alarma")
 
-    plt.title("90th Percentile | Alarm")
+    plt.title("Alarma L90 Dinamica")
     plt.ylabel("dB(A)")
     plt.xticks(rotation=90)
     plt.grid(True)
-
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
     plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
 
-    plt.xlim(df_1h_leq.index.min(), df_1h_leq.index.max())
+    plt.xlim(df_1h.index.min(), df_1h.index.max())
     plt.ylim([DB_LOWER_LIMIT, DB_UPPER_LIMIT])
     plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
     plt.tight_layout()
 
 
-    # save the plot
-    plt.savefig(f'{folder_output_dir}/{plotname}_L90_Dyn_Alarm.png', dpi=150)
-    logger.info(f"Saved plot at {folder_output_dir}/{plotname}_L90_Dyn_Alarm.png")
+
+    #######################
+    filename = f'{folder_output_dir}/{plotname}_L90_Dyn_Alarm.png'
+    plt.savefig(filename, dpi=150)
+    logger.info(f"Saved plot at {filename}")
+
+
+
 
 
 
