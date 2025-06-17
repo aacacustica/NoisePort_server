@@ -94,9 +94,84 @@ def plot_night_evolution(df, folder_output_dir: str, logger, laeq_column:str, pl
         logger.info(f"Saving the plot {plotname}_{indicador_noche}")
         fig.savefig(f"{folder_output_dir}/{plotname}_{indicador_noche}_evolution.png", dpi=150)
         logger.info(f"Night evolution plot saved to {folder_output_dir}/{plotname}_{indicador_noche}_evolution.png")
-    
+
     except Exception as e:
         logger.error(f"Error in plot_night_evolution: {e}")
+
+
+
+def plot_night_evolution_week(df, folder_output_dir: str, logger, laeq_column: str, plotname: str, indicador_noche: str):
+    try:
+        df = df.dropna(subset=[laeq_column])
+        logger.info(f"Using the laeq_column: {laeq_column}")
+        sns.set_style("whitegrid")
+        sns.set_palette("tab10")
+
+        df['Día'] = df['night_str']
+        df['date'] = pd.to_datetime(df['date'])
+        df.sort_values(by=['date', 'hour'], inplace=True)
+
+        night_data = pd.DataFrame()
+        unique_dates = df['date'].dt.date.unique()
+
+        for current_date in unique_dates:
+            next_date = current_date + pd.Timedelta(days=1)
+            data_23 = df[(df['date'].dt.date == current_date) & (df['hour'] == 23)]
+            data_00_06 = df[(df['date'].dt.date == next_date) & (df['hour'].isin(range(0, 7)))]
+
+            if not data_23.empty and not data_00_06.empty:
+                combined_data = pd.concat([data_23, data_00_06])
+                night_data = pd.concat([night_data, combined_data])
+
+        night_data['plot_hour'] = night_data['hour'].replace({23: -1}).astype(int)
+        night_data.sort_values(by=['date', 'plot_hour'], inplace=True)
+
+
+        ####################
+        # @grouping by week
+        night_data['week'] = night_data['date'].dt.to_period('W').apply(lambda r: r.start_time)
+        weeks = night_data['week'].unique()
+
+        for week_start in weeks:
+            week_data = night_data[night_data['week'] == week_start]
+
+            fig = sns.relplot(
+                data=week_data,
+                x="plot_hour",
+                y=laeq_column,
+                kind="line",
+                hue="Día",
+                estimator=leq,
+                aspect=1.3,
+                palette=C_MAP_WEEKDAY_NIGHT
+            )
+
+            plt.xticks(
+                range(-1, 7),
+                ['23:00', '00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00']
+            )
+            plt.yticks(
+                range(DB_RANGE_BOTTOM, DB_RANGE_TOP, BD_RANGE_STEP),
+                [str(level) for level in range(DB_RANGE_BOTTOM, DB_RANGE_TOP, BD_RANGE_STEP)]
+            )
+            plt.xlim(-1.5, 6.5)
+
+            for ax in fig.axes.flat:
+                ax.spines['top'].set_visible(True)
+                ax.spines['right'].set_visible(True)
+
+            plt.title(f'Evolución {indicador_noche} - Semana {week_start.strftime("%Y-%m-%d")}')
+            plt.ylabel('dB(A)')
+            plt.xlabel('Hora')
+
+
+            filename = f"{folder_output_dir}/{plotname}_{indicador_noche}_evolution_week_{week_start.strftime('%Y-%m-%d')}.png"
+            fig.savefig(filename, dpi=150)
+            logger.info(f"Saved plot: {filename}")
+
+    except Exception as e:
+        logger.error(f"Error in plot_night_evolution: {e}")
+
 
 
 
@@ -183,6 +258,97 @@ def plot_night_evolution_15_min(df, folder_output_dir: str, logger, name_extensi
         logger.info(f"Night evolution plot saved to {folder_output_dir}/{plotname}_{indicador_noche}_evolution_{name_extension}.png")
     except Exception as e:
         logger.error(f"Error in plot_night_evolution_15_min: {e}")
+
+
+
+
+def plot_night_evolution_15_min_week(df, folder_output_dir: str, logger, name_extension, laeq_column: str, plotname: str, indicador_noche: str):
+    try:
+        df = df.dropna(subset=[laeq_column])
+        logger.info(f"Using the laeq_column: {laeq_column}")
+        sns.set_style("whitegrid")
+        sns.set_palette("tab10")
+
+        df['Día'] = df['night_str']
+        df.index = pd.to_datetime(df.index)
+
+        df_resampled = df.resample('15min')[laeq_column].mean()
+        df_night_str = df.resample('15min')['Día'].agg(lambda x: x.value_counts().index[0] if len(x) > 0 else None)
+        df_resampled = pd.DataFrame(df_resampled).join([df_night_str])
+
+        df_resampled['date'] = df_resampled.index.date
+        df_resampled['time'] = df_resampled.index.time
+
+        # Adjust time for plotting
+        df_resampled['plot_time'] = [
+            (t.hour * 60 + t.minute - 15) - (23 * 60) if t.hour >= 23 else (t.hour * 60 + t.minute - 15) + 60
+            for t in df_resampled['time']
+        ]
+
+        unique_dates = pd.to_datetime(df_resampled.index.date).unique()
+        night_data = pd.DataFrame()
+
+        for current_date in unique_dates:
+            start_time = pd.Timestamp(current_date - pd.Timedelta(days=1)).replace(hour=23, minute=0)
+            end_time = pd.Timestamp(current_date).replace(hour=6, minute=45)
+            data_slice = df_resampled[start_time:end_time]
+
+            if not data_slice.empty and data_slice.index.min().hour == 23:
+                night_data = pd.concat([night_data, data_slice])
+
+
+        ################################
+        ################################
+        # weeks
+        # night_data['week'] = pd.to_datetime(night_data.index).to_period('W').apply(lambda r: r.start_time)
+        night_data['week'] = pd.to_datetime(night_data.index).to_period('W').start_time
+        weeks = night_data['week'].unique()
+
+
+        for week_start in weeks:
+            week_data = night_data[night_data['week'] == week_start]
+
+            fig = sns.relplot(
+                data=week_data,
+                x="plot_time",
+                y=laeq_column,
+                kind="line",
+                hue="Día",
+                errorbar=None,
+                estimator=leq,
+                aspect=1.3,
+                palette=C_MAP_WEEKDAY_NIGHT
+            )
+
+            x_labels = [f'{hour:02d}:{minute:02d}' for hour in range(23, 24) for minute in range(0, 60, 15)] + \
+                       [f'{hour:02d}:{minute:02d}' for hour in range(0, 7) for minute in range(0, 60, 15)]
+            x_ticks = range(-15, 465, 15)
+
+            plt.xticks(x_ticks, x_labels, rotation=90)
+            plt.yticks(range(DB_RANGE_BOTTOM, DB_RANGE_TOP, BD_RANGE_STEP),
+                       [str(level) for level in range(DB_RANGE_BOTTOM, DB_RANGE_TOP, BD_RANGE_STEP)])
+            plt.xlim(-30, 465)
+
+            for ax in fig.axes.flat:
+                ax.spines['top'].set_visible(True)
+                ax.spines['right'].set_visible(True)
+
+            plt.title(f'Evolución {indicador_noche} cada 15 minutos - Semana {week_start.strftime("%Y-%m-%d")}')
+            plt.ylabel('dB(A)')
+            plt.xlabel('Hora')
+
+
+
+            fig_path = os.path.join(
+                folder_output_dir,
+                f'{plotname}_{indicador_noche}_evolution_{name_extension}_week_{week_start.strftime("%Y-%m-%d")}.png'
+            )
+            fig.savefig(fig_path, dpi=150)
+            logger.info(f"Saved weekly plot: {fig_path}")
+
+    except Exception as e:
+        logger.error(f"Error in plot_night_evolution_15_min_week: {e}")
+
 
 
 
@@ -1079,6 +1245,81 @@ def make_time_plot(df: pd.DataFrame, folder_output_dir: str, logger, columns_dic
 
     except Exception as e:
         logger.error(f"Error in make_timeplot: {e}")
+
+
+
+
+
+def make_time_plot_week(df: pd.DataFrame, folder_output_dir: str, logger, columns_dict: dict, agg_period: int, plotname: str, percentiles: list):
+    try:
+        logger.info(f"Using the columns_dict: {columns_dict}")
+        df = df.dropna(subset=[columns_dict['LAEQ_COLUMN_COEFF']])
+        df.index = pd.to_datetime(df.index)
+
+        df['week'] = df.index.to_period('W').start_time
+        weeks = df['week'].unique()
+
+        for week_start in weeks:
+            df_week = df[df['week'] == week_start]
+
+            agg_funcs = {
+                columns_dict['LAEQ_COLUMN_COEFF']: leq,
+                columns_dict['LAMAX_COLUMN_COEFF']: 'max',
+                columns_dict['LAMIN_COLUMN_COEFF']: 'min'
+            }
+
+            df_LAeq = df_week.resample(f'{agg_period}s').agg(agg_funcs)
+            oca = df_week.resample(f'{agg_period}s').agg({'oca': 'min'})
+
+            try:
+                plt.style.use('seaborn-v0_8-whitegrid')
+            except:
+                plt.style.use('seaborn-whitegrid')
+
+            fig, ax = plt.subplots(figsize=(20, 10))
+            ax.set_facecolor("white")
+
+            x = df_LAeq.index
+            ax.plot(x, df_LAeq[columns_dict['LAEQ_COLUMN_COEFF']], linewidth=3, color='red', label='LAeq')
+            ax.plot(x, df_LAeq[columns_dict['LAMAX_COLUMN_COEFF']], linewidth=1, color='#FF99FF', label='Lmax')
+            ax.plot(x, df_LAeq[columns_dict['LAMIN_COLUMN_COEFF']], linewidth=1, color='#92D050', label='Lmin')
+
+            if SHOW_OCA:
+                ax.plot(x, oca.values, color='#00B0F0', label='OCA')
+
+            for percentile in percentiles:
+                quantile_value = (100 - percentile) / 100
+                percentile_series = df_week[columns_dict['LAEQ_COLUMN_COEFF']].resample(f'{agg_period}s').quantile(quantile_value)
+                ax.plot(x, percentile_series, linewidth=0.5, label=f'L{percentile}', color=PERCENTIL_COLOUR[percentile])
+
+            # time formatting
+            hours = mdates.HourLocator(interval=HOUR_INTERVAL)
+            h_fmt = mdates.DateFormatter('%d-%m-%y %H:%M')
+            ax.xaxis.set_major_locator(hours)
+            ax.xaxis.set_major_formatter(h_fmt)
+
+            plt.xlim(df_week.index.min(), df_week.index.max())
+            plt.ylim([DB_LOWER_LIMIT, DB_UPPER_LIMIT])
+            plt.ylabel('dB(A)', fontsize=BIGGEST_SIZE)
+            plt.xlabel('Hora', fontsize=BIGGEST_SIZE)
+            plt.title(f'{plotname} Nivel equivalente {agg_period}s - Semana {week_start.strftime("%Y-%m-%d")}', fontsize=BIGGEST_SIZE)
+
+            plt.xticks(rotation=90, fontsize=BIGGEST_SIZE)
+            plt.yticks(fontsize=BIGGEST_SIZE)
+            plt.legend(loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0.1, fancybox=True, framealpha=1, edgecolor='black', fontsize=BIGGEST_SIZE)
+            plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+
+            plt.tight_layout()
+
+            output_path = f'{folder_output_dir}/{plotname}_{agg_period}s_time_plot_week_{week_start.strftime("%Y-%m-%d")}.png'
+            logger.info(f"Saving the weekly plot to {output_path}")
+            plt.savefig(output_path, dpi=350)
+            plt.close()
+            logger.info(f"Plot saved: {output_path}")
+
+    except Exception as e:
+        logger.error(f"Error in make_time_plot_weekly: {e}")
+
 
 
 
