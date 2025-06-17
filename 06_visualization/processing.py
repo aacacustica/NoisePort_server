@@ -17,7 +17,9 @@ import ast
 def load_data(file_path, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None, selected_folder=None):
     logger.info("")
     slm_type_function_mapping = {
-        # 'tenerife_TCT': (get_data_tenerife_TCT, tenerife_tct_dict),
+        'tenerife_TCT': (get_data_tenerife_TCT, tenerife_tct_dict),
+        # "SV307": (get_data_SV307, sv307_dict),
+        "SV307": (get_data_SV307_new, sv307_dict),
         "audiomoth": (get_data_audiomoth, audiopost_dict),
         "814": (get_data_814, larson814_dict),
         "824": (get_data_824, larson824_dict),
@@ -25,7 +27,6 @@ def load_data(file_path, logger, new_date=None, new_time=None, new_threshold_dat
         "lx_EN": (get_data_lx_EN, larsonlx_dict),
         "cesva": (get_data_cesva, cesva_dict),
         "sono-bilbo": (get_data_bilbo, sonometer_bilbo_dict),
-        "SV307": (get_data_SV307, sv307_dict),
         "bruel&kjaer": (get_data_bruel_kjaer, bruel_kjaer_dict),
     } # SLM stands for Sound Level Meter
     # load the data for each SLM type until one works |  for each slm_type, (func, slm_dict) in slm_type_function_mapping.items(): means that for each key and value in the dictionary, the key is slm_type and the value is a tuple with the function and the dictionary | the function is the function to load the data and the dictionary is the dictionary with the column names for the SLM type
@@ -37,9 +38,9 @@ def load_data(file_path, logger, new_date=None, new_time=None, new_threshold_dat
 
             # this is the actual invocation of the function
             df = func(file_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time, selected_folder=selected_folder)
+            
 
-            # loggers
-            logger.info("\n")
+            logger.info("")
             logger.info(f"Data loaded for SLM type {slm_type}")
             return df, slm_type, slm_dict
         
@@ -56,7 +57,6 @@ def load_data(file_path, logger, new_date=None, new_time=None, new_threshold_dat
 
 def process_folder(folder_path, folder_date_time, folder_threshold, logger, selected_folder):
     logger.info("")
-
 
     # folder contains a CESVA folder
     cesva_path = os.path.join(folder_path, 'CESVA')
@@ -85,24 +85,35 @@ def process_folder(folder_path, folder_date_time, folder_threshold, logger, sele
         new_threshold_date, new_threshold_time  = folder_threshold.get(folder_path, (None, None))
 
         files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith(('.csv', '.xlsx', '.CSV'))]
-        logger.info(f"Files found: {len(files)} at {folder_path}")
+        len_files = len(files)
+        logger.info(f"Files found: {len_files} at {folder_path}")
+        logger.info(f"Processing folder: {folder_path}")
+
+
+
+        if len_files > 1:
+            logger.info("Processing more than one file, so concatenating them")
+            first_file = files[0]
+            return load_data(first_file, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time,selected_folder=selected_folder)
         
-        
-        # if not files:
-        #     logger.info(f"No measurement files found in {folder_path}")
-        #     try:
-        #         logger.info(f"Trying to load data")
-        #         # load_data regular files
-        #         return load_data(folder_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time, selected_folder=selected_folder)
-        #     except Exception as e:
-        #         logger.error(f"Error loading data: {e}")
-        #     # if no files found, return None
-        #     logger.error(f"No measurement files found in {folder_path}")
-        #     return None, None, None
+        elif len_files == 1:
+            logger.info("Processing only one file, so loading it directly")
+            # this is the case where there is only one file
+            return load_data(files[0], logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time,selected_folder=selected_folder)
         
 
-        # this is the case where there are many files in the folder
-        return load_data(files[0], logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time,selected_folder=selected_folder)
+        if not files:
+            logger.info(f"No measurement files found in {folder_path}")
+            try:
+                logger.info(f"Trying to load data")
+                # load_data regular files
+                return load_data(folder_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time, selected_folder=selected_folder)
+            except Exception as e:
+                logger.error(f"Error loading data: {e}")
+            # if no files found, return None
+            logger.error(f"No measurement files found in {folder_path}")
+            return None, None, None
+        
     return None, None, None 
 
 
@@ -184,8 +195,8 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             
             
             if sufix_string == "SONOMETRO":
+                logger.info(f"Processing SONOMETRO data")
                 reg_folder = reg_folder.replace(ACOUSTIC_PARAMS_FOLDER, SONOMETER_FOLDER)
-                print(reg_folder)
                 df, slm_type, slm_dict = process_folder(reg_folder, folder_date_time, folder_threshold, logger,selected_folder=SONOMETER_FOLDER)
                 if df is None:
                     logger.warning(f"df is None")
@@ -198,25 +209,24 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     logger.warning(f"df is None")
                     continue
             
-            exit()
-
             # taking just 1 day, which are the first 86400 rows
             # df = df.iloc[:86400] # 1 day of data, 24 hours * 60 minutes * 60 seconds = 86400 seconds
-            
+            print(df)
+            # exit()
 
             #############################
             ### GETTING PREDICTION DF ###
             #############################
-            logger.info("")
-            logger.info(f"Getting the prediction data from the dataframes")
-            reg_folder_prediction = reg_folder.replace(ACOUSTIC_PARAMS_FOLDER, PREDICTION_LITTLE_FOLDER)
-            logger.info(f"Prediction folder: {reg_folder_prediction}")
+            # logger.info("")
+            # logger.info(f"Getting the prediction data from the dataframes")
+            # reg_folder_prediction = reg_folder.replace(ACOUSTIC_PARAMS_FOLDER, PREDICTION_LITTLE_FOLDER)
+            # logger.info(f"Prediction folder: {reg_folder_prediction}")
             
             
-            df_prediction, slm_type, slm_dict = process_folder(reg_folder_prediction, folder_date_time, folder_threshold, logger, PREDICTION_LITTLE_FOLDER)
-            if df_prediction is None:
-                logger.warning(f"df prediction is None")
-                continue
+            # df_prediction, slm_type, slm_dict = process_folder(reg_folder_prediction, folder_date_time, folder_threshold, logger, PREDICTION_LITTLE_FOLDER)
+            # if df_prediction is None:
+            #     logger.warning(f"df prediction is None")
+            #     continue
             ###################################################################
 
 
@@ -246,22 +256,22 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     continue
                     
 
-
+                # exit()
                 # the same for the prediction file
-                if df_prediction is not None:
-                    logger.info("")
-                    logger.info(f"FOR PREDICTION FILE: Adding datetime columns, sorting by datetime and setting datetime as index")
+                # if df_prediction is not None:
+                #     logger.info("")
+                #     logger.info(f"FOR PREDICTION FILE: Adding datetime columns, sorting by datetime and setting datetime as index")
                     
-                    df_prediction = add_datetime_columns(df_prediction, logger, date_col='datetime')
-                    df_prediction = df_prediction.sort_values('datetime')
-                    df_prediction.set_index('datetime', inplace=True, drop=False)
-                    pred_start_date = df_prediction.index[0]
-                    pred_end_date = df_prediction.index[-1]
+                #     df_prediction = add_datetime_columns(df_prediction, logger, date_col='datetime')
+                #     df_prediction = df_prediction.sort_values('datetime')
+                #     df_prediction.set_index('datetime', inplace=True, drop=False)
+                #     pred_start_date = df_prediction.index[0]
+                #     pred_end_date = df_prediction.index[-1]
 
-                    logger.info(f"Start date {pred_start_date} and end date {pred_end_date}")
-                    logger.info(f"df was sorted by datetime and datetime was set as index")
-                else:
-                    logger.warning(f"df_prediction is None")
+                #     logger.info(f"Start date {pred_start_date} and end date {pred_end_date}")
+                #     logger.info(f"df was sorted by datetime and datetime was set as index")
+                # else:
+                #     logger.warning(f"df_prediction is None")
             
             except Exception as e:
                 logger.error(f"An error occurred while adding datetime columns: {e}")
@@ -274,25 +284,25 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     df = df.loc[start_date + pd.Timedelta(REMOVE_START_TIME, unit='seconds'):end_date - pd.Timedelta(REMOVE_END_TIME, unit='seconds')]
                     logger.info(f"SPL df was trimmed, {REMOVE_START_TIME} secs from the beggining and {REMOVE_END_TIME} secs from the end")
                 
-                if df_prediction is not None:
-                    df_prediction = df_prediction.loc[pred_start_date + pd.Timedelta(REMOVE_START_TIME, unit='seconds'):pred_end_date - pd.Timedelta(REMOVE_END_TIME, unit='seconds')]
-                    logger.info(f"Prediction df was trimmed, {REMOVE_START_TIME} secs from the beggining and {REMOVE_END_TIME} secs from the end")
+                # if df_prediction is not None:
+                #     df_prediction = df_prediction.loc[pred_start_date + pd.Timedelta(REMOVE_START_TIME, unit='seconds'):pred_end_date - pd.Timedelta(REMOVE_END_TIME, unit='seconds')]
+                #     logger.info(f"Prediction df was trimmed, {REMOVE_START_TIME} secs from the beggining and {REMOVE_END_TIME} secs from the end")
 
 
                 # add indicators column
                 if df is not None:
                     logger.info(f"Adding indicators column")
                     df['indicador_str'] = df.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
-                if df_prediction is not None:
-                    df_prediction['indicador_str'] = df_prediction.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
+                # if df_prediction is not None:
+                #     df_prediction['indicador_str'] = df_prediction.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
 
                 
                 # add nights column
                 if df is not None:
                     logger.info(f"Adding nights column")
                     df['night_str'] = df.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
-                if df_prediction is not None:
-                    df_prediction['night_str'] = df_prediction.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
+                # if df_prediction is not None:
+                #     df_prediction['night_str'] = df_prediction.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
 
             except Exception as e:
                 logger.error(f"An error occurred while adding indicators and nights columns: {e}")
@@ -311,11 +321,14 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 if df.isnull().values.any():
                 # check if there is nan values
                     logger.warning(f"There are nan values in the dataframe")
+                    # removing nan values
+                    df = df.dropna()
+                    logger.info(f"Removing nan values from the dataframe")
 
                 # removing nan values
-                if df_prediction is not None:
-                    df_prediction = df_prediction.dropna()
-                    logger.info(f"Removing nan values")
+                # if df_prediction is not None:
+                #     df_prediction = df_prediction.dropna()
+                #     logger.info(f"Removing nan values")
 
             except Exception as e:
                 logger.error(f"An error occurred while adding oca column: {e}")
@@ -347,6 +360,8 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.error(f"An error occurred while processing folder {folder}: {e}")
                 
 
+            print(df)
+            exit()
 
             try:
                 logger.info("")    
@@ -382,13 +397,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 continue
 
 
-            # print(df)
-            # print(df.columns)
-
-            # df = add_datetime_columns(df,logger, date_col='Timestamp')
-            # print(df)
-            # print(df.columns)
-            # exit()
 
             try:
                 ################################################################

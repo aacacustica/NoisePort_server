@@ -4,6 +4,9 @@ import pandas as pd
 from utils_vi import *
 #importing tqdm for progress bar
 from tqdm import tqdm
+from io import StringIO
+
+
 
 
 def get_data_bilbo(file_path: str, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None, selected_folder=None):
@@ -101,9 +104,57 @@ def get_data_824(file_path: str,logger, new_date=None, new_time=None, new_thresh
 
 
 
-def read_SV307(file_path: str, logger, selected_folder=None):
+def read_sv307_time_history(csv_path, logger):
+    time_history_df = None
+    try:
+        with open(csv_path, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+
+        
+        time_history_start = None
+        for i, line in enumerate(lines):
+            if "TIME HISTORY" in line.upper():
+                time_history_start = i
+                break
+
+        if time_history_start is None:
+            raise ValueError("TIME HISTORY section not found.")
+
+        
+        header_index = None
+        for i in range(time_history_start, len(lines)):
+            if lines[i].strip().startswith("Time"):
+                header_index = i
+                break
+
+        if header_index is None:
+            raise ValueError("TIME HISTORY header line not found.")
+
+
+
+        data_lines = lines[header_index:]
+        buffer = StringIO("".join(data_lines))
+        time_history_df = pd.read_csv(buffer, sep=",|\t|;", engine='python')
+        time_history_df = time_history_df.loc[:, ~time_history_df.columns.str.contains('^Unnamed')]
+        # remove the lastest 8 rows if there is a row called 'MEASUREMENT INFORMATION'
+        if time_history_df.iloc[-8]['Time'] == 'MEASUREMENT INFORMATION':
+            # remove the last 8 rows
+            time_history_df = time_history_df[:-8]    
+        
+        return time_history_df
+
+
+    except Exception as e:
+        logger.error(f"Error reading SV307 time history from {csv_path}: {e}")
+        return None
+    
+
+
+def get_data_SV307_new(file_path: str, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None, selected_folder=None):
     folder_path = os.path.dirname(file_path)
     logger.info(f"Folder: {folder_path}")
+    point = folder_path.split('\\')[-2]
+
 
     if not os.path.exists(folder_path):
         logger.error(f"Folder {folder_path} does not exist")
@@ -112,65 +163,80 @@ def read_SV307(file_path: str, logger, selected_folder=None):
     files = [f for f in os.listdir(folder_path) if f.endswith('.csv')]
     logger.info(f"CSV files in the folder: {len(files)}")
 
-    
-    header_options = [14, 18, 6]
-    usecols = list(range(9))
+    csv_final_path = os.path.join(folder_path, f'{point}.csv')
 
-    def try_read_csv(path):
-        for header in header_options:
-            try:
-                df = pd.read_csv(path, header=header, sep=';', skipfooter=8,
-                                 usecols=usecols, engine='python')
-                logger.info(f"Read {os.path.basename(path)} with header={header}")
-                return df
-            except Exception as e:
-                logger.warning(f"Failed to read {os.path.basename(path)} with header={header}: {e}")
-        logger.error(f"All header attempts failed for {path}")
-        return None
 
-    if len(files) == 1:
-        logger.info("Only one file in the folder, reading it directly")
-        df = try_read_csv(file_path)
-        if df is None:
-            return None
+    if os.path.exists(csv_final_path):
+        logger.info(f"CSV file already exists: {csv_final_path}")
+        df = pd.read_csv(csv_final_path)
+        logger.info(f"CSV file read successfully, length: {len(df)}")
+        return df
+
     else:
-        logger.info("Multiple CSV files found, reading and concatenating")
-        df_all = []
-        for fname in files:
-            fpath = os.path.join(folder_path, fname)
-            df_temp = try_read_csv(fpath)
-            if df_temp is not None:
-                df_all.append(df_temp)
+        if len(files) == 1:
+            logger.info("Only one file in the folder, reading it directly")
+            df = read_sv307_time_history(file_path, logger)
+            if df is None:
+                return None
+            
 
-        if not df_all:
-            logger.error("No valid CSV files could be read.")
-            return None
 
-        df = pd.concat(df_all, ignore_index=True)
-        df = df.sort_values(by='Time', errors='ignore')
+        else:
+            logger.info("Multiple CSV files found, reading and concatenating")
+            df_all = []
+            for fname in files:
+                fpath = os.path.join(folder_path, fname)
+                df_temp = read_sv307_time_history(fpath, logger)
+                if df_temp is not None:
+                    df_all.append(df_temp)
+                
 
-    print(df)
-    exit()
-    logger.info(f"Length of the combined dataframe: {len(df)}")
+            if not df_all:
+                logger.error("No valid CSV files could be read.")
+                return None
 
-    if 'LAeq (Ch1, P1) [dB]' not in df.columns:
-        logger.warning("'LAeq (Ch1, P1) [dB]' not found in columns. Retrying with header=18 and sep=';'")
-        try:
-            df = pd.read_csv(file_path, header=18, sep=';', skipfooter=8,
-                             usecols=usecols, engine='python')
-        except Exception as e:
-            logger.error(f"Retrying failed: {e}")
-            return None
+            df = pd.concat(df_all, ignore_index=True)
+            df = df.sort_values(by='Time')
 
-    if 'Time' in df.columns:
-        df = df[pd.to_datetime(df['Time'], format='%d/%m/%Y %H:%M:%S', errors='coerce').notnull()]
+        # time columns formar --> 01/04/2025 12:47:00
         df['datetime'] = pd.to_datetime(df['Time'], format='%d/%m/%Y %H:%M:%S', errors='coerce')
-        logger.info("Converted 'Time' to datetime")
-    else:
-        logger.error("'Time' column not found in dataframe.")
-        return None
+        
+        # remove columns with nan values
+        df = df.dropna(axis=1, how='all')
 
+        try:    
+            logger.info("Changing date and time")
+            df = change_date_and_time(df, new_date, new_time, new_threshold_date, new_threshold_time, logger)
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            return None
+        
+        
+        df.rename(columns={'LAeq (Ch1, P1) [dB]': 'LAeq',
+                        'LAFmax (Ch1, P1) [dB]': 'LAFmax',
+                        'LAFmin (Ch1, P1) [dB]': 'LAFmin',
+                        'LCeq (Ch1, P2) [dB]': 'LCeq'}, inplace=True)
+
+
+        df["LCeq-LAeq"] = df["LCeq"] - df["LAeq"]
+        logger.info(f"Length of the combined dataframe: {len(df)}")
+
+
+        # saving the dataframe to a csv file
+        if selected_folder is not None:
+            logger.info(f"Saving the dataframe to {csv_final_path}")
+            try:
+                df.to_csv(csv_final_path, index=False)
+                logger.info("CSV file saved successfully.")
+            except Exception as e:
+                logger.error(f"Error saving CSV file: {e}")
+                return None
+            
     return df
+
+
+
+
 
 
 
