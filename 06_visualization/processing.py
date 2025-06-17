@@ -17,16 +17,16 @@ import ast
 def load_data(file_path, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None, selected_folder=None):
     logger.info("")
     slm_type_function_mapping = {
-        'tenerife_TCT': (get_data_tenerife_TCT, tenerife_tct_dict),
-        # "audiomoth": (get_data_audiomoth, audiopost_dict),
-        # "814": (get_data_814, larson814_dict),
-        # "824": (get_data_824, larson824_dict),
-        # "lx_ES": (get_data_lx_ES, larsonlx_dict),
-        # "lx_EN": (get_data_lx_EN, larsonlx_dict),
-        # "cesva": (get_data_cesva, cesva_dict),
-        # "sono-bilbo": (get_data_bilbo, sonometer_bilbo_dict),
-        # "SV307": (get_data_SV307, sv307_dict),
-        # "bruel&kjaer": (get_data_bruel_kjaer, bruel_kjaer_dict),
+        # 'tenerife_TCT': (get_data_tenerife_TCT, tenerife_tct_dict),
+        "audiomoth": (get_data_audiomoth, audiopost_dict),
+        "814": (get_data_814, larson814_dict),
+        "824": (get_data_824, larson824_dict),
+        "lx_ES": (get_data_lx_ES, larsonlx_dict),
+        "lx_EN": (get_data_lx_EN, larsonlx_dict),
+        "cesva": (get_data_cesva, cesva_dict),
+        "sono-bilbo": (get_data_bilbo, sonometer_bilbo_dict),
+        "SV307": (get_data_SV307, sv307_dict),
+        "bruel&kjaer": (get_data_bruel_kjaer, bruel_kjaer_dict),
     } # SLM stands for Sound Level Meter
     # load the data for each SLM type until one works |  for each slm_type, (func, slm_dict) in slm_type_function_mapping.items(): means that for each key and value in the dictionary, the key is slm_type and the value is a tuple with the function and the dictionary | the function is the function to load the data and the dictionary is the dictionary with the column names for the SLM type
 
@@ -88,20 +88,19 @@ def process_folder(folder_path, folder_date_time, folder_threshold, logger, sele
         logger.info(f"Files found: {len(files)} at {folder_path}")
         
         
-        if not files:
-            logger.info(f"No measurement files found in {folder_path}")
-            try:
-                logger.info(f"Trying to load data")
-                # load_data regular files
-                return load_data(folder_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time, selected_folder=selected_folder)
-            except Exception as e:
-                logger.error(f"Error loading data: {e}")
-                
-            
-            # if no files found, return None
-            logger.error(f"No measurement files found in {folder_path}")
-            return None, None, None
+        # if not files:
+        #     logger.info(f"No measurement files found in {folder_path}")
+        #     try:
+        #         logger.info(f"Trying to load data")
+        #         # load_data regular files
+        #         return load_data(folder_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time, selected_folder=selected_folder)
+        #     except Exception as e:
+        #         logger.error(f"Error loading data: {e}")
+        #     # if no files found, return None
+        #     logger.error(f"No measurement files found in {folder_path}")
+        #     return None, None, None
         
+
         # this is the case where there are many files in the folder
         return load_data(files[0], logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time,selected_folder=selected_folder)
     return None, None, None 
@@ -175,7 +174,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
         ########################################################
 
 
-
         #############################
         ## GETTING THE DATAFRAME ###
         #############################
@@ -185,11 +183,22 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info(f"Getting the data from the dataframes")
             
             
-            logger.info(f"Getting the acoustic data from the dataframes")
-            df, slm_type, slm_dict = process_folder(reg_folder, folder_date_time, folder_threshold, logger, ACOUSTIC_PARAMS_FOLDER)
-            if df is None:
-                logger.warning(f"df is None")
-                continue
+            if sufix_string == "SONOMETRO":
+                reg_folder = reg_folder.replace(ACOUSTIC_PARAMS_FOLDER, SONOMETER_FOLDER)
+                print(reg_folder)
+                df, slm_type, slm_dict = process_folder(reg_folder, folder_date_time, folder_threshold, logger,selected_folder=SONOMETER_FOLDER)
+                if df is None:
+                    logger.warning(f"df is None")
+                    continue
+            
+            else:
+                logger.info(f"Getting the acoustic data from the dataframes")
+                df, slm_type, slm_dict = process_folder(reg_folder, folder_date_time, folder_threshold, logger, ACOUSTIC_PARAMS_FOLDER)
+                if df is None:
+                    logger.warning(f"df is None")
+                    continue
+            
+            exit()
 
             # taking just 1 day, which are the first 86400 rows
             # df = df.iloc[:86400] # 1 day of data, 24 hours * 60 minutes * 60 seconds = 86400 seconds

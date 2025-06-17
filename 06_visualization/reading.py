@@ -6,7 +6,7 @@ from utils_vi import *
 from tqdm import tqdm
 
 
-def get_data_bilbo(file_path: str, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None):
+def get_data_bilbo(file_path: str, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None, selected_folder=None):
     try:
         df = pd.read_csv(file_path)
     except:
@@ -29,7 +29,7 @@ def get_data_bilbo(file_path: str, logger, new_date=None, new_time=None, new_thr
 
 
 
-def get_data_814(file_path: str, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None):
+def get_data_814(file_path: str, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None, selected_folder=None):
     try:
         df = pd.read_csv(file_path, header=16, encoding='latin1')
     except UnicodeDecodeError:
@@ -50,7 +50,7 @@ def get_data_814(file_path: str, logger, new_date=None, new_time=None, new_thres
 
 
 
-def get_data_lx_ES(file_path: str, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None):
+def get_data_lx_ES(file_path: str, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None, selected_folder=None):
     df = pd.read_excel(file_path, sheet_name='Historia del tiempo')
     df['datetime'] = pd.to_datetime(df['Fecha'])
 
@@ -66,7 +66,7 @@ def get_data_lx_ES(file_path: str, logger, new_date=None, new_time=None, new_thr
 
 
 
-def get_data_lx_EN(file_path: str,logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None):
+def get_data_lx_EN(file_path: str,logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None, selected_folder=None):
     df = pd.read_excel(file_path,sheet_name=4)
     df['datetime'] = pd.to_datetime(df['Date'])
 
@@ -80,7 +80,7 @@ def get_data_lx_EN(file_path: str,logger, new_date=None, new_time=None, new_thre
 
 
 
-def get_data_824(file_path: str,logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None):
+def get_data_824(file_path: str,logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None, selected_folder=None):
     df = pd.read_csv(file_path, sep=',', encoding='latin1', header=15)
     df = df.dropna(axis=1)
     
@@ -101,34 +101,80 @@ def get_data_824(file_path: str,logger, new_date=None, new_time=None, new_thresh
 
 
 
-def read_SV307(file_path: str, logger):
-    try:
-        df = pd.read_csv(file_path,header=14,sep=';',skipfooter=8,usecols=[0,1,2,3,4,5,6,7,8], engine='python')
-        logger.info("Reading SV307 file with header 14")
-    except Exception as e:
-        df = pd.read_csv(file_path,header=18,skipfooter=8,usecols=[0,1,2,3,4,5,6,7,8], engine='python')
-        logger.info("Reading SV307 file with header 18")
-    try:
-        df = pd.read_csv(file_path,header=6,sep=';',skipfooter=8,usecols=[0,1,2,3,4,5,6,7,8], engine='python')
-        logger.info("Reading SV307 file with header 6")
-    except Exception as e:
-        logger.error(f"Error reading file: {file_path}")
+def read_SV307(file_path: str, logger, selected_folder=None):
+    folder_path = os.path.dirname(file_path)
+    logger.info(f"Folder: {folder_path}")
 
+    if not os.path.exists(folder_path):
+        logger.error(f"Folder {folder_path} does not exist")
+        return None
 
-    logger.info(f"Lenght of the file: {len(df)}")
-    if not 'LAeq (Ch1, P1) [dB]' in df.columns:
-        df = pd.read_csv(file_path,header=18,skipfooter=8,usecols=[0,1,2,3,4,5,6,7,8], engine='python', sep=';')
-        logger.info("Reading SV307 file with header 18 and sep=';'")
+    files = [f for f in os.listdir(folder_path) if f.endswith('.csv')]
+    logger.info(f"CSV files in the folder: {len(files)}")
 
-    df = df[pd.to_datetime(df['Time'], format='%d/%m/%Y %H:%M:%S', errors='coerce').notnull()]
-    df['datetime'] = pd.to_datetime(df['Time'], format='%d/%m/%Y %H:%M:%S')
-    logger.info("Converting 'Time' column to datetime")
+    
+    header_options = [14, 18, 6]
+    usecols = list(range(9))
+
+    def try_read_csv(path):
+        for header in header_options:
+            try:
+                df = pd.read_csv(path, header=header, sep=';', skipfooter=8,
+                                 usecols=usecols, engine='python')
+                logger.info(f"Read {os.path.basename(path)} with header={header}")
+                return df
+            except Exception as e:
+                logger.warning(f"Failed to read {os.path.basename(path)} with header={header}: {e}")
+        logger.error(f"All header attempts failed for {path}")
+        return None
+
+    if len(files) == 1:
+        logger.info("Only one file in the folder, reading it directly")
+        df = try_read_csv(file_path)
+        if df is None:
+            return None
+    else:
+        logger.info("Multiple CSV files found, reading and concatenating")
+        df_all = []
+        for fname in files:
+            fpath = os.path.join(folder_path, fname)
+            df_temp = try_read_csv(fpath)
+            if df_temp is not None:
+                df_all.append(df_temp)
+
+        if not df_all:
+            logger.error("No valid CSV files could be read.")
+            return None
+
+        df = pd.concat(df_all, ignore_index=True)
+        df = df.sort_values(by='Time', errors='ignore')
+
+    print(df)
+    exit()
+    logger.info(f"Length of the combined dataframe: {len(df)}")
+
+    if 'LAeq (Ch1, P1) [dB]' not in df.columns:
+        logger.warning("'LAeq (Ch1, P1) [dB]' not found in columns. Retrying with header=18 and sep=';'")
+        try:
+            df = pd.read_csv(file_path, header=18, sep=';', skipfooter=8,
+                             usecols=usecols, engine='python')
+        except Exception as e:
+            logger.error(f"Retrying failed: {e}")
+            return None
+
+    if 'Time' in df.columns:
+        df = df[pd.to_datetime(df['Time'], format='%d/%m/%Y %H:%M:%S', errors='coerce').notnull()]
+        df['datetime'] = pd.to_datetime(df['Time'], format='%d/%m/%Y %H:%M:%S', errors='coerce')
+        logger.info("Converted 'Time' to datetime")
+    else:
+        logger.error("'Time' column not found in dataframe.")
+        return None
 
     return df
 
 
 
-def get_data_SV307(file_path: str,logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None):
+def get_data_SV307(file_path: str,logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None, selected_folder=None):
     logger.info("Testing how many SV307 files are in the folder")
     # testing if there are more than 1 csv file in the folder
     folder_path = file_path.split('\\')[:-1]
@@ -189,7 +235,7 @@ def get_data_SV307(file_path: str,logger, new_date=None, new_time=None, new_thre
 
 
 
-def get_data_audiomoth(file_path: str,logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None):
+def get_data_audiomoth(file_path: str,logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None, selected_folder=None):
     df = pd.read_csv(file_path)
     if 'Time' in df.columns:
         df['datetime'] = pd.to_datetime(df['Time'], format='%Y-%m-%d_%H:%M:%S')
@@ -208,7 +254,7 @@ def get_data_audiomoth(file_path: str,logger, new_date=None, new_time=None, new_
 
 
 
-def get_data_cesva(measurement_folder: str, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None):
+def get_data_cesva(measurement_folder: str, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None, selected_folder=None):
     if os.path.isfile(measurement_folder):
         cesva_index = measurement_folder.find('CESVA')
         if cesva_index != -1:
@@ -266,7 +312,7 @@ def get_data_cesva(measurement_folder: str, logger, new_date=None, new_time=None
 
 
 
-def get_data_bruel_kjaer(measurement_folder: str, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None):
+def get_data_bruel_kjaer(measurement_folder: str, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None, selected_folder=None):
     if os.path.isfile(measurement_folder):
         # remove last part of the path to get the folder
         measurement_folder = measurement_folder.split('\\')[:-1]
@@ -384,6 +430,9 @@ def get_data_tenerife_TCT(folder_path: str,logger, new_date=None, new_time=None,
                 if file.endswith('_w_1.0.csv'):
                     csv_path = os.path.abspath(os.path.join(root, file))
                     csv_files.append(csv_path)
+            else:
+                logger.error("Selected folder is not valid. Please select either ACOUSTIC_PARAMS_FOLDER or PREDICTION_LITTLE_FOLDER.")
+                return None
     logger.info(f"Number of csv files in the folder: {len(csv_files)}")
 
 
