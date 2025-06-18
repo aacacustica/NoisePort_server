@@ -452,37 +452,44 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 continue
 
 
-            # try:
-            #     ##################################
-            #     # PEAK + ROLLING ANALYSIS
-            #     ##################################
-            #     logger.info("")
-            #     logger.info(f"Applying find_peaks function to the whole dataframe")
-            #     peaks, properties=find_peaks(df['LA_corrected'], prominence=PROMINENCE, width=WIDTH)
-            #     df_peaks = df.iloc[peaks].copy()
+            try:
+                ##################################
+                # PEAK + ROLLING ANALYSIS
+                ##################################
+                logger.info("")
+                logger.info(f"Applying find_peaks function to the whole dataframe")
+                df_peaks_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_peaks_filtered.csv")
+                if os.path.exists(df_peaks_csv_path):
+                    logger.info(f"File {df_peaks_csv_path} already exists, skipping peaks analysis")
+                    df_peaks = pd.read_csv(df_peaks_csv_path)
+                    logger.info(f"Loaded peaks dataframe from {df_peaks_csv_path}")
+                
+                else:
 
-            #     logger.info("")
-            #     logger.info(f"Rolling the data with a window of {WINDOW_SIZE} seconds")
-            #     # rolling median for the LA values with a window of 30 seconds
-            #     df_peaks['LA_cor_median'] = df_peaks['LA_corrected'].rolling(window=WINDOW_SIZE, min_periods=1).quantile(0.5) + ADDING_THRESHOLD
-            #     df_peaks['Peak'] = 1
 
-            #     #above threshold
-            #     logger.info(f"Calculating peaks above threshold")
-            #     df_peaks = df_peaks[df_peaks['LA_corrected'] > df_peaks['LA_cor_median']]
-            #     logger.info(f"There are {len(df_peaks)} peaks in the dataframe after filtering")
-            #     # 
+                    peaks, properties=find_peaks(df['LA_corrected'], prominence=PROMINENCE, width=WIDTH)
+                    df_peaks = df.iloc[peaks].copy()
 
-            #     df_peaks_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_peaks_filtered.csv")
-            #     df_peaks.to_csv(df_peaks_csv_path, index=False)
-            #     logger.info(f"Saved peaks filtered dataframe to {df_peaks_csv_path}, with a lenght of {len(df_peaks)}")
+                    logger.info("")
+                    logger.info(f"Rolling the data with a window of {WINDOW_SIZE} seconds")
+                    # rolling median for the LA values with a window of 30 seconds
+                    df_peaks['LA_cor_median'] = df_peaks['LA_corrected'].rolling(window=WINDOW_SIZE, min_periods=1).quantile(0.5) + ADDING_THRESHOLD
+                    df_peaks['Peak'] = 1
 
-            #     #Timestamp to datetime
-            #     df_peaks['Timestamp'] = pd.to_datetime(df_peaks['Timestamp'])
-            # except Exception as e:
-            #     logger.error(f"An error occurred while trimming the dataframe {e}")
-            #     continue
+                    #above threshold
+                    logger.info(f"Calculating peaks above threshold")
+                    df_peaks = df_peaks[df_peaks['LA_corrected'] > df_peaks['LA_cor_median']]
+                    logger.info(f"There are {len(df_peaks)} peaks in the dataframe after filtering")
+                    # 
 
+                    df_peaks.to_csv(df_peaks_csv_path, index=False)
+                    logger.info(f"Saved peaks filtered dataframe to {df_peaks_csv_path}, with a lenght of {len(df_peaks)}")
+
+                #Timestamp to datetime
+                df_peaks['Timestamp'] = pd.to_datetime(df_peaks['Timestamp'])
+            except Exception as e:
+                logger.error(f"An error occurred while trimming the dataframe {e}")
+                continue
 
 
             ###################################
@@ -672,7 +679,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             
             # Plotting time plot
             # if PLOT_MAKE_TIME_PLOT:
-            #     logger.info(f"[9] Plotting time plot for folder {folder}")
+            #     logger.info(f"[9.1] Plotting time plot for folder {folder}")
             #     make_time_plot(df, folder_output_dir, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder, percentiles=PERCENTILES)
 
 
@@ -684,7 +691,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
             # Plotting heatmap evolution hour
             # if PLOT_HEATMAP_EVOLUTION_HOUR:
-            #     logger.info(f"[10] Plotting heatmap for folder {folder}")
+            #     logger.info(f"[10.1] Plotting heatmap for folder {folder}")
             #     plot_heatmap_evolution_hour(df, folder_output_dir, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname=folder)
 
 
@@ -836,18 +843,34 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             
 
             if PLOT_PEAK_DISTRIBUTION_HEATMAP:
-                logger.info(f"[8] Plotting peak heatmap for folder {folder}")
+                logger.info(f"[8.1] Plotting peak heatmap for folder {folder}")
                 plot_peak_distribution_heatmap(df_peaks, folder_output_dir_1h, logger, plotname=folder)
+
+            if PLOT_PEAK_DISTRIBUTION_HEATMAP_WEEK:
+                logger.info(f"[8.2] Plotting peak heatmap for folder {folder}")
+                plot_peak_distribution_heatmap_week(df_peaks, folder_output_dir_1h_week, logger, plotname=folder)
+
 
 
             if PLOT_PEAK_DISTRIBUTION:
-                logger.info(f"[9] Plotting peak distribution for folder {folder}")
+                logger.info(f"[9.1] Plotting peak distribution for folder {folder}")
                 plot_peak_distribution(df_peaks, folder_output_dir_1h, logger, plotname=folder)
+
+            if PLOT_PEAK_DISTRIBUTION_WEEK:
+                logger.info(f"[9.2] Plotting peak distribution for folder {folder}")
+                plot_peak_distribution_week(df_peaks, folder_output_dir_1h_week, logger, plotname=folder)
+
 
 
             if PLOT_PEAK_DENSITY_DISTRIBUTION:
-                logger.info(f"[10] Plotting density distribution for folder {folder}")
+                logger.info(f"[10.1] Plotting density distribution for folder {folder}")
                 plot_density_distribution_peaks(df_peaks, folder_output_dir_1h, logger, plotname=folder)
+
+            if PLOT_PEAK_DENSITY_DISTRIBUTION_WEEK:
+                logger.info(f"[10.2] Plotting density distribution for folder {folder}")
+                plot_density_distribution_peaks_week(df_peaks, folder_output_dir_1h_week, logger, plotname=folder)
+
+
 
 
             # #####################################################

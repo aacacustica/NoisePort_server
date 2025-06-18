@@ -164,8 +164,11 @@ def plot_night_evolution_week(df, folder_output_dir: str, logger, laeq_column: s
             plt.ylabel('dB(A)')
             plt.xlabel('Hora')
 
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
 
-            filename = f"{folder_output_dir}/{plotname}_{indicador_noche}_evolution_week_{week_start.strftime('%Y-%m-%d')}.png"
+
+            filename = f"{week_folder}/{plotname}_{indicador_noche}_evolution_week_{week_start.strftime('%Y-%m-%d')}.png"
             fig.savefig(filename, dpi=150)
             logger.info(f"Saved plot: {filename}")
 
@@ -338,11 +341,10 @@ def plot_night_evolution_15_min_week(df, folder_output_dir: str, logger, name_ex
             plt.xlabel('Hora')
 
 
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
 
-            fig_path = os.path.join(
-                folder_output_dir,
-                f'{plotname}_{indicador_noche}_evolution_{name_extension}_week_{week_start.strftime("%Y-%m-%d")}.png'
-            )
+            fig_path = os.path.join(week_folder, f'{plotname}_{indicador_noche}_evolution_{name_extension}_week_{week_start.strftime("%Y-%m-%d")}.png')
             fig.savefig(fig_path, dpi=150)
             logger.info(f"Saved weekly plot: {fig_path}")
 
@@ -1311,7 +1313,11 @@ def make_time_plot_week(df: pd.DataFrame, folder_output_dir: str, logger, column
 
             plt.tight_layout()
 
-            output_path = f'{folder_output_dir}/{plotname}_{agg_period}s_time_plot_week_{week_start.strftime("%Y-%m-%d")}.png'
+            #make folder for week
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+
+            output_path = f'{week_folder}/{plotname}_{agg_period}s_time_plot_week_{week_start.strftime("%Y-%m-%d")}.png'
             logger.info(f"Saving the weekly plot to {output_path}")
             plt.savefig(output_path, dpi=350)
             plt.close()
@@ -1443,9 +1449,14 @@ def plot_heatmap_evolution_hour_week(df, folder_output_dir: str, logger, values_
             plt.tight_layout()
 
 
+            #make folder for week
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+
+
             #save
             filename = f"{plotname}_heatmap_evolucion_week_{week_start.strftime('%Y-%m-%d')}"
-            image_path = f'{folder_output_dir}/{filename}.png'
+            image_path = f'{week_folder}/{filename}.png'
 
             logger.info(f"Saving heatmap to {image_path}")
             plt.savefig(image_path, dpi=350)
@@ -1590,9 +1601,12 @@ def plot_heatmap_evolution_15_min_week(df, folder_output_dir: str, logger, value
             plt.tight_layout()
 
 
+            #make folder for week
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+
             filename = f"{plotname}_heatmap_evolucion_15_min_week_{week_start.strftime('%Y-%m-%d')}"
-            image_path = f'{folder_output_dir}/{filename}.png'
-            csv_path = f'{folder_output_dir}/{filename}.csv'
+            image_path = f'{week_folder}/{filename}.png'
 
             logger.info(f"Saving heatmap to {image_path}")
             plt.savefig(image_path, dpi=150)
@@ -1853,12 +1867,18 @@ def plot_indicadores_heatmap_week(df, folder_output_dir: str, logger, plotname: 
             cbar.ax.tick_params(labelsize=BIGGEST_SIZE)
             plt.tight_layout()
 
-            os.makedirs(folder_output_dir, exist_ok=True)
+
+            #creating folder for week
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+
+
+
 
             filename_base = f"{plotname}_indicadores_week_{week_start.strftime('%Y-%m-%d')}"
-            plot_path = f"{folder_output_dir}/{filename_base}.png"
-            csv_path = f"{folder_output_dir}/{filename_base}.csv"
-            summary_path = f"{folder_output_dir}/{filename_base}_generales.csv"
+            plot_path = f"{week_folder}/{filename_base}.png"
+            csv_path = f"{week_folder}/{filename_base}.csv"
+            summary_path = f"{week_folder}/{filename_base}_generales.csv"
 
             plt.savefig(plot_path)
             logger.info(f"Saved heatmap to {plot_path}")
@@ -1958,8 +1978,6 @@ def plot_day_evolution_week(df, folder_output_dir: str, logger, laeq_column: str
         df = df.reset_index(drop=True)
         df = df.drop_duplicates()
         logger.info(f"Using the laeq_column: {laeq_column}")
-        print(df)
-        print(df.columns)
 
 
         sns.set_style("whitegrid")
@@ -2023,9 +2041,13 @@ def plot_day_evolution_week(df, folder_output_dir: str, logger, laeq_column: str
             plt.ylabel('dB(A)')
             plt.xlabel('Hora')
 
-            os.makedirs(folder_output_dir, exist_ok=True)
+            #creating folder for week
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+
+
             filename_base = f"{plotname}_day_evolution_week_{week_start.strftime('%Y-%m-%d')}"
-            image_path = f"{folder_output_dir}/{filename_base}.png"
+            image_path = f"{week_folder}/{filename_base}.png"
 
             logger.info(f"Saving plot to {image_path}")
             fig.savefig(image_path, dpi=300)
@@ -2177,8 +2199,14 @@ def plot_period_evolution_week(df,  folder_output_dir: str, logger, laeq_column:
                 plt.xlabel('Hora')
 
 
+
+                #creating folder for week
+                week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+                os.makedirs(week_folder, exist_ok=True)
+
+
                 filename_base = f"{plotname}_{ind}_evolution_week_{week_start.strftime('%Y-%m-%d')}"
-                plot_path = f"{folder_output_dir}/{filename_base}.png"
+                plot_path = f"{week_folder}/{filename_base}.png"
 
                 logger.info(f"Saving plot to {plot_path}")
                 fig.savefig(plot_path, dpi=150)
@@ -2262,9 +2290,7 @@ def oca_alarm(df_1h_leq, folder_output_dir: str, logger, plotname: str):
     sns.set_style("whitegrid")
     
     # filter the data based on the thresholds
-    filtered_df_1h_leq = df_1h_leq[
-        (df_1h_leq["LA_corrected_leq"] > df_1h_leq["oca"])
-    ]
+    filtered_df_1h_leq = df_1h_leq[(df_1h_leq["LA_corrected_leq"] > df_1h_leq["oca"])]
 
     plt.figure(figsize=(15, 8))
     plt.plot(df_1h_leq["LA_corrected_leq"], label="LAeq")
@@ -2335,8 +2361,13 @@ def oca_alarm_week(df_1h_leq, folder_output_dir: str, logger, plotname: str):
 
             plt.tight_layout()
 
+
+            #week folder
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+
             # Save the plot
-            output_path = f'{folder_output_dir}/{plotname}_OCA_Alarm_week_{week_start.strftime("%Y-%m-%d")}.png'
+            output_path = os.path.join(week_folder, f"{plotname}_OCA_Alarm.png")
             plt.savefig(output_path, dpi=150)
             plt.close()
             logger.info(f"Saved OCA weekly alarm plot: {output_path}")
@@ -2381,6 +2412,8 @@ def lmax_alarm(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname
     logger.info(f"Saved plot at {folder_output_dir}/{plotname}_LAmax_Alarm.png")
 
 
+
+
 def lmax_alarm_week(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold: int):
     try:
         sns.set_style("whitegrid")
@@ -2420,7 +2453,12 @@ def lmax_alarm_week(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plo
             plt.tight_layout()
 
             # Save image
-            output_path = f'{folder_output_dir}/{plotname}_LAmax_Alarm_week_{week_start.strftime("%Y-%m-%d")}.png'
+            #creating folder for week
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+
+
+            output_path = f'{week_folder}/{plotname}_LAmax_Alarm_week_{week_start.strftime("%Y-%m-%d")}.png'
             plt.savefig(output_path, dpi=150)
             plt.close()
             logger.info(f"Saved LAmax weekly alarm plot: {output_path}")
@@ -2523,7 +2561,11 @@ def LC_LA_alarm_week(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, pl
             plt.tight_layout()
 
             # Save weekly plot
-            output_path = f"{folder_output_dir}/{plotname}_LC_LA_Alarm_week_{week_start.strftime('%Y-%m-%d')}.png"
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+
+
+            output_path = f"{week_folder}/{plotname}_LC_LA_Alarm_week_{week_start.strftime('%Y-%m-%d')}.png"
             plt.savefig(output_path, dpi=150)
             plt.close()
             logger.info(f"Saved LC-LA weekly alarm plot: {output_path}")
@@ -2625,7 +2667,9 @@ def l90_alarm_week(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plot
             plt.tight_layout()
 
             # Save weekly plot
-            output_path = f'{folder_output_dir}/{plotname}_L90_Alarm_week_{week_start.strftime("%Y-%m-%d")}.png'
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+            output_path = f'{week_folder}/{plotname}_L90_Alarm_week_{week_start.strftime("%Y-%m-%d")}.png'
             plt.savefig(output_path, dpi=150)
             plt.close()
             logger.info(f"Saved L90 weekly alarm plot: {output_path}")
@@ -2720,7 +2764,10 @@ def l90_alarm_dynamic_week(df_1h: pd.DataFrame, folder_output_dir: str, logger, 
             plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
             plt.tight_layout()
 
-            filename = f'{folder_output_dir}/{plotname}_L90_Dyn_Alarm_week_{week_start.strftime("%Y-%m-%d")}.png'
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+
+            filename = f'{week_folder}/{plotname}_L90_Dyn_Alarm_week_{week_start.strftime("%Y-%m-%d")}.png'
             plt.savefig(filename, dpi=150)
             plt.close()
             logger.info(f"Saved dynamic L90 alarm plot: {filename}")
@@ -3032,7 +3079,9 @@ def tonal_frequency(df_oct: pd.DataFrame, folder_output_dir_1h_folder: str, logg
 
 
 
-
+##################################################################
+##################################################################
+##################################################################
 def plot_peak_distribution_heatmap(df_peaks: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
     try:
         sns.set_style("whitegrid")
@@ -3110,6 +3159,100 @@ def plot_peak_distribution_heatmap(df_peaks: pd.DataFrame, folder_output_dir: st
 
 
 
+def plot_peak_distribution_heatmap_week(df_peaks: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
+    try:
+        sns.set_style("whitegrid")
+        df_peaks = df_peaks.copy()
+
+        df_peaks['Día'] = df_peaks['day_name'].replace(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'])
+        df_peaks['date_day'] = df_peaks['date'].astype(str) + ' ' + df_peaks['Día']
+
+        df_peaks['full_date'] = pd.to_datetime(df_peaks['Timestamp']).dt.strftime('%Y-%m-%d') + \
+                                 '\n' + pd.to_datetime(df_peaks['Timestamp']).dt.day_name()
+        
+
+        # make the week column
+        # df['week'] = df['date'].dt.to_period('W').dt.start_time
+        df_peaks['week'] = pd.to_datetime(df_peaks['date']).dt.to_period('W').dt.start_time
+        weeks = df_peaks['week'].unique()
+
+        for week_start in weeks:
+            df_week = df_peaks[df_peaks['week'] == week_start].copy()
+            if df_week.empty:
+                continue
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+
+            ########################################
+            ########################################
+            # hourly heatmap
+            ########################################
+            ########################################
+            pivot_table = df_week.pivot_table(
+                index='date_day',
+                columns='hour',
+                aggfunc='size'
+            ).replace(0, np.nan)
+
+            plt.figure(figsize=(20, 10))
+            sns.heatmap(pivot_table, annot=True, fmt=".0f", cmap=cmap_dict)
+
+            plt.xlabel('Hora', fontsize=BIGGEST_SIZE)
+            plt.ylabel('Día', fontsize=BIGGEST_SIZE)
+            plt.title(f'{plotname} | Picos por Hora y Día | Semana {week_start.strftime("%Y-%m-%d")}', fontsize=BIGGEST_SIZE)
+
+            plt.yticks(np.arange(len(pivot_table.index)) + 0.5, pivot_table.index, rotation=0, fontsize=BIGGEST_SIZE)
+            plt.xticks(np.arange(0.5, len(pivot_table.columns), 1), range(24), fontsize=BIGGEST_SIZE)
+
+            plt.tight_layout()
+            plt.grid(False)
+
+            filename_hour = os.path.join(week_folder, f"{plotname}_heatmap_hour.png")
+            plt.savefig(filename_hour, dpi=150)
+            plt.close()
+            logger.info(f"Saved hourly heatmap: {filename_hour}")
+            
+
+
+            ########################################
+            ########################################
+            # plot the same informaiton but in 4h intervals
+            ########################################
+            ########################################
+            # create 4 hour blocks
+            df_week['4HourBlock'] = (df_week['Timestamp'].dt.hour // 4) * 4
+
+            pivot_table_4h = df_week.pivot_table(
+                index='date_day',
+                columns='4HourBlock',
+                aggfunc='size'
+            ).replace(0, np.nan)
+
+            plt.figure(figsize=(20, 10))
+            sns.heatmap(pivot_table_4h, annot=True, fmt=".0f", cmap=cmap_dict)
+
+            plt.xlabel('Hora', fontsize=BIGGEST_SIZE)
+            plt.ylabel('Día', fontsize=BIGGEST_SIZE)
+            plt.title(f'{plotname} | Picos por Bloque de 4h | Semana {week_start.strftime("%Y-%m-%d")}', fontsize=BIGGEST_SIZE)
+
+            plt.yticks(np.arange(len(pivot_table_4h.index)) + 0.5, pivot_table_4h.index, rotation=0, fontsize=BIGGEST_SIZE)
+            plt.xticks(np.arange(0.5, len(pivot_table_4h.columns), 1), range(0, 24, 4), fontsize=BIGGEST_SIZE)
+
+            plt.tight_layout()
+            plt.grid(False)
+
+            filename_4h = os.path.join(week_folder, f"{plotname}_heatmap_4h.png")
+            plt.savefig(filename_4h, dpi=150)
+            plt.close()
+            logger.info(f"Saved 4h block heatmap: {filename_4h}")
+
+    except Exception as e:
+        logger.error(f"Error in plot_peak_distribution_heatmap: {e}")
+
+
+
+
+##################################################################
 def plot_peak_distribution(df_merged: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
     try:
         sns.set_style("whitegrid")
@@ -3189,11 +3332,97 @@ def plot_peak_distribution(df_merged: pd.DataFrame, folder_output_dir: str, logg
 
     except Exception as e:
         logger.error(f"Error in plot_peak_distribution: {e}")
-        raise
+        raise 
 
 
 
 
+def plot_peak_distribution_week(df_merged: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
+    try:
+        sns.set_style("whitegrid")
+
+        df_merged = df_merged.copy()
+        df_merged.sort_values('Timestamp', inplace=True)
+
+        
+
+        plt.figure(figsize=(25, 9))
+        plt.plot(
+            df_merged['Timestamp'], 
+            df_merged['LA_corrected'], 
+            marker='o', 
+            linestyle='-', 
+            color='red'
+        )
+
+        
+        plt.xlabel('Tiempo', fontsize=BIGGEST_SIZE)
+        plt.ylabel('LAeq', fontsize=BIGGEST_SIZE)
+        plt.title(f'{plotname} Valores LAeq a lo largo del tiempo', fontsize=BIGGEST_SIZE)
+
+        plt.xticks(rotation=90, fontsize=BIGGEST_SIZE)
+        plt.xlim(df_merged['Timestamp'].iloc[0], df_merged['Timestamp'].iloc[-1])
+        
+        plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
+        plt.tight_layout()
+        plt.grid(True)
+
+
+        # #save the plot
+        plt.savefig(f"{folder_output_dir}/{plotname}_peak_distribution.png", dpi=150)
+        logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_distribution.png")
+
+
+
+        ########################################
+        ########################################
+        # plot the same informaiton but with shadow area for night time
+        ########################################
+        ########################################
+        min_date = df_merged['Timestamp'].dt.date.min()
+        max_date = df_merged['Timestamp'].dt.date.max()
+
+        plt.figure(figsize=(25, 9))
+        plt.plot(df_merged['Timestamp'], df_merged['LA_corrected'], marker='o', linestyle='-', color='red')
+        
+        
+        # highlighting night periods
+        for single_date in pd.date_range(min_date, max_date):
+            start_night = pd.Timestamp.combine(single_date, pd.Timestamp('20:00:00').time())
+            end_night = pd.Timestamp.combine(single_date + pd.Timedelta(days=1), pd.Timestamp('07:00:00').time())
+            plt.fill_betweenx(y=[df_merged['LA_corrected'].min(), df_merged['LA_corrected'].max()], 
+                            x1=start_night, x2=end_night, color='grey', alpha=0.3)
+
+
+        plt.title(f'{plotname} Valores LAeq a lo largo del tiempo con Distribución Nocturna', fontsize=BIGGEST_SIZE)
+        plt.xlabel('Tiempo', fontsize=BIGGEST_SIZE)
+        plt.ylabel('LAeq (dB)', fontsize=BIGGEST_SIZE)
+
+        plt.grid(True)
+        plt.xticks(rotation=90)
+
+        plt.xlim(df_merged['Timestamp'].iloc[0], df_merged['Timestamp'].iloc[-1])
+        plt.ylim(df_merged['LA_corrected'].min(), df_merged['LA_corrected'].max())
+        
+        
+        plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
+        plt.tight_layout()
+
+
+        # save the plot
+        plt.savefig(f"{folder_output_dir}/{plotname}_peak_distribution_night.png", dpi=150)
+        logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_distribution_night.png")
+
+
+    except Exception as e:
+        logger.error(f"Error in plot_peak_distribution: {e}")
+        raise 
+
+
+
+###################################################################
 def plot_density_distribution_peaks(df_merged: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
     try:
         sns.set_style("whitegrid")
