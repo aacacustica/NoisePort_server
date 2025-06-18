@@ -401,44 +401,55 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
 
-            # try:
-            #     ################################################################
-            #     # TRANSFORMING 1 SECOND DATA TO 1 HOUR DATA
-            #     ##################################################################
-            #     logger.info("")
-            #     logger.info(f"Transforming 1 second data to 1 hour data")
+            try:
+                ################################################################
+                # TRANSFORMING 1 SECOND DATA TO 1 HOUR DATA
+                ##################################################################
+                logger.info("")
+                logger.info(f"Transforming 1 second data to 1 hour data")
                 
-            #     df_1h = transform_1h(df, slm_dict, logger, agg_period=3600)
-            #     logger.info(f"Transformed 1 second data to 1 hour data")
-            #     df_1h = df_1h.round(2)
+                logger.info(f"MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA")
+                # remove the last part of the folder_output_dir
+                folder_output_dir_for_alarms = os.path.dirname(folder_output_dir)
+                folder_output_dir_1h = os.path.join(folder_output_dir_for_alarms, 'Graphics_ALARMS')
+                os.makedirs(folder_output_dir_1h, exist_ok=True)
+
+                logger.info(f"Making the folder for week analysis for 1 hour data")
+                folder_output_dir_1h_week = os.path.join(folder_output_dir_1h, 'Graphics_week')
+                os.makedirs(folder_output_dir_1h_week, exist_ok=True)
 
 
-            #     logger.info(f"MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA")
-            #     # remove the last part of the folder_output_dir
-            #     folder_output_dir_for_alarms = os.path.dirname(folder_output_dir)
-            #     folder_output_dir_1h = os.path.join(folder_output_dir_for_alarms, 'Graphics_ALARMS')
-            #     os.makedirs(folder_output_dir_1h, exist_ok=True)
-
-
-            #     logger.info("")
-            #     logger.info("")
-            #     logger.info(f"TRANSFORMATION SECTION")
-            #     logger.info(f"Adding oca column")
-            #     logger.info(f"OCA Limits --> {oca_limits}")
-            #     # set index (which is datetime) as column
-            #     df_1h.reset_index(inplace=True)
+                # check if the file exists
+                df_1h_csv_path = os.path.join(folder_output_dir_1h, f"{actual_folder_name}_1h.csv")
+                if os.path.exists(df_1h_csv_path):
+                    logger.info(f"File {df_1h_csv_path} already exists, skipping transformation")
+                    df_1h = pd.read_csv(df_1h_csv_path)
+                    logger.info(f"Loaded 1 hour dataframe from {df_1h_csv_path}")
+                    # continue
                 
-            #     df_1h = transformation(df_1h, logger, oca_limits)
+                else:
+                    df_1h = transform_1h(df, slm_dict, logger, agg_period=3600)
+                    logger.info(f"Transformed 1 second data to 1 hour data")
+                    df_1h = df_1h.round(2)
 
-            #     #####
-            #     #ssave
-            #     df_1h_csv_path = os.path.join(folder_output_dir_1h, f"{actual_folder_name}_1h.csv")
-            #     df_1h.to_csv(df_1h_csv_path, index=False)
-            #     logger.info(f"Saved 1 hour dataframe to {df_1h_csv_path}")
-            # except Exception as e:
-            #     logger.error(f"An error occurred while transforming 1 second data to 1 hour data: {e}")
-            #     continue
+                    logger.info("")
+                    logger.info("")
+                    logger.info(f"TRANSFORMATION SECTION")
+                    logger.info(f"Adding oca column")
+                    logger.info(f"OCA Limits --> {oca_limits}")
+                    # set index (which is datetime) as column
+                    df_1h.reset_index(inplace=True)
+                    
+                    df_1h = transformation(df_1h, logger, oca_limits)
 
+                    #####
+                    #ssave
+                    df_1h.to_csv(df_1h_csv_path, index=False)
+                    logger.info(f"Saved 1 hour dataframe to {df_1h_csv_path}")
+
+            except Exception as e:
+                logger.error(f"An error occurred while transforming 1 second data to 1 hour data: {e}")
+                continue
 
 
             # try:
@@ -470,7 +481,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             #     df_peaks['Timestamp'] = pd.to_datetime(df_peaks['Timestamp'])
             # except Exception as e:
             #     logger.error(f"An error occurred while trimming the dataframe {e}")
-                # continue
+            #     continue
 
 
 
@@ -746,39 +757,72 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info(f"PLOTTING ALARMS!!!")
 
             if OCA_ALARM:
-                logger.info(f"[1] Plotting OCA alarm for folder {folder}")
+                logger.info(f"[1.1] Plotting OCA alarm for folder {folder}")
                 oca_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder)
+
+            if OCA_ALARM_WEEK:
+                logger.info(f"[1.2] Plotting OCA alarm for folder {folder}")
+                oca_alarm_week(df_1h, folder_output_dir_1h_week, logger, plotname=folder)
             
             
+
             if LMAX_ALARM:
-                logger.info(f"[2] Plotting LMAX alarm for folder {folder}")
+                logger.info(f"[2.1] Plotting LMAX alarm for folder {folder}")
                 lmax_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold=95) # OCA +10
 
+            if LMAX_ALARM_WEEK:
+                logger.info(f"[2.2] Plotting LMAX alarm for folder {folder}")
+                lmax_alarm_week(df_1h, folder_output_dir_1h_week, logger, plotname=folder, threshold=95)
+
             
+
             if LC_LA_ALARM:
-                logger.info(f"[3] Plotting LC-LA alarm for folder {folder}")
+                logger.info(f"[3.1] Plotting LC-LA alarm for folder {folder}")
                 LC_LA_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_norma=10, threshold_dB=3)
+
+            if LC_LA_ALARM_WEEK:
+                logger.info(f"[3.2] Plotting LC-LA alarm for folder {folder}")
+                LC_LA_alarm_week(df_1h, folder_output_dir_1h_week, logger, plotname=folder, threshold_norma=10, threshold_dB=3)
+
 
 
             if L90_ALARM:
-                logger.info(f"[4] Plotting L90 alarm for folder {folder}")
+                logger.info(f"[4.1] Plotting L90 alarm for folder {folder}")
                 l90_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_dB=5)
+
+            if L90_ALARM_WEEK:
+                logger.info(f"[4.2] Plotting L90 alarm for folder {folder}")
+                l90_alarm_week(df_1h, folder_output_dir_1h_week, logger, plotname=folder, threshold_dB=5)
+
 
 
             if L90_ALARM_DYNAMIC:
-                # TODO
-                logger.info(f"[5] Plotting L90 alarm dynamic for folder {folder}")
+                logger.info(f"[5.1] Plotting L90 alarm dynamic for folder {folder}")
                 l90_alarm_dynamic(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_dB=5)
+
+            if L90_ALARM_DYNAMIC_WEEK:
+                logger.info(f"[5.2] Plotting L90 alarm dynamic for folder {folder}")
+                l90_alarm_dynamic_week(df_1h, folder_output_dir_1h_week, logger, plotname=folder, threshold_dB=5)
+
 
 
             if FREQUENCY_COMPOSITION:
-                logger.info(f"[6] Plotting frequency composition for folder {folder}")            
+                logger.info(f"[6.1] Plotting frequency composition for folder {folder}")            
                 frequency_composition(df, folder_output_dir_1h, logger, plotname=folder, threshold_comp=5)
+
+            if FREQUENCY_COMPOSITION_WEEK:
+                logger.info(f"[6.2] Plotting frequency composition for folder {folder}")            
+                frequency_composition_week(df, folder_output_dir_1h_week, logger, plotname=folder, threshold_comp=5)
+
 
 
             if TONAL_FREQUENCY:
-                logger.info(f"[7] Plotting tonal frequency for folder {folder}")
+                logger.info(f"[7.1] Plotting tonal frequency for folder {folder}")
                 tonal_frequency(df, folder_output_dir_1h, logger, plotname=folder)
+            
+            if TONAL_FREQUENCY_WEEK:
+                logger.info(f"[7.2] Plotting tonal frequency for folder {folder}")
+                tonal_frequency_week(df, folder_output_dir_1h_week, logger, plotname=folder)
 
 
 

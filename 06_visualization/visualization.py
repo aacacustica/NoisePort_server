@@ -2297,6 +2297,56 @@ def oca_alarm(df_1h_leq, folder_output_dir: str, logger, plotname: str):
 
 
 
+def oca_alarm_week(df_1h_leq, folder_output_dir: str, logger, plotname: str):
+    try:
+        sns.set_style("whitegrid")
+
+        # Make sure date_time is datetime
+        df_1h_leq['date_time'] = pd.to_datetime(df_1h_leq['date_time'])
+        df_1h_leq = df_1h_leq.sort_values('date_time').copy()
+        df_1h_leq.set_index('date_time', inplace=True)
+
+        # Add week column based on start of the ISO week
+        df_1h_leq['week'] = df_1h_leq.index.to_period('W').start_time
+        weeks = df_1h_leq['week'].unique()
+
+        for week_start in weeks:
+            df_week = df_1h_leq[df_1h_leq['week'] == week_start]
+
+            # Filter alarms where LAeq > OCA
+            filtered_df_week = df_week[df_week["LA_corrected_leq"] > df_week["oca"]]
+
+            plt.figure(figsize=(15, 8))
+            plt.plot(df_week.index, df_week["LA_corrected_leq"], label="LAeq")
+            plt.plot(filtered_df_week.index, filtered_df_week["LA_corrected_leq"], "ro", label="LAeq Alarm")
+            plt.plot(df_week.index, df_week["oca"], "r--", label="OCA", linewidth=2)
+
+            plt.title(f"{plotname} LAeq - OCA | Alarms | Week of {week_start.strftime('%Y-%m-%d')}")
+            plt.ylabel("dB(A)")
+            plt.xticks(rotation=90)
+            plt.grid(True)
+
+            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
+            plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+
+            plt.xlim(df_week.index.min(), df_week.index.max())
+            plt.ylim([DB_LOWER_LIMIT, DB_UPPER_LIMIT])
+            plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
+
+            plt.tight_layout()
+
+            # Save the plot
+            output_path = f'{folder_output_dir}/{plotname}_OCA_Alarm_week_{week_start.strftime("%Y-%m-%d")}.png'
+            plt.savefig(output_path, dpi=150)
+            plt.close()
+            logger.info(f"Saved OCA weekly alarm plot: {output_path}")
+
+    except Exception as e:
+        logger.error(f"Error in oca_alarm_weekly: {e}")
+
+
+
+
 
 ########## LMAX ALARM ##########
 def lmax_alarm(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold: int):
