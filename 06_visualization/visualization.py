@@ -1959,12 +1959,8 @@ def plot_day_evolution_week(df, folder_output_dir: str, logger, laeq_column: str
         df = df.drop_duplicates()
         logger.info(f"Using the laeq_column: {laeq_column}")
         print(df)
-        exit()
+        print(df.columns)
 
-        df['date'] = pd.to_datetime(df['date'])
-        df['day_name'] = df['date'].dt.day_name()
-        df['hour'] = df['date'].dt.hour + df['date'].dt.minute / 60
-        df['week'] = df['date'].dt.to_period('W').dt.start_time
 
         sns.set_style("whitegrid")
         sns.set_palette("tab10")
@@ -1976,6 +1972,8 @@ def plot_day_evolution_week(df, folder_output_dir: str, logger, laeq_column: str
         weekdays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
         df['Día'] = pd.Categorical(df['Día'], categories=weekdays, ordered=True)
 
+        # df['week'] = df['date'].dt.to_period('W').dt.start_time
+        df['week'] = pd.to_datetime(df['date']).dt.to_period('W').dt.start_time
         weeks = df['week'].unique()
 
         for week_start in weeks:
