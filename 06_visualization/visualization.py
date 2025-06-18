@@ -2381,6 +2381,55 @@ def lmax_alarm(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname
     logger.info(f"Saved plot at {folder_output_dir}/{plotname}_LAmax_Alarm.png")
 
 
+def lmax_alarm_week(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold: int):
+    try:
+        sns.set_style("whitegrid")
+
+        # Ensure datetime format and set as index
+        df_1h_leq['date_time'] = pd.to_datetime(df_1h_leq['date_time'])
+        df_1h_leq = df_1h_leq.sort_values('date_time').copy()
+        df_1h_leq.set_index('date_time', inplace=True)
+
+        # Add 'week' column
+        df_1h_leq['week'] = df_1h_leq.index.to_period('W').start_time
+        weeks = df_1h_leq['week'].unique()
+
+        for week_start in weeks:
+            df_week = df_1h_leq[df_1h_leq['week'] == week_start]
+            filter_df = df_week[df_week['LAmax_corrected_max'] > threshold]
+
+            plt.figure(figsize=(15, 8))
+            plt.plot(df_week.index, df_week['LAmax_corrected_max'], label='LAmax')
+            plt.plot(filter_df.index, filter_df['LAmax_corrected_max'], 'ro', label='LAmax Alarm')
+
+            # Threshold line
+            plt.plot(df_week.index, [threshold] * len(df_week), 'r--', label='Threshold', linewidth=2)
+
+            plt.title(f"{plotname} LAmax | Alarm | Week of {week_start.strftime('%Y-%m-%d')}")
+            plt.ylabel('dB(A)')
+            plt.xticks(rotation=90)
+            plt.grid(True)
+
+            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
+            plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+
+            plt.xlim(df_week.index.min(), df_week.index.max())
+            plt.ylim([DB_LOWER_LIMIT, DB_UPPER_LIMIT])
+            plt.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
+
+            plt.tight_layout()
+
+            # Save image
+            output_path = f'{folder_output_dir}/{plotname}_LAmax_Alarm_week_{week_start.strftime("%Y-%m-%d")}.png'
+            plt.savefig(output_path, dpi=150)
+            plt.close()
+            logger.info(f"Saved LAmax weekly alarm plot: {output_path}")
+
+    except Exception as e:
+        logger.error(f"Error in lmax_alarm_weekly: {e}")
+
+
+
 
 ########## LC_LA ALARM ##########
 def LC_LA_alarm(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold_norma: int, threshold_dB: int):
@@ -2424,6 +2473,65 @@ def LC_LA_alarm(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotnam
     # save the plot
     plt.savefig(f"{folder_output_dir}/{plotname}_LC_LA_Alarm.png", dpi=150)
     logger.info(f"Saved plot at {folder_output_dir}/{plotname}_LC_LA_Alarm.png")
+
+
+
+def LC_LA_alarm_week(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold_norma: int, threshold_dB: int):
+    try:
+        sns.set_style("whitegrid")
+
+        # Ensure datetime is in proper format and set index
+        df_1h_leq['date_time'] = pd.to_datetime(df_1h_leq['date_time'])
+        df_1h_leq = df_1h_leq.sort_values('date_time').copy()
+        df_1h_leq.set_index('date_time', inplace=True)
+
+        # Add 'week' column for iteration
+        df_1h_leq['week'] = df_1h_leq.index.to_period('W').start_time
+        weeks = df_1h_leq['week'].unique()
+
+        for week_start in weeks:
+            df_week = df_1h_leq[df_1h_leq['week'] == week_start].copy()
+
+            # Compute dynamic threshold based on 'indicador_str'
+            df_week['LC_LA_threshold'] = df_week.groupby("indicador_str")["LCeq-LAeq_corrected_leq"].transform(leq).round(2)
+
+            # Two filters for alarms
+            filter1 = df_week["LCeq-LAeq_corrected_leq"] > df_week["LC_LA_threshold"] + threshold_dB
+            filter2 = df_week["LCeq-LAeq_corrected_leq"] > threshold_norma
+            combined_filter = filter1 | filter2
+            filtered_df_week = df_week[combined_filter]
+
+            plt.figure(figsize=(15, 8))
+            plt.plot(df_week.index, df_week["LCeq-LAeq_corrected_leq"], label="LC-LA")
+            plt.plot(filtered_df_week.index, filtered_df_week["LCeq-LAeq_corrected_leq"], "ro", label="Alarm")
+
+            # Threshold lines
+            plt.plot(df_week.index, df_week["LC_LA_threshold"], "r--", label="Threshold", linewidth=2)
+            plt.plot(df_week.index, df_week["LC_LA_threshold"] + threshold_dB, "y--", label=f"Threshold + {threshold_dB}", linewidth=2)
+            plt.plot(df_week.index, [threshold_norma] * len(df_week), "g--", label="10 dB Threshold", linewidth=2)
+
+            plt.title(f"{plotname} LCeq - LAeq | Alarms | Week of {week_start.strftime('%Y-%m-%d')}")
+            plt.ylabel("dB(A)")
+            plt.xticks(rotation=90)
+            plt.grid(True)
+
+            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
+            plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+
+            plt.xlim(df_week.index.min(), df_week.index.max())
+            plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
+            plt.tight_layout()
+
+            # Save weekly plot
+            output_path = f"{folder_output_dir}/{plotname}_LC_LA_Alarm_week_{week_start.strftime('%Y-%m-%d')}.png"
+            plt.savefig(output_path, dpi=150)
+            plt.close()
+            logger.info(f"Saved LC-LA weekly alarm plot: {output_path}")
+
+    except Exception as e:
+        logger.error(f"Error in LC_LA_alarm_weekly: {e}")
+
+
 
 
 
@@ -2472,6 +2580,63 @@ def l90_alarm(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname:
 
 
 
+def l90_alarm_week(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold_dB: int):
+    try:
+        sns.set_style("whitegrid")
+
+        # Ensure datetime is correct and set index
+        df_1h_leq['date_time'] = pd.to_datetime(df_1h_leq['date_time'])
+        df_1h_leq = df_1h_leq.sort_values('date_time').copy()
+        df_1h_leq.set_index('date_time', inplace=True)
+
+        # Add week column
+        df_1h_leq['week'] = df_1h_leq.index.to_period('W').start_time
+        weeks = df_1h_leq['week'].unique()
+
+        for week_start in weeks:
+            df_week = df_1h_leq[df_1h_leq['week'] == week_start].copy()
+
+            if df_week['90percentile'].dropna().empty:
+                logger.warning(f"No valid L90 data for week {week_start.strftime('%Y-%m-%d')}")
+                continue
+
+            l90_column = df_week['90percentile'].dropna()
+            avg_week = leq(l90_column).round(2)
+            filter_df = l90_column > avg_week + threshold_dB
+
+            plt.figure(figsize=(15, 8))
+            plt.plot(df_week.index, l90_column, label="90th Percentile")
+            plt.plot(df_week[filter_df].index, df_week[filter_df]["90percentile"], "ro", label="Alarm")
+
+            plt.axhline(avg_week, color="r", linestyle="--", label="avg", linewidth=2)
+            plt.axhline(avg_week + threshold_dB, color="g", linestyle="--", label=f"avg + {threshold_dB}", linewidth=2)
+
+            plt.title(f"90th Percentile | Alarm | Week of {week_start.strftime('%Y-%m-%d')}")
+            plt.ylabel("dB(A)")
+            plt.xticks(rotation=90)
+            plt.grid(True)
+
+            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
+            plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+
+            plt.xlim(df_week.index.min(), df_week.index.max())
+            plt.ylim([DB_LOWER_LIMIT, DB_UPPER_LIMIT])
+            plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
+            plt.tight_layout()
+
+            # Save weekly plot
+            output_path = f'{folder_output_dir}/{plotname}_L90_Alarm_week_{week_start.strftime("%Y-%m-%d")}.png'
+            plt.savefig(output_path, dpi=150)
+            plt.close()
+            logger.info(f"Saved L90 weekly alarm plot: {output_path}")
+
+    except Exception as e:
+        logger.error(f"Error in l90_alarm_weekly: {e}")
+
+
+
+
+
 ########## L90 ALARM DYNAMIC ##########
 def l90_alarm_dynamic(df_1h: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold_dB: int):
     sns.set_style("whitegrid")
@@ -2513,6 +2678,55 @@ def l90_alarm_dynamic(df_1h: pd.DataFrame, folder_output_dir: str, logger, plotn
     logger.info(f"Saved plot at {filename}")
 
 
+
+def l90_alarm_dynamic_week(df_1h: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold_dB: int):
+    try:
+        sns.set_style("whitegrid")
+
+        # Ensure datetime and sort
+        df_1h['date_time'] = pd.to_datetime(df_1h['date_time'])
+        df_1h = df_1h.sort_values('date_time').copy()
+        df_1h.set_index('date_time', inplace=True)
+
+        # Add week column
+        df_1h['week'] = df_1h.index.to_period('W').start_time
+        weeks = df_1h['week'].unique()
+
+        for week_start in weeks:
+            df_week = df_1h[df_1h['week'] == week_start].copy()
+
+            if '90percentile' not in df_week.columns:
+                logger.warning(f"No L90 data available for week {week_start.strftime('%Y-%m-%d')}")
+                continue
+
+            df_week.rename(columns={"90percentile": "L90"}, inplace=True)
+            df_week["L90_rolling_median"] = df_week["L90"].rolling(window=3, min_periods=1).median()
+            df_week["alarm"] = df_week["L90"] > df_week["L90_rolling_median"] + threshold_dB
+
+            plt.figure(figsize=(15, 8))
+            plt.plot(df_week.index, df_week["L90"], label="L90")
+            plt.plot(df_week.index, df_week["L90_rolling_median"] + threshold_dB, "--", color="green", label=f"+{threshold_dB} dB")
+            plt.plot(df_week[df_week["alarm"]].index, df_week[df_week["alarm"]]["L90"], "ro", label="Alarma")
+
+            plt.title(f"L90 Dinámica | Alarma | Semana {week_start.strftime('%Y-%m-%d')}")
+            plt.ylabel("dB(A)")
+            plt.xticks(rotation=90)
+            plt.grid(True)
+            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
+            plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+
+            plt.xlim(df_week.index.min(), df_week.index.max())
+            plt.ylim([DB_LOWER_LIMIT, DB_UPPER_LIMIT])
+            plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
+            plt.tight_layout()
+
+            filename = f'{folder_output_dir}/{plotname}_L90_Dyn_Alarm_week_{week_start.strftime("%Y-%m-%d")}.png'
+            plt.savefig(filename, dpi=150)
+            plt.close()
+            logger.info(f"Saved dynamic L90 alarm plot: {filename}")
+
+    except Exception as e:
+        logger.error(f"Error in l90_alarm_dynamic_weekly: {e}")
 
 
 
