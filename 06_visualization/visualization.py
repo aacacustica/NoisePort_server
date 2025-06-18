@@ -1753,6 +1753,129 @@ def plot_indicadores_heatmap(df, folder_output_dir: str, logger, plotname:str, i
 
 
 
+def plot_indicadores_heatmap_week(df, folder_output_dir: str, logger, plotname: str, ind_column: str):
+    try:
+        # remove nan values
+        df = df.dropna(subset=[ind_column])
+        logger.info(f"Using the ind_column: {ind_column}")
+        sns.set_style("white")
+        sns.set_palette("tab10")
+
+        # Set or correct Fecha column
+        if "Fecha" not in df.columns:
+            if "Date hour" in df.columns:
+                df["Fecha"] = pd.to_datetime(df['Date hour'], dayfirst=True)
+            elif "Time" in df.columns:
+                df["Fecha"] = pd.to_datetime(df['Time'], dayfirst=True)
+            elif "marcadores" in df.columns and isinstance(df.index, pd.DatetimeIndex):
+                df["Fecha"] = df.index
+            elif 'OVLD' not in df.columns and 'datetime' in df.columns:
+                df['Fecha'] = df['datetime']
+            else:
+                logger.error("No valid Fecha or datetime column found.")
+                return
+        elif "datetime" in df.columns:
+            df['Fecha'] = df['datetime']
+
+        df['Fecha'] = pd.to_datetime(df['Fecha'])
+        df['week'] = df['Fecha'].dt.to_period('W').dt.start_time
+        df['date'] = df['Fecha'].dt.date
+
+        weeks = df['week'].unique()
+
+        for week_start in weeks:
+            df_week = df[df['week'] == week_start].copy()
+
+            # Calculate duration of indicators
+            df_indicadores = df_week.groupby(['date', 'indicador_str'])['Fecha'].agg(['first', 'last'])
+            df_indicadores['duration'] = df_indicadores.apply(lambda row: calculate_duration(row['first'], row['last']), axis=1)
+
+            df_week['date_weekday'] = df_week['Fecha'].dt.strftime('%Y-%m-%d') + ' ' + df_week['Fecha'].dt.day_name().replace(
+                ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+                ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+            )
+
+            # Indicators to check
+            indicators_to_check = ['Ld', 'Le', 'Ln']
+            first_day = df_week['date'].min()
+            last_day = df_week['date'].max()
+
+            # Filter based on short duration
+            for indicator in indicators_to_check:
+                for target_day, tag in [(first_day, "first"), (last_day, "last")]:
+                    present = indicator in df_week[df_week['date'] == target_day]['indicador_str'].unique()
+                    if present:
+                        try:
+                            duration = df_indicadores.loc[(target_day, indicator), 'duration']
+                            logger.info(f"Duration of {indicator} on {tag} day {target_day}: {duration}")
+                            if duration <= LE_SECONDS:
+                                df_week = df_week[~((df_week['date'] == target_day) & (df_week['indicador_str'] == indicator))]
+                                logger.info(f"{indicator} indicator from {tag} day {target_day} removed (<={LE_SECONDS} s)")
+                        except KeyError:
+                            continue
+
+            # Pivot to get energy average per indicator
+            indicadores_table = pd.pivot_table(
+                data=df_week,
+                index="date_weekday",
+                columns="indicador_str",
+                values=ind_column,
+                aggfunc=leq
+            ).round(1)
+
+            if indicadores_table.empty:
+                logger.warning(f"No data to plot for week {week_start.strftime('%Y-%m-%d')}")
+                continue
+
+            desired_order = ["Ln", "Ld", "Le"]
+            indicadores_table = indicadores_table.reindex(columns=desired_order)
+
+            plt.figure(figsize=(15, 8))
+            ax = sns.heatmap(
+                indicadores_table,
+                annot=True,
+                fmt=".1f",
+                linewidth=0.5,
+                cmap=cmap_dict,
+                vmin=30,
+                vmax=85,
+                annot_kws={"size": MEDIUM_SIZE}
+            )
+            ax.set_yticklabels(ax.get_yticklabels(), rotation=0)
+            plt.ylabel('Día', fontsize=BIGGEST_SIZE)
+            plt.xlabel('Indicador', fontsize=BIGGEST_SIZE)
+            plt.title(f'{plotname} Indicadores - Semana {week_start.strftime("%Y-%m-%d")}', fontsize=BIGGEST_SIZE)
+
+            plt.yticks(rotation=0, fontsize=BIGGEST_SIZE)
+            plt.xticks(rotation=0, fontsize=BIGGEST_SIZE)
+
+            cbar = ax.collections[0].colorbar
+            cbar.ax.tick_params(labelsize=BIGGEST_SIZE)
+            plt.tight_layout()
+
+            os.makedirs(folder_output_dir, exist_ok=True)
+
+            filename_base = f"{plotname}_indicadores_week_{week_start.strftime('%Y-%m-%d')}"
+            plot_path = f"{folder_output_dir}/{filename_base}.png"
+            csv_path = f"{folder_output_dir}/{filename_base}.csv"
+            summary_path = f"{folder_output_dir}/{filename_base}_generales.csv"
+
+            plt.savefig(plot_path)
+            logger.info(f"Saved heatmap to {plot_path}")
+            plt.close()
+
+            indicadores_table.to_csv(csv_path, index=True)
+            logger.info(f"Saved table to {csv_path}")
+
+            general_power_averages = indicadores_table.apply(leq).round(1).to_frame().transpose()
+            general_power_averages.to_csv(summary_path, index=False)
+            logger.info(f"Saved general averages to {summary_path}")
+
+    except Exception as e:
+        logger.error(f"Error in plot_indicadores_heatmap_week: {e}")
+
+
+
 
 def plot_day_evolution(df, folder_output_dir: str, logger, laeq_column: str, plotname: str):
     try:
@@ -1826,6 +1949,93 @@ def plot_day_evolution(df, folder_output_dir: str, logger, laeq_column: str, plo
 
     except Exception as e:
         logger.error(f"Error in plot_day_evolution: {e}")
+
+
+
+def plot_day_evolution_week(df, folder_output_dir: str, logger, laeq_column: str, plotname: str):
+    try:
+        df = df.dropna(subset=[laeq_column])
+        df = df.reset_index(drop=True)
+        df = df.drop_duplicates()
+        logger.info(f"Using the laeq_column: {laeq_column}")
+
+        df['date'] = pd.to_datetime(df['date'])
+        df['day_name'] = df['date'].dt.day_name()
+        df['hour'] = df['date'].dt.hour + df['date'].dt.minute / 60
+        df['week'] = df['date'].dt.to_period('W').dt.start_time
+
+        sns.set_style("whitegrid")
+        sns.set_palette("tab10")
+
+        df['Día'] = df['day_name'].replace(
+            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+            ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        )
+        weekdays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        df['Día'] = pd.Categorical(df['Día'], categories=weekdays, ordered=True)
+
+        weeks = df['week'].unique()
+
+        for week_start in weeks:
+            df_week = df[df['week'] == week_start].copy()
+
+            if df_week.empty:
+                logger.warning(f"No data for week starting {week_start}")
+                continue
+
+            fig = sns.relplot(
+                data=df_week,
+                x="hour",
+                y=laeq_column,
+                kind="line",
+                hue="Día",
+                estimator=leq,
+                aspect=1.3,
+                palette=C_MAP_WEEKDAY,
+            )
+
+            fig.set(xlim=(-1, 24), ylim=(DB_RANGE_BOTTOM, DB_RANGE_TOP))
+
+            hour_labels = [f"{hour:02d}:00" for hour in range(24)]
+            plt.xticks(range(24), hour_labels, rotation=90)
+            plt.yticks(
+                range(DB_RANGE_BOTTOM, DB_RANGE_TOP, BD_RANGE_STEP),
+                [str(level) for level in range(DB_RANGE_BOTTOM, DB_RANGE_TOP, BD_RANGE_STEP)]
+            )
+
+            for ax in fig.axes.flat:
+                ax.spines['top'].set_visible(True)
+                ax.spines['right'].set_visible(True)
+
+            plt.axvline(x=6.50, color=".7", dashes=(2, 1), zorder=0)
+            plt.axvline(x=18.50, color=".7", dashes=(2, 1), zorder=0)
+            plt.axvline(x=22.50, color=".7", dashes=(2, 1), zorder=0)
+
+            # labels
+            plt.text(s="Ln", x=0.13, y=0.97, transform=plt.gca().transAxes, c="Black", weight="bold")
+            plt.text(s="Ld", x=0.53, y=0.97, transform=plt.gca().transAxes, c="Black", weight="bold")
+            plt.text(s="Le", x=0.85, y=0.97, transform=plt.gca().transAxes, c="Black", weight="bold")
+            plt.text(s="Ln", x=0.96, y=0.97, transform=plt.gca().transAxes, c="Black", weight="bold")
+
+            start_date = df_week['date'].min().strftime('%Y-%m-%d')
+            end_date = df_week['date'].max().strftime('%Y-%m-%d')
+            plt.title(f"Evolución día {plotname} Semana {week_start.strftime('%Y-%m-%d')}", fontsize=14)
+            plt.ylabel('dB(A)')
+            plt.xlabel('Hora')
+
+            os.makedirs(folder_output_dir, exist_ok=True)
+            filename_base = f"{plotname}_day_evolution_week_{week_start.strftime('%Y-%m-%d')}"
+            image_path = f"{folder_output_dir}/{filename_base}.png"
+            csv_path = f"{folder_output_dir}/{filename_base}.csv"
+
+            logger.info(f"Saving plot to {image_path}")
+            fig.savefig(image_path, dpi=300)
+            plt.close()
+
+    except Exception as e:
+        logger.error(f"Error in plot_day_evolution_weekly: {e}")
+
+
 
 
 
