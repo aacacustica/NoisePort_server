@@ -1386,6 +1386,77 @@ def plot_heatmap_evolution_hour(df, folder_output_dir: str, logger, values_colum
 
 
 
+def plot_heatmap_evolution_hour_week(df, folder_output_dir: str, logger, values_column: str, agg_func: str, plotname: str):
+    try:
+        df = df.dropna(subset=[values_column])
+        df['date'] = pd.to_datetime(df['date'])
+        df['day_name'] = df['date'].dt.day_name()
+        df['hour'] = df['date'].dt.hour
+        df.index = pd.to_datetime(df['date'])
+
+        # df['week'] = df['date'].dt.to_period('W').start_time
+        df['week'] = df['date'].dt.to_period('W').dt.start_time
+        weeks = df['week'].unique()
+
+        for week_start in weeks:
+            df_week = df[df['week'] == week_start].copy()
+            df_week['Día'] = df_week['day_name'].replace([
+                'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+            ], [
+                'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'
+            ])
+            df_week['date_day'] = df_week['date'].dt.strftime('%Y-%m-%d') + ' ' + df_week['Día']
+
+            leq_day_hour = pd.pivot_table(
+                df_week,
+                values=values_column,
+                index=['date_day'],
+                columns=['hour'],
+                aggfunc=agg_func
+            ).round(1)
+
+            if leq_day_hour.empty:
+                logger.warning(f"No data to plot for week {week_start.strftime('%Y-%m-%d')}")
+                continue
+
+            leq_day_hour.columns = [f"{hour:02d}:00" for hour in leq_day_hour.columns]
+
+            plt.figure(figsize=(20, 10))
+            heatmap = sns.heatmap(
+                leq_day_hour,
+                vmin=30,
+                vmax=85,
+                cmap=cmap_dict,
+                annot=True,
+                annot_kws={"size": BIGGER_SIZE}
+            )
+
+            plt.xlabel('Hora', fontsize=BIGGEST_SIZE)
+            plt.ylabel('Día', fontsize=BIGGEST_SIZE)
+            plt.title(f'{plotname} Nivel equivalente - Semana {week_start.strftime("%Y-%m-%d")}', fontsize=BIGGEST_SIZE)
+
+            plt.yticks(rotation=0, fontsize=BIGGEST_SIZE)
+            plt.xticks(rotation=90, fontsize=BIGGEST_SIZE)
+
+            cbar = heatmap.collections[0].colorbar
+            cbar.ax.tick_params(labelsize=BIGGEST_SIZE)
+            plt.tight_layout()
+
+
+            #save
+            filename = f"{plotname}_heatmap_evolucion_week_{week_start.strftime('%Y-%m-%d')}"
+            image_path = f'{folder_output_dir}/{filename}.png'
+
+            logger.info(f"Saving heatmap to {image_path}")
+            plt.savefig(image_path, dpi=350)
+            plt.close()
+
+    except Exception as e:
+        logger.error(f"Error in plot_heatmap_evolution_hour_week: {e}")
+
+
+
+
 
 def plot_heatmap_evolution_15_min(df, folder_output_dir: str, logger, values_column: str, agg_func: str, plotname:str):
     if not isinstance(df.index, pd.DatetimeIndex):
