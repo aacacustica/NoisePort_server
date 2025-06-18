@@ -3337,83 +3337,85 @@ def plot_peak_distribution(df_merged: pd.DataFrame, folder_output_dir: str, logg
 
 
 
-def plot_peak_distribution_week(df_merged: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
+def plot_peak_distribution_week(df_peaks: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
     try:
         sns.set_style("whitegrid")
 
-        df_merged = df_merged.copy()
-        df_merged.sort_values('Timestamp', inplace=True)
+        df_peaks = df_peaks.copy()
+        # df_peaks['week'] = df_peaks['Timestamp'].dt.to_period('W').start_time
+        df_peaks['week'] = pd.to_datetime(df_peaks['date']).dt.to_period('W').dt.start_time
+        df_peaks.sort_values('Timestamp', inplace=True)
 
-        
+        weeks = df_peaks['week'].unique()
 
-        plt.figure(figsize=(25, 9))
-        plt.plot(
-            df_merged['Timestamp'], 
-            df_merged['LA_corrected'], 
-            marker='o', 
-            linestyle='-', 
-            color='red'
-        )
+        for week_start in weeks:
+            df_week = df_peaks[df_peaks['week'] == week_start].copy()
+            if df_week.empty:
+                continue
 
-        
-        plt.xlabel('Tiempo', fontsize=BIGGEST_SIZE)
-        plt.ylabel('LAeq', fontsize=BIGGEST_SIZE)
-        plt.title(f'{plotname} Valores LAeq a lo largo del tiempo', fontsize=BIGGEST_SIZE)
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
 
-        plt.xticks(rotation=90, fontsize=BIGGEST_SIZE)
-        plt.xlim(df_merged['Timestamp'].iloc[0], df_merged['Timestamp'].iloc[-1])
-        
-        plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
-        plt.tight_layout()
-        plt.grid(True)
+            plt.figure(figsize=(25, 9))
+            plt.plot(df_week['Timestamp'], df_week['LA_corrected'], marker='o', linestyle='-', color='red')
+            plt.xlabel('Tiempo', fontsize=BIGGEST_SIZE)
+            plt.ylabel('LAeq', fontsize=BIGGEST_SIZE)
+            plt.title(f'{plotname} LAeq | Semana {week_start.strftime("%Y-%m-%d")}', fontsize=BIGGEST_SIZE)
 
+            plt.xticks(rotation=90, fontsize=BIGGEST_SIZE)
+            plt.xlim(df_week['Timestamp'].iloc[0], df_week['Timestamp'].iloc[-1])
 
-        # #save the plot
-        plt.savefig(f"{folder_output_dir}/{plotname}_peak_distribution.png", dpi=150)
-        logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_distribution.png")
+            plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
+            plt.tight_layout()
+            plt.grid(True)
 
-
-
-        ########################################
-        ########################################
-        # plot the same informaiton but with shadow area for night time
-        ########################################
-        ########################################
-        min_date = df_merged['Timestamp'].dt.date.min()
-        max_date = df_merged['Timestamp'].dt.date.max()
-
-        plt.figure(figsize=(25, 9))
-        plt.plot(df_merged['Timestamp'], df_merged['LA_corrected'], marker='o', linestyle='-', color='red')
-        
-        
-        # highlighting night periods
-        for single_date in pd.date_range(min_date, max_date):
-            start_night = pd.Timestamp.combine(single_date, pd.Timestamp('20:00:00').time())
-            end_night = pd.Timestamp.combine(single_date + pd.Timedelta(days=1), pd.Timestamp('07:00:00').time())
-            plt.fill_betweenx(y=[df_merged['LA_corrected'].min(), df_merged['LA_corrected'].max()], 
-                            x1=start_night, x2=end_night, color='grey', alpha=0.3)
+            basic_plot_path = os.path.join(week_folder, f"{plotname}_peak_distribution.png")
+            plt.savefig(basic_plot_path, dpi=150)
+            plt.close()
+            logger.info(f"Saved plot at {basic_plot_path}")
 
 
-        plt.title(f'{plotname} Valores LAeq a lo largo del tiempo con Distribución Nocturna', fontsize=BIGGEST_SIZE)
-        plt.xlabel('Tiempo', fontsize=BIGGEST_SIZE)
-        plt.ylabel('LAeq (dB)', fontsize=BIGGEST_SIZE)
 
-        plt.grid(True)
-        plt.xticks(rotation=90)
+            ########################################
+            ########################################
+            # plot the same informaiton but with shadow area for night time
+            ########################################
+            ########################################
+            min_date = df_week['Timestamp'].dt.date.min()
+            max_date = df_week['Timestamp'].dt.date.max()
 
-        plt.xlim(df_merged['Timestamp'].iloc[0], df_merged['Timestamp'].iloc[-1])
-        plt.ylim(df_merged['LA_corrected'].min(), df_merged['LA_corrected'].max())
-        
-        
-        plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
-        plt.tight_layout()
+            plt.figure(figsize=(25, 9))
+            plt.plot(df_week['Timestamp'], df_week['LA_corrected'], marker='o', linestyle='-', color='red')
 
+            for single_date in pd.date_range(min_date, max_date):
+                start_night = pd.Timestamp.combine(single_date, pd.Timestamp('20:00:00').time())
+                end_night = pd.Timestamp.combine(single_date + pd.Timedelta(days=1), pd.Timestamp('07:00:00').time())
+                plt.fill_betweenx(
+                    y=[df_week['LA_corrected'].min(), df_week['LA_corrected'].max()],
+                    x1=start_night,
+                    x2=end_night,
+                    color='grey',
+                    alpha=0.3
+                )
 
-        # save the plot
-        plt.savefig(f"{folder_output_dir}/{plotname}_peak_distribution_night.png", dpi=150)
-        logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_distribution_night.png")
+            plt.title(f'{plotname} LAeq con Nocturnidad | Semana {week_start.strftime("%Y-%m-%d")}', fontsize=BIGGEST_SIZE)
+            plt.xlabel('Tiempo', fontsize=BIGGEST_SIZE)
+            plt.ylabel('LAeq (dB)', fontsize=BIGGEST_SIZE)
+            plt.grid(True)
+            plt.xticks(rotation=90)
+
+            plt.xlim(df_week['Timestamp'].iloc[0], df_week['Timestamp'].iloc[-1])
+            plt.ylim(df_week['LA_corrected'].min(), df_week['LA_corrected'].max())
+
+            plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
+            plt.tight_layout()
+
+            night_plot_path = os.path.join(week_folder, f"{plotname}_peak_distribution_night.png")
+            plt.savefig(night_plot_path, dpi=150)
+            plt.close()
+            logger.info(f"Saved plot at {night_plot_path}")
 
 
     except Exception as e:
@@ -3481,6 +3483,74 @@ def plot_density_distribution_peaks(df_merged: pd.DataFrame, folder_output_dir: 
 
     except Exception as e:
         logger.error(f"Error in plot_density_distribution_peaks: {e}")
+
+
+
+def plot_density_distribution_peaks_week(df_merged: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
+    try:
+        sns.set_style("whitegrid")
+        df_merged = df_merged.copy()
+        df_merged['Timestamp'] = pd.to_datetime(df_merged['Timestamp'])
+        # df_merged['week'] = df_merged['Timestamp'].dt.to_period('W').start_time
+        df_merged['week'] = pd.to_datetime(df_merged['date']).dt.to_period('W').dt.start_time
+
+        weeks = df_merged['week'].unique()
+
+        for week_start in weeks:
+            df_week = df_merged[df_merged['week'] == week_start].copy()
+            if df_week.empty:
+                continue
+
+            # Create week folder
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+
+            # ------------------ Bar plot ------------------
+            hourly_peaks = df_week.groupby('hour').size()
+
+            plt.figure(figsize=(12, 6))
+            hourly_peaks.plot(kind='bar')
+
+            plt.xlabel('Hora del Día', fontsize=BIGGEST_SIZE)
+            plt.ylabel('Número de Picos', fontsize=BIGGEST_SIZE)
+            plt.title(f'{plotname} | Picos por Hora | Semana {week_start.strftime("%Y-%m-%d")}', fontsize=BIGGEST_SIZE)
+            plt.xticks(rotation=0, fontsize=BIGGEST_SIZE)
+            plt.grid(True)
+            plt.tight_layout()
+
+            bar_path = os.path.join(week_folder, f"{plotname}_peak_distribution_hourly.png")
+            plt.savefig(bar_path, dpi=150)
+            plt.close()
+            logger.info(f"Saved hourly peak distribution bar chart: {bar_path}")
+
+            # ------------------ Density plot ------------------
+            time_of_day = df_week['Timestamp'].dt.hour + df_week['Timestamp'].dt.minute / 60
+
+            if len(time_of_day) >= 2:  # KDE requires at least 2 data points
+                density = gaussian_kde(time_of_day)
+                xs = np.linspace(0, 24, 100)
+                density.covariance_factor = lambda: 0.25
+                density._compute_covariance()
+
+                plt.figure(figsize=(12, 6))
+                plt.plot(xs, density(xs))
+
+                plt.title(f'{plotname} | Densidad de Picos por Hora | Semana {week_start.strftime("%Y-%m-%d")}', fontsize=BIGGEST_SIZE)
+                plt.xlabel('Hora del Día', fontsize=BIGGEST_SIZE)
+                plt.ylabel('Densidad', fontsize=BIGGEST_SIZE)
+                plt.xlim(0, 24)
+                plt.grid(True)
+                plt.tight_layout()
+
+                density_path = os.path.join(week_folder, f"{plotname}_peak_density_distribution_hourly.png")
+                plt.savefig(density_path, dpi=150)
+                plt.close()
+                logger.info(f"Saved KDE density plot: {density_path}")
+            else:
+                logger.warning(f"Not enough data for KDE in week {week_start.strftime('%Y-%m-%d')}")
+
+    except Exception as e:
+        logger.error(f"Error in plot_density_distribution_peaks_weekly: {e}")
 
 
 
