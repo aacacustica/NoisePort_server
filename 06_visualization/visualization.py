@@ -1525,6 +1525,86 @@ def plot_heatmap_evolution_15_min(df, folder_output_dir: str, logger, values_col
 
 
 
+def plot_heatmap_evolution_15_min_week(df, folder_output_dir: str, logger, values_column: str, agg_func: str, plotname: str):
+    if not isinstance(df.index, pd.DatetimeIndex):
+        logger.error("DataFrame index is not a datetime index.")
+        return
+
+    try:
+        #remove nan
+        df = df.dropna(subset=[values_column])
+        df['date'] = pd.to_datetime(df['date'])
+        df['day_name'] = df['date'].dt.day_name()
+        df['week'] = df['date'].dt.to_period('W').dt.start_time
+        logger.info(f"Using the values_column: {values_column}")
+        
+        sns.set_style("white")
+        sns.set_palette("tab10")
+        
+        def get_15min_interval(dt):
+            return f"{dt.hour:02d}:{(dt.minute // 15) * 15:02d}"
+
+        weeks = df['week'].unique()
+        
+        for week_start in weeks:
+            df_week = df[df['week'] == week_start].copy()
+            df_week['Día'] = df_week['day_name'].replace([
+                'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+            ], [
+                'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'
+            ])
+            df_week['date_day'] = df_week['date'].dt.strftime('%Y-%m-%d') + ' ' + df_week['Día']
+            df_week['15min_interval'] = df_week.index.map(get_15min_interval)
+
+            leq_day_15min = pd.pivot_table(
+                df_week, 
+                values=values_column, 
+                index=['date_day'],
+                columns=['15min_interval'], 
+                aggfunc=agg_func
+            ).round(1)
+
+            if leq_day_15min.empty:
+                logger.warning(f"No data for week {week_start.strftime('%Y-%m-%d')}")
+                continue
+
+            plt.figure(figsize=(20, 10))
+            heatmap = sns.heatmap(
+                leq_day_15min,
+                vmin=30,
+                vmax=85,
+                cmap=cmap_dict,
+                # annot=True,
+                # annot_kws={"size": MEDIUM_SIZE}
+            )
+
+            plt.xlabel('Hora (15 min)', fontsize=BIGGEST_15_MIN_SIZE)
+            plt.ylabel('Día', fontsize=BIGGEST_15_MIN_SIZE)
+            plt.title(f'{plotname} Nivel equivalente 15 minutos - Semana {week_start.strftime("%Y-%m-%d")}', fontsize=30)
+
+            plt.yticks(rotation=0, fontsize=BIGGEST_15_MIN_SIZE)
+            plt.xticks(rotation=90, fontsize=BIGGEST_15_MIN_SIZE)
+
+            cbar = heatmap.collections[0].colorbar
+            cbar.ax.tick_params(labelsize=BIGGEST_15_MIN_SIZE)
+            plt.tight_layout()
+
+
+            filename = f"{plotname}_heatmap_evolucion_15_min_week_{week_start.strftime('%Y-%m-%d')}"
+            image_path = f'{folder_output_dir}/{filename}.png'
+            csv_path = f'{folder_output_dir}/{filename}.csv'
+
+            logger.info(f"Saving heatmap to {image_path}")
+            plt.savefig(image_path, dpi=150)
+            plt.close()
+
+
+    except Exception as e:
+        logger.error(f"Error in plot_heatmap_evolution_15_min_week: {e}")
+
+
+
+
 
 
 def plot_indicadores_heatmap(df, folder_output_dir: str, logger, plotname:str, ind_column:str):
