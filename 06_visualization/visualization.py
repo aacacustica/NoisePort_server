@@ -1958,6 +1958,8 @@ def plot_day_evolution_week(df, folder_output_dir: str, logger, laeq_column: str
         df = df.reset_index(drop=True)
         df = df.drop_duplicates()
         logger.info(f"Using the laeq_column: {laeq_column}")
+        print(df)
+        exit()
 
         df['date'] = pd.to_datetime(df['date'])
         df['day_name'] = df['date'].dt.day_name()
@@ -2026,7 +2028,6 @@ def plot_day_evolution_week(df, folder_output_dir: str, logger, laeq_column: str
             os.makedirs(folder_output_dir, exist_ok=True)
             filename_base = f"{plotname}_day_evolution_week_{week_start.strftime('%Y-%m-%d')}"
             image_path = f"{folder_output_dir}/{filename_base}.png"
-            csv_path = f"{folder_output_dir}/{filename_base}.csv"
 
             logger.info(f"Saving plot to {image_path}")
             fig.savefig(image_path, dpi=300)

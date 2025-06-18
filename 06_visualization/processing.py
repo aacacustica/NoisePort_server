@@ -703,7 +703,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             
             # Plotting individual heatmap
             if PLOT_INDICADORES_HEATMAP_WEEK:
-                logger.info(f"[12] Plotting indicadores heatmap for folder {folder}")
+                logger.info(f"[12.2] Plotting indicadores heatmap for folder {folder}")
                 plot_indicadores_heatmap_week(df, folder_output_dir_week, logger, plotname=folder, ind_column=slm_dict["LAEQ_COLUMN_COEFF"])
 
 
@@ -714,7 +714,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
             if PLOT_DAY_EVOLUTION_WEEK:
-                logger.info(f"[13] Plotting day evolution for folder {folder}")
+                logger.info(f"[13.2] Plotting day evolution for folder {folder}")
                 plot_day_evolution_week(df, folder_output_dir_week, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder)
             
 
