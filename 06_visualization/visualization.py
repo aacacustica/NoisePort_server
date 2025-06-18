@@ -2110,6 +2110,85 @@ def plot_period_evolution(df,  folder_output_dir: str, logger, laeq_column:str, 
 
 
 
+def plot_period_evolution_week(df,  folder_output_dir: str, logger, laeq_column:str, plotname:str):
+    try:
+        df = df.dropna(subset=[laeq_column])
+        df = df.reset_index(drop=True)
+        df = df.drop_duplicates()
+        logger.info(f"Using the laeq_column: {laeq_column}")
+        
+        sns.set_style("whitegrid")
+        sns.set_palette("tab10")
+        
+        # translate the day name to spanish from english in day_name
+        df['Día'] = df['day_name'].replace(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'])
+        
+        weekdays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        df['Día'] = pd.Categorical(df['Día'], categories=weekdays, ordered=True)
+
+        df['week'] = pd.to_datetime(df['date']).dt.to_period('W').dt.start_time
+        # df['week'] = df['date'].dt.to_period('W').dt.start_time
+        weeks = df['week'].unique()
+        
+        for ind in df["indicador_str"].unique():
+            if ind == 'Ln':
+                continue  # skip Ln as per your original logic
+
+            df_ind = df[df["indicador_str"] == ind]
+
+            for week_start in weeks:
+                df_week = df_ind[df_ind['week'] == week_start]
+
+                if df_week.empty:
+                    logger.warning(f"No data for {ind} during week {week_start}")
+                    continue
+
+                fig = sns.relplot(
+                    data=df_week,
+                    x="hour",
+                    y=laeq_column,
+                    kind="line",
+                    hue="Día",
+                    estimator=leq,
+                    aspect=1.3,
+                    palette=C_MAP_WEEKDAY,
+                )
+
+                if ind == 'Ld':
+                    fig.set(xlim=(6, 19), ylim=(DB_RANGE_BOTTOM, DB_RANGE_TOP))
+                    plt.xticks(range(7, 19), [f"{hour:02d}:00" for hour in range(7, 19)])
+                    logger.info(f"Plotted Ld - Week {week_start.strftime('%Y-%m-%d')}")
+                elif ind == 'Le':
+                    fig.set(xlim=(18.7, 22.3), ylim=(DB_RANGE_BOTTOM, DB_RANGE_TOP))
+                    plt.xticks([18.7, 19, 20, 21, 22, 22.3], ['', '19:00', '20:00', '21:00', '22:00', ''])
+                    logger.info(f"Plotted Le - Week {week_start.strftime('%Y-%m-%d')}")
+
+                plt.yticks(
+                    range(DB_RANGE_BOTTOM, DB_RANGE_TOP, BD_RANGE_STEP),
+                    [str(level) for level in range(DB_RANGE_BOTTOM, DB_RANGE_TOP, BD_RANGE_STEP)]
+                )
+
+                for ax in fig.axes.flat:
+                    ax.spines['top'].set_visible(True)
+                    ax.spines['right'].set_visible(True)
+
+                plt.title(f"Evolución {ind} - Semana {week_start.strftime('%Y-%m-%d')}")
+                plt.ylabel('dB(A)')
+                plt.xlabel('Hora')
+
+
+                filename_base = f"{plotname}_{ind}_evolution_week_{week_start.strftime('%Y-%m-%d')}"
+                plot_path = f"{folder_output_dir}/{filename_base}.png"
+
+                logger.info(f"Saving plot to {plot_path}")
+                fig.savefig(plot_path, dpi=150)
+                plt.close()
+
+
+    except Exception as e:
+        logger.error(f"Error in plot_period_evolution_week: {e}")
+
+
 
 # ---------------------------------------------
 # ---------------------------------------------

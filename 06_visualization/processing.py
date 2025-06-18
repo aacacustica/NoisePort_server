@@ -726,7 +726,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
             # Plotting period evolution
             if PLOT_PERIOD_EVOLUTION_WEEK:
-                logger.info(f"[14] Plotting period evolution (1) Ld (2) Le for folder {folder}")
+                logger.info(f"[14.2] Plotting period evolution (1) Ld (2) Le for folder {folder}")
                 plot_period_evolution_week(df, folder_output_dir_week, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder)
             
 
