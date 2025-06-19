@@ -406,7 +406,7 @@ def plot_predic_laeq_mean(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folde
             texttemplate='%{label}<br><br>LAeq: %{customdata[0]:.2f} dB'
         )
             
-        # Save plot
+        
         os.makedirs(folder_output_dir, exist_ok=True)
         fig.write_html(f"{folder_output_dir}/{plotname}_LAeq_class_mean.html")
         grouped_df.to_csv(f"{folder_output_dir}/{plotname}_LAeq_class_mean.csv", index=False)
@@ -417,6 +417,73 @@ def plot_predic_laeq_mean(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folde
     except Exception as e:
         logger.error(f"Error in plot_predic_laeq_15_min: {e}")
         
+
+
+
+def plot_predic_laeq_mean_week(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
+    try:
+        df_all_yamnet = df_all_yamnet.copy()
+        df_all_yamnet['Timestamp'] = pd.to_datetime(df_all_yamnet['Timestamp'])
+        try:
+            df_all_yamnet['week'] = df_all_yamnet['Timestamp'].dt.to_period('W').start_time
+        except Exception as e:
+            df_all_yamnet['week'] = df_all_yamnet['Timestamp'].dt.to_period('W').apply(lambda r: r.start_time)
+
+        
+        if 'Siren' in set(taxonomy_map.values()):
+            class_to_plot = 'NoisePort_Level_1'
+            color_palet = COLOR_PALLET_PORT_L1
+            logger.info("Using 'NoisePort_Level_1' class for plotting")
+        else:
+            class_to_plot = 'Brown_Level_2'
+            color_palet = COLOR_PALLET_URBAN
+            logger.info("Using 'Brown_Level_2' class for plotting")
+
+        class_column = 'class'
+        weeks = df_all_yamnet['week'].unique()
+
+        for week_start in weeks:
+            df_week = df_all_yamnet[df_all_yamnet['week'] == week_start].copy()
+            if df_week.empty:
+                continue
+
+            
+
+            grouped_df = df_week.groupby(class_to_plot).agg(
+                number=(class_column, 'size'),
+                LAeq=('LA_corrected', lambda x: leq(x))
+            ).reset_index()
+
+            fig = px.treemap(
+                grouped_df,
+                path=[class_to_plot],
+                values='number',
+                color=class_to_plot,
+                color_discrete_map=color_palet,
+                hover_data={'LAeq': True, 'number': True},
+                custom_data=['LAeq']
+            )
+
+            fig.update_layout(title=f'{plotname} | Promedio Energético (LAeq) por Clases | Semana {week_start.strftime("%Y-%m-%d")}')
+            fig.update_traces(
+                hovertemplate='<b>%{label}</b><br>LAeq: %{customdata[0]:.2f} dB<br>Count: %{value}',
+                texttemplate='%{label}<br><br>LAeq: %{customdata[0]:.2f} dB'
+            )
+
+            
+            
+
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+
+            
+            html_path = os.path.join(week_folder, f"{plotname}_LAeq_class_mean_{week_start.strftime('%Y-%m-%d')}.html")
+            fig.write_html(html_path)
+            logger.info(f"Saved treemap to {html_path}")
+    except Exception as e:
+        logger.error(f"Error in plot_predic_laeq_mean_weekly: {e}")
+
+
 
 
 
@@ -1039,6 +1106,97 @@ def plot_prediction_map_new(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, fol
           
     except Exception as e:
         logger.error(f"Error in plot_prediction_map: {e}")
+
+
+
+def plot_prediction_map_new_week(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
+    try:
+        df_copy = df_all_yamnet.copy()
+        df_copy = add_datetime_columns(df_copy, logger, date_col='Timestamp')
+        df_copy['Timestamp'] = pd.to_datetime(df_copy['Timestamp'])
+
+        df_copy['mapped_class'] = df_copy['class'].map(taxonomy_map)
+        df_copy = df_copy.dropna(subset=['mapped_class'])
+
+        
+        class_to_num = {cls: i + 1 for i, cls in enumerate(df_copy['mapped_class'].unique())}
+        name_class = {v: k for k, v in class_to_num.items()}
+        df_copy['class_num'] = df_copy['mapped_class'].map(class_to_num)
+
+        
+        try:
+            df_copy['week'] = df_copy['Timestamp'].dt.to_period('W').start_time
+        except Exception as e:
+            df_copy['week'] = df_copy['Timestamp'].dt.to_period('W').apply(lambda r: r.start_time)
+
+
+        
+        if 'Siren' in set(taxonomy_map.values()):
+            num_to_color = {num: COLOR_PALLET_PORT_L1[cls] for cls, num in class_to_num.items()}
+            logger.info("Using 'NoisePort_Level_1' class for plotting")
+        else:
+            num_to_color = {num: 'gray' for num in class_to_num.values()}  # fallback if no palette given
+
+        ordered_colors = [num_to_color[i] for i in sorted(name_class.keys())]
+        cmap = ListedColormap(ordered_colors)
+
+        
+        #######################3
+        for week_start in df_copy['week'].unique():
+            df_week = df_copy[df_copy['week'] == week_start].copy()
+            if df_week.empty:
+                continue
+
+            df_week.set_index('Timestamp', inplace=True)
+            resampled = df_week.resample('15min').agg(
+                lambda x: x.mode().iloc[0] if not x.mode().empty else None
+            ).dropna(subset=['class_num'])
+
+            resampled['date'] = resampled.index.date
+            resampled['time_block'] = resampled.index.time
+            pivot = resampled.pivot(index='date', columns='time_block', values='class_num')
+
+            
+
+
+            #############################
+            #############################
+            plt.figure(figsize=(20, 10))
+            ax = sns.heatmap(pivot, cmap=cmap, linewidth=0.3, cbar=False, linecolor='gray')
+
+            ax.set_title("Sound Class Predictions — Daily 15min Timeline")
+            ax.set_xlabel("Hora del Día", fontsize=14)
+            ax.set_ylabel("Fecha", fontsize=14)
+
+            xtick_locs = list(range(0, len(pivot.columns), 1))  # every 15min
+            xtick_labels = [t.strftime('%H:%M') for i, t in enumerate(pivot.columns)]
+
+            ax.set_xticks(xtick_locs)
+            ax.set_xticklabels(xtick_labels, rotation=90, fontsize=8)
+
+            
+            legend_elements = [
+                Patch(facecolor=num_to_color[num], label=f"{num} - {name_class.get(num)}")
+                for num in sorted(name_class.keys())
+            ]
+            plt.legend(handles=legend_elements, title="Clases", bbox_to_anchor=(1.01, 1), loc='upper left')
+            plt.tight_layout()
+            plt.title(f"{plotname} | Clases 15 min | Semana {week_start.strftime('%Y-%m-%d')}")
+
+            
+            
+            ###############
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+
+            image_path = os.path.join(week_folder, f"{plotname}_prediction_map_{week_start.strftime('%Y-%m-%d')}.png")
+            plt.savefig(image_path, bbox_inches='tight')
+            plt.close()
+            logger.info(f"Saved map image: {image_path}")
+
+
+    except Exception as e:
+        logger.error(f"Error in plot_prediction_map_weekly: {e}")
 
 
 
@@ -3623,11 +3781,86 @@ def plot_predic_peak_laeq_mean(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, 
 
 
 
+def plot_predic_peak_laeq_mean_week(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
+    try:
+        df_all_yamnet = df_all_yamnet[df_all_yamnet['Peak'] == 1].copy()
+        df_all_yamnet['Timestamp'] = pd.to_datetime(df_all_yamnet['Timestamp'])
+        try:
+            df_all_yamnet['week'] = df_all_yamnet['Timestamp'].dt.to_period('W').start_time
+        except Exception as e:
+            df_all_yamnet['week'] = pd.to_datetime(df_all_yamnet['date']).dt.to_period('W').dt.start_time
+
+
+        class_column = 'class'
+        laeq_column = 'LA_corrected'
+
+
+        ###############
+        if 'Siren' in set(taxonomy_map.values()):
+            class_to_plot = 'NoisePort_Level_1'
+            color_palet = COLOR_PALLET_PORT_L1
+            logger.info("Using 'NoisePort_Level_1' class for plotting")
+        else:
+            class_to_plot = 'Brown_Level_2'
+            color_palet = COLOR_PALLET_URBAN
+            logger.info("Using 'Brown_Level_2' class for plotting")
+
+        weeks = df_all_yamnet['week'].unique()
+
+
+
+        ###############
+        ###############
+        for week_start in weeks:
+            df_week = df_all_yamnet[df_all_yamnet['week'] == week_start].copy()
+            if df_week.empty:
+                continue
+
+            grouped_df = df_week.groupby(class_to_plot).agg(
+                number=(class_column, 'size'),
+                LAeq=(laeq_column, lambda x: leq(x))
+            ).reset_index()
+
+            if grouped_df.empty:
+                logger.warning(f"No peak data to plot for week {week_start.strftime('%Y-%m-%d')}")
+                continue
+
+            fig = px.treemap(
+                grouped_df,
+                path=[class_to_plot],
+                values='number',
+                color=class_to_plot,
+                color_discrete_map=color_palet,
+                hover_data={'LAeq': True, 'number': True},
+                custom_data=['LAeq']
+            )
+
+            fig.update_layout(title=f'{plotname} | Promedio Energético (LAeq) de Picos | Semana {week_start.strftime("%Y-%m-%d")}')
+            fig.update_traces(
+                hovertemplate='<b>%{label}</b><br>LAeq: %{customdata[0]:.2f} dB<br>Count: %{value}',
+                texttemplate='%{label}<br><br>LAeq: %{customdata[0]:.2f} dB'
+            )
+
+
+
+            ############
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+
+            html_path = os.path.join(week_folder, f"{plotname}_LAeq_Peak_class_mean_{week_start.strftime('%Y-%m-%d')}.html")
+            fig.write_html(html_path)
+            logger.info(f"Saved peak LAeq treemap for week: {html_path}")
+
+    except Exception as e:
+        logger.error(f"Error in plot_predic_peak_laeq_mean_weekly: {e}")
+
+
+
 
 def plot_box_plot_prediction(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
     try:
         sns.set_style("whitegrid")
-        df_all_yamnet = df_all_yamnet.copy()
+        df_all_yamnet = df_all_yamnet[df_all_yamnet['Peak'] == 1].copy()
 
         sns.boxplot(data=df_all_yamnet, x='NoisePort_Level_1', y='LA_corrected')
 
@@ -3652,44 +3885,150 @@ def plot_box_plot_prediction(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, fo
 
 
 
+def plot_box_plot_prediction_week(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
+    try:
+        sns.set_style("whitegrid")
+        df_all_yamnet = df_all_yamnet[df_all_yamnet['Peak'] == 1].copy()
+        df_all_yamnet['Timestamp'] = pd.to_datetime(df_all_yamnet['Timestamp'])
+        try:
+            df_all_yamnet['week'] = df_all_yamnet['Timestamp'].dt.to_period('W').start_time
+        except Exception as e:
+            df_all_yamnet['week'] = pd.to_datetime(df_all_yamnet['date']).dt.to_period('W').dt.start_time
+
+
+        # week
+        weeks = df_all_yamnet['week'].unique()
+
+        for week_start in weeks:
+            df_week = df_all_yamnet[df_all_yamnet['week'] == week_start].copy()
+            if df_week.empty:
+                continue
+
+            plt.figure(figsize=(15, 8))
+            sns.boxplot(data=df_week, x='NoisePort_Level_1', y='LA_corrected')
+
+            plt.title(f'{plotname} Predicciones de Picos por Clases | Semana {week_start.strftime("%Y-%m-%d")}')
+            plt.xlabel('Clase', fontsize=BIGGEST_SIZE)
+            plt.ylabel('LAeq (dB)', fontsize=BIGGEST_SIZE)
+
+            plt.xticks(rotation=90, fontsize=BIGGEST_SIZE)
+            plt.yticks(fontsize=BIGGEST_SIZE)
+            plt.grid(True)
+
+            plt.ylim([30, 110])
+            plt.tight_layout()
+
+            # save the plot
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+            plt.savefig(f"{week_folder}/{plotname}_peak_box_plot_{week_start.strftime('%Y-%m-%d')}.png", dpi=150)
+            logger.info(f"Saved plot at {week_folder}/{plotname}_peak_box_plot_{week_start.strftime('%Y-%m-%d')}.png")
+
+    except Exception as e:
+        logger.error(f"Error in plot_box_plot_prediction: {e}")
+
+
+
 def plot_heat_map_prediction(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
     try:
-        df_all_yamnet = df_all_yamnet.copy()
+        df_all_yamnet = df_all_yamnet[df_all_yamnet['Peak'] == 1].copy()
+        df_all_yamnet['Timestamp'] = pd.to_datetime(df_all_yamnet['Timestamp'])
+        try:
+            df_all_yamnet['week'] = df_all_yamnet['Timestamp'].dt.to_period('W').start_time
+        except Exception as e:
+            df_all_yamnet['week'] = pd.to_datetime(df_all_yamnet['date']).dt.to_period('W').dt.start_time
+
 
         bins = [0, 60, 70, 80, 90, 100, 110]
         labels = ['0-60 dBs', '60-70 dBs', '70-80 dBs', '80-90 dBs', '90-100 dBs', '100-110 dBs']
 
         df_all_yamnet['LAeq_bins'] = pd.cut(df_all_yamnet['LA_corrected'], bins=bins, labels=labels, include_lowest=True)
 
-        heatmap_data = df_all_yamnet.pivot_table(
-            index='NoisePort_Level_1', 
-            columns='LAeq_bins', 
-            values='LA_corrected', 
-            aggfunc='count'
+        # week
+        weeks = df_all_yamnet['week'].unique()
+
+        for week_start in weeks:
+            df_week = df_all_yamnet[df_all_yamnet['week'] == week_start].copy()
+            if df_week.empty:
+                continue
+
+            heatmap_data = df_week.pivot_table(
+                index='NoisePort_Level_1',
+                columns='LAeq_bins',
+                values='LA_corrected',
+                aggfunc='count'
             ).fillna(0)
 
-        heatmap_data = heatmap_data.T
+            heatmap_data = heatmap_data.T
+            reversed_bins = labels[::-1]
+            heatmap_data = heatmap_data.reindex(index=reversed_bins)
+            plt.figure(figsize=(15, 8))
+            sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap='Blues')
+            plt.title(f'{plotname} | Heatmap de Clases y LAeq | Semana {week_start.strftime("%Y-%m-%d")}', fontsize=BIGGEST_SIZE)
+            plt.xlabel('', rotation=0)
+            plt.ylabel('', rotation=0)
+            plt.yticks(rotation=0, fontsize=BIGGEST_SIZE)
+            plt.xticks(rotation=90, fontsize=BIGGEST_SIZE)
+            plt.grid(False)
+            plt.tight_layout()
 
-        reversed_bins = labels[::-1]  
-        heatmap_data = heatmap_data.reindex(index=reversed_bins)
-
-        plt.figure(figsize=(15, 8))
-        sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap='Blues')
-
-        plt.title(f'{plotname} | Heatmap de Clases y LAeq', fontsize=BIGGEST_SIZE)
-        plt.xlabel('', rotation=0)
-        plt.ylabel('', rotation=0)
-        plt.yticks(rotation=0)
-        plt.grid(False)
-
-        plt.tight_layout()
-
-
-        # save the plot
-        plt.savefig(f"{folder_output_dir}/{plotname}_peak_heatmap.png", dpi=150)
-        logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_heatmap.png")
+            # save the plot
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+            plt.savefig(f"{week_folder}/{plotname}_peak_heatmap_{week_start.strftime('%Y-%m-%d')}.png", dpi=150)
+            logger.info(f"Saved plot at {week_folder}/{plotname}_peak_heatmap_{week_start.strftime('%Y-%m-%d')}.png")
 
 
     except Exception as e:
         logger.error(f"Error in plot_heat_map_prediction: {e}")
         
+
+
+
+def plot_heat_map_prediction_week(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
+    try:
+        df_all_yamnet = df_all_yamnet[df_all_yamnet['Peak'] == 1].copy()
+        df_all_yamnet['Timestamp'] = pd.to_datetime(df_all_yamnet['Timestamp'])
+        df_all_yamnet['week'] = df_all_yamnet['Timestamp'].dt.to_period('W').start_time
+
+        bins = [0, 60, 70, 80, 90, 100, 110]
+        labels = ['0-60 dBs', '60-70 dBs', '70-80 dBs', '80-90 dBs', '90-100 dBs', '100-110 dBs']
+        reversed_labels = labels[::-1]
+
+        for week_start in df_all_yamnet['week'].unique():
+            df_week = df_all_yamnet[df_all_yamnet['week'] == week_start].copy()
+            if df_week.empty:
+                continue
+
+            df_week['LAeq_bins'] = pd.cut(df_week['LA_corrected'], bins=bins, labels=labels, include_lowest=True)
+
+            heatmap_data = df_week.pivot_table(
+                index='NoisePort_Level_1',
+                columns='LAeq_bins',
+                values='LA_corrected',
+                aggfunc='count'
+            ).fillna(0).T
+
+            heatmap_data = heatmap_data.reindex(index=reversed_labels)
+
+            plt.figure(figsize=(15, 8))
+            sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap='Blues')
+
+            plt.title(f'{plotname} | Heatmap Clases vs LAeq | Semana {week_start.strftime("%Y-%m-%d")}', fontsize=BIGGEST_SIZE)
+            plt.xlabel('', rotation=0)
+            plt.ylabel('', rotation=0)
+            plt.yticks(rotation=0)
+            plt.grid(False)
+            plt.tight_layout()
+
+            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
+            os.makedirs(week_folder, exist_ok=True)
+
+            file_path = os.path.join(week_folder, f"{plotname}_peak_heatmap.png")
+            plt.savefig(file_path, dpi=150)
+            plt.close()
+
+            logger.info(f"Saved peak LAeq heatmap for week {week_start.strftime('%Y-%m-%d')} at {file_path}")
+
+    except Exception as e:
+        logger.error(f"Error in plot_heat_map_prediction_weekly: {e}")

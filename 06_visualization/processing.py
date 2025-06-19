@@ -497,106 +497,106 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             ###################################
             # MERGING SECTION
             ####################################
-            # logger.info("")
-            # logger.info(f"MERGING SECTION")
+            logger.info("")
+            logger.info(f"MERGING SECTION")
             
-            # try:
-            #     ################################### MERGING ACOUSTIC WITH PREDICTION DATAFRAME ###################################
-            #     acoustic_pred_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_acoustic_pred.csv")
-            #     if os.path.exists(acoustic_pred_csv_path):
-            #         logger.info(f"[1] File {acoustic_pred_csv_path} already exists, skipping merge")
-            #         df_acustic_pred = pd.read_csv(acoustic_pred_csv_path)
+            try:
+                ################################### MERGING ACOUSTIC WITH PREDICTION DATAFRAME ###################################
+                acoustic_pred_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_acoustic_pred.csv")
+                if os.path.exists(acoustic_pred_csv_path):
+                    logger.info(f"[1] File {acoustic_pred_csv_path} already exists, skipping merge")
+                    df_acustic_pred = pd.read_csv(acoustic_pred_csv_path)
                 
-            #     else:
-            #         logger.info("[1] Merging the prediction dataframe with the acoustic dataframe")
-            #         df_acustic_pred = df.merge(
-            #             df_prediction[['class', 'probability']],
-            #             left_index=True,
-            #             right_index=True,
-            #             how='left'
-            #         )
-            #         logger.info("Merge successful for the acoustic and prediction dataframes")
+                else:
+                    logger.info("[1] Merging the prediction dataframe with the acoustic dataframe")
+                    df_acustic_pred = df.merge(
+                        df_prediction[['class', 'probability']],
+                        left_index=True,
+                        right_index=True,
+                        how='left'
+                    )
+                    logger.info("Merge successful for the acoustic and prediction dataframes")
 
 
-            #         logger.info("Saving the merged dataframe to the prediction folder")
-            #         df_acustic_pred.to_csv(acoustic_pred_csv_path, index=False)
-            #         logger.info(f"Saved merged dataframe to {acoustic_pred_csv_path}")
+                    logger.info("Saving the merged dataframe to the prediction folder")
+                    df_acustic_pred.to_csv(acoustic_pred_csv_path, index=False)
+                    logger.info(f"Saved merged dataframe to {acoustic_pred_csv_path}")
 
-            # except Exception as e:
-            #     logger.error(f"An error occurred while merging the ACOUSTIC PREDICT dataframE: {e}")
-            #     ###################################
-
-
-
-            # try:
-            #         ############# MERGING PEAKS WITH ACOUSTIC DATAFRAME ##################
-            #     acoustic_pred_peak_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_acoustic_pred_peak.csv")
-            #     if os.path.exists(acoustic_pred_peak_csv_path):
-            #         logger.info(f"[2] File {acoustic_pred_peak_csv_path} already exists, skipping merge")
-            #         df_all = pd.read_csv(acoustic_pred_peak_csv_path)
-
-            #     else:
-            #         logger.info("")
-            #         logger.info("[2] Merging the peaks dataframe with the acoustic dataframe")
-            #         df_all = df_acustic_pred.merge(
-            #             df_peaks[['Peak']],
-            #             left_index=True,
-            #             right_index=True,
-            #             how='left'
-            #         )
-            #         logger.info("Merge successful for the peaks and acoustic dataframes")
-
-            #         logger.info(f"Saving the merged dataframe to the prediction folder")
-            #         df_all.to_csv(acoustic_pred_peak_csv_path, index=False)
-            #         logger.info(f"Saved merged dataframe to {acoustic_pred_peak_csv_path}")
-
-            # except Exception as e:
-            #     logger.error(f"An error occurred while merging the ACOUSTIC PREDICT PEAKS dataframE: {e}")
+            except Exception as e:
+                logger.error(f"An error occurred while merging the ACOUSTIC PREDICT dataframE: {e}")
+                ###################################
 
 
 
-            # try:
-            #     ################################### MERGING ALL WITH YAMNET DATAFRAME ###################################
-            #     yamnet_all_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_all_yamnet.csv")              
-            #     if os.path.exists(yamnet_all_csv_path):
-            #         logger.info(f"[3] File {yamnet_all_csv_path} already exists, skipping merget")
-            #         df_all_yamnet = pd.read_csv(yamnet_all_csv_path)
+            try:
+                    ############# MERGING PEAKS WITH ACOUSTIC DATAFRAME ##################
+                acoustic_pred_peak_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_acoustic_pred_peak.csv")
+                if os.path.exists(acoustic_pred_peak_csv_path):
+                    logger.info(f"[2] File {acoustic_pred_peak_csv_path} already exists, skipping merge")
+                    df_all = pd.read_csv(acoustic_pred_peak_csv_path)
+
+                else:
+                    logger.info("")
+                    logger.info("[2] Merging the peaks dataframe with the acoustic dataframe")
+                    df_all = df_acustic_pred.merge(
+                        df_peaks[['Peak']],
+                        left_index=True,
+                        right_index=True,
+                        how='left'
+                    )
+                    logger.info("Merge successful for the peaks and acoustic dataframes")
+
+                    logger.info(f"Saving the merged dataframe to the prediction folder")
+                    df_all.to_csv(acoustic_pred_peak_csv_path, index=False)
+                    logger.info(f"Saved merged dataframe to {acoustic_pred_peak_csv_path}")
+
+            except Exception as e:
+                logger.error(f"An error occurred while merging the ACOUSTIC PREDICT PEAKS dataframE: {e}")
 
 
-            #     else:
-            #         logger.info("")
-            #         logger.info("[3] Merging the peaks dataframe with the yamnet dataframe")
-            #         # [1] convert the string‐representations into reallists
-            #         df_all_cp = df_all.copy()
 
-            #         # remove nan values for all column
-            #         df_all_cp.dropna(subset=['class', 'probability'], inplace=True)
-            #         df_all_cp['class'] = df_all_cp['class'].apply(ast.literal_eval)
-            #         df_all_cp['probability'] = df_all_cp['probability'].apply(ast.literal_eval)
-
-            #         # [2]exploding both columns at once
-            #         df_exploded = (df_all_cp.explode(['class', 'probability']).reset_index(drop=True))
-            #         # print(df_exploded)
-
-            #         # true is to avoid the index being added as a column and false is to keep the index
-            #         ####################################################################
-
-            #         df_all_yamnet = df_exploded.merge(
-            #             yamnet_csv,
-            #             how="left",
-            #             left_on="class",
-            #             right_on="display_name"
-            #         )
-            #         df_all_yamnet.drop(columns=['display_name'], inplace=True, errors='ignore')
-            #         logger.info("Merge successful for the peaks and acoustic dataframes")
+            try:
+                ################################### MERGING ALL WITH YAMNET DATAFRAME ###################################
+                yamnet_all_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_all_yamnet.csv")              
+                if os.path.exists(yamnet_all_csv_path):
+                    logger.info(f"[3] File {yamnet_all_csv_path} already exists, skipping merget")
+                    df_all_yamnet = pd.read_csv(yamnet_all_csv_path)
 
 
-            #         logger.info(f"Saving the merged dataframe to the prediction folder")  
-            #         df_all_yamnet.to_csv(yamnet_all_csv_path, index=False)
-            #         logger.info(f"Saved merged dataframe to {yamnet_all_csv_path}")
+                else:
+                    logger.info("")
+                    logger.info("[3] Merging the peaks dataframe with the yamnet dataframe")
+                    # [1] convert the string‐representations into reallists
+                    df_all_cp = df_all.copy()
 
-            # except Exception as e:
-            #     logger.error(f"An error occurred while merging the ACOUSTIC dataframE: {e}")
+                    # remove nan values for all column
+                    df_all_cp.dropna(subset=['class', 'probability'], inplace=True)
+                    df_all_cp['class'] = df_all_cp['class'].apply(ast.literal_eval)
+                    df_all_cp['probability'] = df_all_cp['probability'].apply(ast.literal_eval)
+
+                    # [2]exploding both columns at once
+                    df_exploded = (df_all_cp.explode(['class', 'probability']).reset_index(drop=True))
+                    # print(df_exploded)
+
+                    # true is to avoid the index being added as a column and false is to keep the index
+                    ####################################################################
+
+                    df_all_yamnet = df_exploded.merge(
+                        yamnet_csv,
+                        how="left",
+                        left_on="class",
+                        right_on="display_name"
+                    )
+                    df_all_yamnet.drop(columns=['display_name'], inplace=True, errors='ignore')
+                    logger.info("Merge successful for the peaks and acoustic dataframes")
+
+
+                    logger.info(f"Saving the merged dataframe to the prediction folder")  
+                    df_all_yamnet.to_csv(yamnet_all_csv_path, index=False)
+                    logger.info(f"Saved merged dataframe to {yamnet_all_csv_path}")
+
+            except Exception as e:
+                logger.error(f"An error occurred while merging the ACOUSTIC dataframE: {e}")
             ###################################
             ###################################
             ###################################
@@ -608,18 +608,20 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info(f"PLOTTING SECTION")
 
             # Plotting night evolution
-            # if PLOT_NIGHT_EVOLUTION:
-            #     logger.info(f"[1] Plotting night evolution for folder {folder}")
-            #     plot_night_evolution(df, folder_output_dir, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder, indicador_noche="Ln")
+            if PLOT_NIGHT_EVOLUTION:
+                logger.info(f"[1] Plotting night evolution for folder {folder}")
+                plot_night_evolution(df, folder_output_dir, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder, indicador_noche="Ln")
             
             if PLOT_NIGHT_EVOLUTION_WEEK:
                 logger.info(f"[1.2] Plotting night evolution for folder {folder}")
                 plot_night_evolution_week(df, folder_output_dir_week, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder, indicador_noche="Ln")
 
+
+
             # Plotting night evolution 15 min
-            # if PLOT_NIGHT_EVOLUTION_15_MIN:
-            #     logger.info(f"[2] Plotting night evolution 15 min for folder {folder}")
-            #     plot_night_evolution_15_min(df, folder_output_dir, logger, name_extension="15_min", laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder, indicador_noche="Ln")
+            if PLOT_NIGHT_EVOLUTION_15_MIN:
+                logger.info(f"[2] Plotting night evolution 15 min for folder {folder}")
+                plot_night_evolution_15_min(df, folder_output_dir, logger, name_extension="15_min", laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder, indicador_noche="Ln")
 
             # Plotting night evolution 15 min
             if PLOT_NIGHT_EVOLUTION_15_MIN_WEEK:
@@ -627,48 +629,59 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 plot_night_evolution_15_min_week(df, folder_output_dir_week, logger, name_extension="15_min", laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder, indicador_noche="Ln")
 
 
+
+
+
             ############################ PREDICTION PLOTTING SECTION ####################################################################################
             # Plotting LEq power average with predictions
-            """
+            
             if PLOT_PREDIC_LAEQ_MEAN:
-                logger.info(f"[3] Plotting PLOT_PREDIC_LAEQ_MEAN for folder {folder}")
+                logger.info(f"[3.1] Plotting PLOT_PREDIC_LAEQ_MEAN for folder {folder}")
                 plot_predic_laeq_mean(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+
+            if PLOT_PREDIC_LAEQ_MEAN_WEEK:
+                logger.info(f"[3.2] Plotting PLOT_PREDIC_LAEQ_MEAN for folder {folder}")
+                plot_predic_laeq_mean_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
             
 
-            # Plotting LEq power average with predictions
-            if PLOT_PREDIC_LAEQ_MEAN_WEEK:
-                logger.info(f"[3] Plotting PLOT_PREDIC_LAEQ_MEAN for folder {folder}")
-                plot_predic_laeq_mean_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
-            """
+
 
             # TODO
             # if PLOT_PREDIC_LAEQ_15_MIN_PERIOD:
             #     logger.info(f"[4] Plotting PLOT_PREDIC_LAEQ_15_MIN_PERIOD for folder {folder}")
             #     plot_predic_laeq_15_min_period(df, yamnet_csv, taxonomy, ia_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
 
-
+            # TODO
             # if PLOT_PREDIC_LAEQ_15_MIN_4H:
             #     logger.info(f"[5] Plotting PLOT_PREDIC_LAEQ_4H for folder {folder}")
             #     plot_predic_laeq_15_min_4h(df, yamnet_csv,taxonomy, df_prediction, ia_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
 
 
+            # TODO
             # # Plotting stack bar with predictions class
             # if PLOT_PREDICTION_STACK_BAR:
             #     logger.info(f"[6] Plotting PLOT_PREDICTION_STACK_BAR for folder {folder}")
             #     plot_prediction_stack_bar(df_prediction, yamnet_csv, taxonomy, ia_visualization_folder, logger, plotname=folder)
             
 
+            # TODO
             # Plotting prediction map
             # if PLOT_PREDICTION_MAP:
             #     logger.info(f"[7] Plotting PLOT_PREDICTION_MAP for folder {folder}")
             #     plot_prediction_map(df_prediction, taxonomy, ia_visualization_folder, logger, plotname=folder)
             
-            """
+            
             if PLOT_PREDICTION_MAP:
-                logger.info(f"[7] Plotting PLOT_PREDICTION_MAP for folder {folder}")
+                logger.info(f"[7.1] Plotting PLOT_PREDICTION_MAP for folder {folder}")
                 plot_prediction_map_new(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
-            """
+            
+            if PLOT_PREDICTION_MAP_WEEK:
+                logger.info(f"[7.2] Plotting PLOT_PREDICTION_MAP for folder {folder}")
+                plot_prediction_map_new_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
 
+
+
+            # TODO
             # # Plotting tree map
             # if PLOT_TREE_MAP:
             #     logger.info(f"[8] Plotting PLOT_TREE_MAP for folder {folder}")
@@ -678,9 +691,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
             
             # Plotting time plot
-            # if PLOT_MAKE_TIME_PLOT:
-            #     logger.info(f"[9.1] Plotting time plot for folder {folder}")
-            #     make_time_plot(df, folder_output_dir, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder, percentiles=PERCENTILES)
+            if PLOT_MAKE_TIME_PLOT:
+                logger.info(f"[9.1] Plotting time plot for folder {folder}")
+                make_time_plot(df, folder_output_dir, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder, percentiles=PERCENTILES)
 
 
             # Plotting time plot
@@ -690,9 +703,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
             # Plotting heatmap evolution hour
-            # if PLOT_HEATMAP_EVOLUTION_HOUR:
-            #     logger.info(f"[10.1] Plotting heatmap for folder {folder}")
-            #     plot_heatmap_evolution_hour(df, folder_output_dir, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname=folder)
+            if PLOT_HEATMAP_EVOLUTION_HOUR:
+                logger.info(f"[10.1] Plotting heatmap for folder {folder}")
+                plot_heatmap_evolution_hour(df, folder_output_dir, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname=folder)
 
 
             # Plotting heatmap evolution hour
@@ -702,9 +715,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             
             
             # Plotting heatmap evolution 15 min
-            # if PLOT_HEATMAP_EVOLUTION_15_MIN:
-            #     logger.info(f"[11] Plotting heatmap 15 min for folder {folder}")
-            #     plot_heatmap_evolution_15_min(df, folder_output_dir, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname=folder)
+            if PLOT_HEATMAP_EVOLUTION_15_MIN:
+                logger.info(f"[11] Plotting heatmap 15 min for folder {folder}")
+                plot_heatmap_evolution_15_min(df, folder_output_dir, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname=folder)
 
             
             # Plotting heatmap evolution 15 min
@@ -714,9 +727,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             
 
             # Plotting individual heatmap
-            # if PLOT_INDICADORES_HEATMAP:
-            #     logger.info(f"[12] Plotting indicadores heatmap for folder {folder}")
-            #     plot_indicadores_heatmap(df, folder_output_dir, logger, plotname=folder, ind_column=slm_dict["LAEQ_COLUMN_COEFF"])
+            if PLOT_INDICADORES_HEATMAP:
+                logger.info(f"[12] Plotting indicadores heatmap for folder {folder}")
+                plot_indicadores_heatmap(df, folder_output_dir, logger, plotname=folder, ind_column=slm_dict["LAEQ_COLUMN_COEFF"])
 
             
             # Plotting individual heatmap
@@ -726,9 +739,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
             # Plotting day evolution
-            # if PLOT_DAY_EVOLUTION:
-            #     logger.info(f"[13] Plotting day evolution for folder {folder}")
-            #     plot_day_evolution(df, folder_output_dir, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder)
+            if PLOT_DAY_EVOLUTION:
+                logger.info(f"[13] Plotting day evolution for folder {folder}")
+                plot_day_evolution(df, folder_output_dir, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder)
 
 
             if PLOT_DAY_EVOLUTION_WEEK:
@@ -737,9 +750,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             
 
             # Plotting period evolution
-            # if PLOT_PERIOD_EVOLUTION:
-            #     logger.info(f"[14] Plotting period evolution (1) Ld (2) Le for folder {folder}")
-            #     plot_period_evolution(df, folder_output_dir, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder)
+            if PLOT_PERIOD_EVOLUTION:
+                logger.info(f"[14] Plotting period evolution (1) Ld (2) Le for folder {folder}")
+                plot_period_evolution(df, folder_output_dir, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder)
 
 
             # Plotting period evolution
@@ -748,6 +761,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 plot_period_evolution_week(df, folder_output_dir_week, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder)
             
 
+            # TODO
             # I dont know why I commented this out
             # if PLOT_SPECTROGRAM_1_3:
             #     logger.info(f"[15] Plotting spectrogram for folder {folder}")
@@ -877,18 +891,34 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             # PLOTTING PREDICTION SECTION
             # #####################################################
             if PLOT_PEAK_PREDIC_LAEQ_MEAN:
-                logger.info(f"[11] Plotting PLOT_PREDIC_LAEQ for folder {folder}")
+                logger.info(f"[11.1] Plotting PLOT_PREDIC_LAEQ for folder {folder}")
                 plot_predic_peak_laeq_mean(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
 
+            if PLOT_PEAK_PREDIC_LAEQ_MEAN_WEEK:
+                logger.info(f"[11.2] Plotting PLOT_PREDIC_LAEQ for folder {folder}")
+                plot_predic_peak_laeq_mean_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+
             
+
+
             if PLOT_PEAK_BOX_PLOT_PREDICTION:
                 logger.info(f"[12] Plotting box plot prediction for folder {folder}")
                 plot_box_plot_prediction(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+
+            if PLOT_PEAK_BOX_PLOT_PREDICTION_WEEK:
+                logger.info(f"[12.2] Plotting box plot prediction for folder {folder}")
+                plot_box_plot_prediction_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+
+
 
 
             if PLOT_PEAK_HEATMAT_PREDICTION:
                 logger.info(f"[13] Plotting heatmap prediction for folder {folder}")
                 plot_heat_map_prediction(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+
+            if PLOT_PEAK_HEATMAT_PREDICTION_WEEK:
+                logger.info(f"[13.2] Plotting heatmap prediction for folder {folder}")
+                plot_heat_map_prediction_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
 
 
 
