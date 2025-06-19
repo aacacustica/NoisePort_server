@@ -400,6 +400,33 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.error(f"An error occurred while creating slm_dict: {e}")
                 continue
 
+            
+
+
+            try:
+                logger.info("")
+                logger.info("FILTERING THE PREDICTION DF. TAKING JUST THE FIRST ONE AND IF IT OVERCOME THE THRESHOLD")
+                # print(df_prediction)
+
+
+                # getting just the first class and their oribability
+                df_prediction_alarms = df_prediction 
+                df_prediction_alarms["class"] = df_prediction_alarms["class"].apply(lambda x: ast.literal_eval(x) if isinstance(x, str) else x)
+                df_prediction_alarms["probability"] = df_prediction_alarms["probability"].apply(lambda x: ast.literal_eval(x) if isinstance(x, str) else x)
+                df_prediction_alarms["class"] = df_prediction_alarms["class"].apply(lambda x: x[0] if isinstance(x, list) and len(x) > 0 else None)
+                df_prediction_alarms["probability"] = df_prediction_alarms["probability"].apply(lambda x: float(x[0]) if isinstance(x, list) and len(x) > 0 else None)
+
+
+                # print(df_prediction_alarms)
+
+                #now, just taking the first class when its probability is greater than the threshold
+                df_prediction_alarms = df_prediction_alarms[df_prediction_alarms['probability'] >= PROBABILITY_THRESHOLD]
+                # print(df_prediction_alarms)
+
+
+            except Exception as e:
+                logger.error(f"An error occurred while processing folder {folder}: {e}")
+            exit()
 
 
             try:
@@ -857,6 +884,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             if TONAL_FREQUENCY:
                 logger.info(f"[7.1] Plotting tonal frequency for folder {folder}")
                 df_alarms_1h = tonal_frequency(df, df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
+                print(df_alarms_1h)
             
             if TONAL_FREQUENCY_WEEK:
                 logger.info(f"[7.2] Plotting tonal frequency WEEK for folder {folder}")
@@ -960,7 +988,11 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             except Exception as e:
                 logger.error(f"An error occurred while saving the alarms dataframe: {e}")
                 continue
+            ################################
+            ################################
+            ################################
 
+            
 
         except Exception as e:
             logger.error(f"An error occurred while processing folder {folder}: {e}")
