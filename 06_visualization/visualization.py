@@ -1030,80 +1030,99 @@ def plot_prediction_map(df_Pred:pd.DataFrame, taxonomy_map, folder_output_dir: s
 def plot_prediction_map_new(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
     try:
         df_copy = df_all_yamnet.copy()
+        print(df_copy)
+        # exit()
+
 
         #######################################
         df_copy = add_datetime_columns(df_copy, logger, date_col='Timestamp')
-        df_copy['mapped_class'] = df_copy['class'].map(taxonomy_map)
-        df_copy = df_copy.dropna(subset=['mapped_class'])
 
-        #class names to numbers
-        class_to_num = {cls: i+1 for i, cls in enumerate(df_copy['mapped_class'].unique())}
-        df_copy['class_num'] = df_copy['mapped_class'].map(class_to_num)
-        name_class = {v: k for k, v in class_to_num.items()}
-        df_copy['Timestamp'] = pd.to_datetime(df_copy['Timestamp'])
+        #######################################
         df_copy.set_index('Timestamp', inplace=True)
-
-        #######################################
-        #resample 15 min
-        resampled = df_copy.resample('15min').agg(lambda x: x.mode().iloc[0] if not x.mode().empty else None)
-        resampled = resampled.dropna(subset=['class_num'])
-
-
-        #######################################
-        #time
-        resampled['date'] = resampled.index.date
-        resampled['time_block'] = resampled.index.time  # Or .strftime('%H:%M') for cleaner strings
-        pivot = resampled.pivot(index='date', columns='time_block', values='class_num')
-
-        #######################################
-        #color mapping
-        if 'Siren' in set(taxonomy_map.values()):
-            num_to_color = {num: COLOR_PALLET_PORT_L1[cls] for cls, num in class_to_num.items()}
-            logger.info("Using 'NoisePort_Level_1' class for plotting")
-
-        ordered_colors = [num_to_color[i] for i in sorted(name_class.keys())]
-        cmap = ListedColormap(ordered_colors)
-
-        #######################################
-        #plotting
-        plt.figure(figsize=(20, 10))
-        ax = sns.heatmap(pivot, cmap=cmap, linewidth=0.3, cbar=False, linecolor='gray')
-
-        ax.set_title("Sound Class Predictions — Daily 15min Timeline")
-        ax.set_xlabel("Hora del Día", fontsize=14)
-        ax.set_ylabel("Fecha", fontsize=14)
-
-        label_step = 1 # 15 min 96 
-        # label_step = 2 #30 min
-        # label_step = 4  # 1h
+        #resample 1h
+        df_all_yamnet_1h_resample = df_copy.resample('1h').agg(lambda x: x.mode().iloc[0] if not x.mode().empty else None)
+        df_all_yamnet_1h = df_all_yamnet_1h_resample
+        ########################################
 
 
-        xtick_locs = list(range(0, len(pivot.columns), label_step))
-        xtick_labels = [t.strftime('%H:%M') for i, t in enumerate(pivot.columns) if i % label_step == 0]
+        # df_copy['mapped_class'] = df_copy['class'].map(taxonomy_map)
+        # df_copy = df_copy.dropna(subset=['mapped_class'])
 
-        ax.set_xticks(xtick_locs)
-        ax.set_xticklabels(xtick_labels, rotation=90, fontsize=8)
-
-
-        # lwegend
-        legend_elements = [
-            Patch(facecolor=num_to_color[num], label=f"{num} - {name_class.get(num)}")
-            for num in sorted(name_class.keys())
-        ]
-
-        plt.legend(handles=legend_elements, title="Clases", bbox_to_anchor=(1.01, 1), loc='upper left')
-        plt.tight_layout()
-        plt.title(f"{plotname} | Clases 15 min")
+        # #class names to numbers
+        # class_to_num = {cls: i+1 for i, cls in enumerate(df_copy['mapped_class'].unique())}
+        # df_copy['class_num'] = df_copy['mapped_class'].map(class_to_num)
+        # name_class = {v: k for k, v in class_to_num.items()}
+        # df_copy['Timestamp'] = pd.to_datetime(df_copy['Timestamp'])
+        # df_copy.set_index('Timestamp', inplace=True)
 
 
-        #######################################
-        plt.savefig(f"{folder_output_dir}/{plotname}_prediction_map.png", bbox_inches='tight')
-        logger.info(f"Saved image at {folder_output_dir}/{plotname}_prediction_map.png")
 
-        # save csv with the data
-        pivot.to_csv(f"{folder_output_dir}/{plotname}_prediction_map.csv")
-        logger.info(f"Saved csv at {folder_output_dir}/{plotname}_prediction_map.csv")
+        # #######################################
+        # #resample 15 min
+        # resampled = df_copy.resample('15min').agg(lambda x: x.mode().iloc[0] if not x.mode().empty else None)
+        # resampled = resampled.dropna(subset=['class_num'])
+
+
+        # #######################################
+        # #time
+        # resampled['date'] = resampled.index.date
+        # resampled['time_block'] = resampled.index.time  # Or .strftime('%H:%M') for cleaner strings
+        # pivot = resampled.pivot(index='date', columns='time_block', values='class_num')
+
+        # #######################################
+        # #color mapping
+        # if 'Siren' in set(taxonomy_map.values()):
+        #     num_to_color = {num: COLOR_PALLET_PORT_L1[cls] for cls, num in class_to_num.items()}
+        #     logger.info("Using 'NoisePort_Level_1' class for plotting")
+
+        # ordered_colors = [num_to_color[i] for i in sorted(name_class.keys())]
+        # cmap = ListedColormap(ordered_colors)
+
+        # #######################################
+        # #plotting
+        # plt.figure(figsize=(20, 10))
+        # ax = sns.heatmap(pivot, cmap=cmap, linewidth=0.3, cbar=False, linecolor='gray')
+
+        # ax.set_title("Sound Class Predictions — Daily 15min Timeline")
+        # ax.set_xlabel("Hora del Día", fontsize=14)
+        # ax.set_ylabel("Fecha", fontsize=14)
+
+        # label_step = 1 # 15 min 96 
+        # # label_step = 2 #30 min
+        # # label_step = 4  # 1h
+
+
+        # xtick_locs = list(range(0, len(pivot.columns), label_step))
+        # xtick_labels = [t.strftime('%H:%M') for i, t in enumerate(pivot.columns) if i % label_step == 0]
+
+        # ax.set_xticks(xtick_locs)
+        # ax.set_xticklabels(xtick_labels, rotation=90, fontsize=8)
+
+
+        # # lwegend
+        # legend_elements = [
+        #     Patch(facecolor=num_to_color[num], label=f"{num} - {name_class.get(num)}")
+        #     for num in sorted(name_class.keys())
+        # ]
+
+        # plt.legend(handles=legend_elements, title="Clases", bbox_to_anchor=(1.01, 1), loc='upper left')
+        # plt.tight_layout()
+        # plt.title(f"{plotname} | Clases 15 min")
+
+
+        # #######################################
+        # plt.savefig(f"{folder_output_dir}/{plotname}_prediction_map.png", bbox_inches='tight')
+        # logger.info(f"Saved image at {folder_output_dir}/{plotname}_prediction_map.png")
+
+        # # save csv with the data
+        # pivot.to_csv(f"{folder_output_dir}/{plotname}_prediction_map.csv")
+        # logger.info(f"Saved csv at {folder_output_dir}/{plotname}_prediction_map.csv")
+        # exit()
+
+
+        return df_all_yamnet_1h
           
+
     except Exception as e:
         logger.error(f"Error in plot_prediction_map: {e}")
 
@@ -2690,6 +2709,9 @@ def LC_LA_alarm(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotnam
     #########################
     # marking with an 1 when an alarm is detected in the dataframe, otherwise leave it as blank
     df_1h_leq["LC_LA_alarm"] = np.where(combined_filter, 1, np.nan)
+
+    #removing the LC_LA_threshold column
+    df_1h_leq.drop(columns=["LC_LA_threshold"], inplace=True)
     return df_1h_leq
 
 
@@ -3454,19 +3476,23 @@ def plot_peak_distribution_heatmap(df_peaks: pd.DataFrame,df_alarms_1h: pd.DataF
         sns.set_style("whitegrid")
         df_peaks = df_peaks.copy()
 
+
         ##############################
         ##############################
         ##############################
-        # Ensure Timestamp is datetime
         df_peaks["Timestamp"] = pd.to_datetime(df_peaks["Timestamp"], errors="coerce")
-
-        # Floor timestamp to the hour
         df_peaks["datetime_hour"] = df_peaks["Timestamp"].dt.floor("h")
-
-        # Group by datetime
         df_peak_counts = df_peaks.groupby("datetime_hour").size().reset_index(name="peak_count")
-
         df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"]).dt.floor("h")
+
+        #creating the LAeq_peak column in df_alarms_1h. 
+        # group the peaks by hour and make the leq fucntion average with the LA_corrected column
+
+        df_la_eq_peak = df_peaks.groupby("datetime_hour")["LA_corrected"].apply(leq).reset_index()
+        df_la_eq_peak.rename(columns={"datetime_hour": "date_time", "LA_corrected": "LAeq_peak"}, inplace=True)
+        df_alarms_1h = df_alarms_1h.merge(df_la_eq_peak, on="date_time", how="left")
+        # exit()
+
 
         df_alarms_1h = df_alarms_1h.merge(
             df_peak_counts,
@@ -3479,6 +3505,7 @@ def plot_peak_distribution_heatmap(df_peaks: pd.DataFrame,df_alarms_1h: pd.DataF
         ##############################
         ##############################
         ##############################
+        print(df_alarms_1h)
 
 
         df_peaks['Día'] = df_peaks['day_name'].replace(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'])

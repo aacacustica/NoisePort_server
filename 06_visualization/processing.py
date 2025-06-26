@@ -219,7 +219,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             
             # taking just 1 day, which are the first 86400 rows
             # df = df.iloc[:86400] # 1 day of data, 24 hours * 60 minutes * 60 seconds = 86400 seconds
-            df = df.iloc[:43200] # 1 day of data, 24 hours * 60 minutes * 60 seconds = 86400 seconds
+            # df = df.iloc[:43200] # 1/2 day of data
 
 
             #############################
@@ -406,8 +406,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             try:
                 logger.info("")
                 logger.info("FILTERING THE PREDICTION DF. TAKING JUST THE FIRST ONE AND IF IT OVERCOME THE THRESHOLD")
-                # print(df_prediction)
-
 
                 # getting just the first class and their oribability
                 df_prediction_alarms = df_prediction 
@@ -416,17 +414,11 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 df_prediction_alarms["class"] = df_prediction_alarms["class"].apply(lambda x: x[0] if isinstance(x, list) and len(x) > 0 else None)
                 df_prediction_alarms["probability"] = df_prediction_alarms["probability"].apply(lambda x: float(x[0]) if isinstance(x, list) and len(x) > 0 else None)
 
-
-                # print(df_prediction_alarms)
-
                 #now, just taking the first class when its probability is greater than the threshold
                 df_prediction_alarms = df_prediction_alarms[df_prediction_alarms['probability'] >= PROBABILITY_THRESHOLD]
-                # print(df_prediction_alarms)
-
 
             except Exception as e:
                 logger.error(f"An error occurred while processing folder {folder}: {e}")
-            exit()
 
 
             try:
@@ -525,117 +517,97 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             ###################################
             # MERGING SECTION
             ####################################
-            # logger.info("")
-            # logger.info(f"MERGING SECTION")
+            logger.info("")
+            logger.info(f"MERGING SECTION")
             
-            # try:
-            #     ################################### MERGING ACOUSTIC WITH PREDICTION DATAFRAME ###################################
-            #     acoustic_pred_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_acoustic_pred.csv")
-            #     if os.path.exists(acoustic_pred_csv_path):
-            #         logger.info(f"[1] File {acoustic_pred_csv_path} already exists, skipping merge")
-            #         df_acustic_pred = pd.read_csv(acoustic_pred_csv_path)
+            try:
+                ################################### MERGING ACOUSTIC WITH PREDICTION DATAFRAME ###################################
+                acoustic_pred_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_acoustic_pred_test.csv")
+                if os.path.exists(acoustic_pred_csv_path):
+                    logger.info(f"[1] File {acoustic_pred_csv_path} already exists, skipping merge")
+                    df_acustic_pred = pd.read_csv(acoustic_pred_csv_path)
                 
-            #     else:
-            #         logger.info("[1] Merging the prediction dataframe with the acoustic dataframe")
-            #         df_acustic_pred = df.merge(
-            #             df_prediction[['class', 'probability']],
-            #             left_index=True,
-            #             right_index=True,
-            #             how='left'
-            #         )
-            #         logger.info("Merge successful for the acoustic and prediction dataframes")
+                else:
+                    logger.info("[1] Merging the prediction dataframe with the acoustic dataframe")
+                    df_acustic_pred = df.merge(
+                        df_prediction_alarms[['class', 'probability']],
+                        left_index=True,
+                        right_index=True,
+                        how='left'
+                    )
+                    logger.info("Merge successful for the acoustic and prediction dataframes")
 
 
-            #         logger.info("Saving the merged dataframe to the prediction folder")
-            #         df_acustic_pred.to_csv(acoustic_pred_csv_path, index=False)
-            #         logger.info(f"Saved merged dataframe to {acoustic_pred_csv_path}")
+                    logger.info("Saving the merged dataframe to the prediction folder")
+                    df_acustic_pred.to_csv(acoustic_pred_csv_path, index=False)
+                    logger.info(f"Saved merged dataframe to {acoustic_pred_csv_path}")
 
-            # except Exception as e:
-            #     logger.error(f"An error occurred while merging the ACOUSTIC PREDICT dataframE: {e}")
-            #     ###################################
-
-
-
-            # try:
-            #         ############# MERGING PEAKS WITH ACOUSTIC DATAFRAME ##################
-            #     acoustic_pred_peak_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_acoustic_pred_peak.csv")
-            #     if os.path.exists(acoustic_pred_peak_csv_path):
-            #         logger.info(f"[2] File {acoustic_pred_peak_csv_path} already exists, skipping merge")
-            #         df_all = pd.read_csv(acoustic_pred_peak_csv_path)
-
-            #     else:
-            #         logger.info("")
-            #         logger.info("[2] Merging the peaks dataframe with the acoustic dataframe")
-            #         df_all = df_acustic_pred.merge(
-            #             df_peaks[['Peak']],
-            #             left_index=True,
-            #             right_index=True,
-            #             how='left'
-            #         )
-            #         logger.info("Merge successful for the peaks and acoustic dataframes")
-
-            #         logger.info(f"Saving the merged dataframe to the prediction folder")
-            #         df_all.to_csv(acoustic_pred_peak_csv_path, index=False)
-            #         logger.info(f"Saved merged dataframe to {acoustic_pred_peak_csv_path}")
-
-            # except Exception as e:
-            #     logger.error(f"An error occurred while merging the ACOUSTIC PREDICT PEAKS dataframE: {e}")
+            except Exception as e:
+                logger.error(f"An error occurred while merging the ACOUSTIC PREDICT dataframE: {e}")
+                ###################################
 
 
 
-            # try:
-            #     ################################### MERGING ALL WITH YAMNET DATAFRAME ###################################
-            #     yamnet_all_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_all_yamnet.csv")              
-            #     if os.path.exists(yamnet_all_csv_path):
-            #         logger.info(f"[3] File {yamnet_all_csv_path} already exists, skipping merget")
-            #         df_all_yamnet = pd.read_csv(yamnet_all_csv_path)
+            try:
+                    ############# MERGING PEAKS WITH ACOUSTIC DATAFRAME ##################
+                acoustic_pred_peak_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_acoustic_pred_peak_test.csv")
+                if os.path.exists(acoustic_pred_peak_csv_path):
+                    logger.info(f"[2] File {acoustic_pred_peak_csv_path} already exists, skipping merge")
+                    df_all = pd.read_csv(acoustic_pred_peak_csv_path)
+
+                else:
+                    logger.info("")
+                    logger.info("[2] Merging the peaks dataframe with the acoustic dataframe")
+                    df_all = df_acustic_pred.merge(
+                        df_peaks[['Peak']],
+                        left_index=True,
+                        right_index=True,
+                        how='left'
+                    )
+                    logger.info("Merge successful for the peaks and acoustic dataframes")
+
+                    logger.info(f"Saving the merged dataframe to the prediction folder")
+                    df_all.to_csv(acoustic_pred_peak_csv_path, index=False)
+                    logger.info(f"Saved merged dataframe to {acoustic_pred_peak_csv_path}")
+
+            except Exception as e:
+                logger.error(f"An error occurred while merging the ACOUSTIC PREDICT PEAKS dataframE: {e}")
+            
 
 
-            #     else:
-            #         logger.info("")
-            #         logger.info("[3] Merging the peaks dataframe with the yamnet dataframe")
-            #         # [1] convert the string‐representations into reallists
-            #         df_all_cp = df_all.copy()
-
-            #         # remove nan values for all column
-            #         df_all_cp.dropna(subset=['class', 'probability'], inplace=True)
-            #         df_all_cp['class'] = df_all_cp['class'].apply(ast.literal_eval)
-            #         df_all_cp['probability'] = df_all_cp['probability'].apply(ast.literal_eval)
-
-            #         # [2]exploding both columns at once
-            #         df_exploded = (df_all_cp.explode(['class', 'probability']).reset_index(drop=True))
-            #         # print(df_exploded)
-
-            #         # true is to avoid the index being added as a column and false is to keep the index
-            #         ####################################################################
-
-            #         df_all_yamnet = df_exploded.merge(
-            #             yamnet_csv,
-            #             how="left",
-            #             left_on="class",
-            #             right_on="display_name"
-            #         )
-            #         df_all_yamnet.drop(columns=['display_name'], inplace=True, errors='ignore')
-            #         logger.info("Merge successful for the peaks and acoustic dataframes")
+            try:
+                ################################### MERGING ALL WITH YAMNET DATAFRAME ###################################
+                yamnet_all_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_all_yamnet_test.csv")              
+                if os.path.exists(yamnet_all_csv_path):
+                    logger.info(f"[3] File {yamnet_all_csv_path} already exists, skipping merget")
+                    df_all_yamnet = pd.read_csv(yamnet_all_csv_path)
 
 
-            #         logger.info(f"Saving the merged dataframe to the prediction folder")  
-            #         df_all_yamnet.to_csv(yamnet_all_csv_path, index=False)
-            #         logger.info(f"Saved merged dataframe to {yamnet_all_csv_path}")
+                else:
+                    logger.info("")
+                    logger.info("[3] Merging the peaks dataframe with the yamnet dataframe")
+                    # [1] convert the string‐representations into reallists
+                    df_all_cp = df_all.copy()
 
-            # except Exception as e:
-            #     logger.error(f"An error occurred while merging the ACOUSTIC dataframE: {e}")
-            ###################################
-            ###################################
-            ###################################
+                    df_all_yamnet = df_all_cp.merge(
+                        yamnet_csv,
+                        how="left",
+                        left_on="class",
+                        right_on="display_name"
+                    )
+                    df_all_yamnet.drop(columns=['display_name'], inplace=True, errors='ignore')
+                    logger.info("Merge successful for the peaks and acoustic dataframes")
 
 
-            #############################
-            # logger.info("")
-            # logger.info(f"Removing row on the df_all_yamnet dataframe where the class is less than {PROBABILITY_THRESHOLD}")
-            # df_all_yamnet = df_all_yamnet[df_all_yamnet['probability'] >= PROBABILITY_THRESHOLD]
-            # print(df_all_yamnet)
-            # exit()
+                    logger.info(f"Saving the merged dataframe to the prediction folder")  
+                    df_all_yamnet.to_csv(yamnet_all_csv_path, index=False)
+                    logger.info(f"Saved merged dataframe to {yamnet_all_csv_path}")
+
+            except Exception as e:
+                logger.error(f"An error occurred while merging the [df_all_yamnet] ACOUSTIC dataframE: {e}")
+
+
+
 
 
 
@@ -702,16 +674,15 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             #     plot_prediction_stack_bar(df_prediction, yamnet_csv, taxonomy, ia_visualization_folder, logger, plotname=folder)
             
 
-            # TODO
-            # Plotting prediction map
-            # if PLOT_PREDICTION_MAP:
-            #     logger.info(f"[7] Plotting PLOT_PREDICTION_MAP for folder {folder}")
-            #     plot_prediction_map(df_prediction, taxonomy, ia_visualization_folder, logger, plotname=folder)
-            
             
             if PLOT_PREDICTION_MAP:
                 logger.info(f"[7.1] Plotting PLOT_PREDICTION_MAP WEEK for folder {folder}")
-                plot_prediction_map_new(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+                df_all_yamnet_1h = plot_prediction_map_new(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+                print(df_all_yamnet_1h)
+                print(df_all_yamnet_1h.columns)
+                # print(df_all_yamnet_1h['NoisePort_Level_1'].value_counts())
+                # exit()
+
             
             if PLOT_PREDICTION_MAP_WEEK:
                 logger.info(f"[7.2] Plotting PLOT_PREDICTION_MAP WEEK for folder {folder}")
@@ -968,6 +939,59 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
 
+            ################################
+            ################################
+            ################################
+            # # ADDING THE NEW ALARMS CALCULATED
+            logger.info("")
+            logger.info(f"Adding new alarms to the existing alarms dataframe")
+
+            logger.info(f"Adding the ships on dock to the alarms dataframe")
+            # [1] merging the df_alarms_1h with the ships
+            print(df_alarms_1h)
+            print(df_alarms_1h.columns)
+            print(df_all_yamnet_1h)
+            print(df_all_yamnet_1h.columns)
+
+
+            #merging the df_alarms_1h with the df_all_yamnet_1h dataframes
+            df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"])
+            df_all_yamnet_1h["datetime"] = pd.to_datetime(df_all_yamnet_1h["datetime"])
+            df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"]).dt.floor("h")
+            df_all_yamnet_1h["datetime"] = pd.to_datetime(df_all_yamnet_1h["datetime"]).dt.floor("h")
+
+            df_ship_dock = pd.read_csv(RELATIVE_PATH_SHIP_ON_DOCK)
+            df_ship_dock = df_ship_dock.sort_values(by='datetime')
+            df_ship_dock['date_time'] = pd.to_datetime(df_ship_dock['datetime']).dt.floor('h')
+            df_ship_dock = df_ship_dock.groupby('date_time').agg({'nships': 'sum'}).reset_index()
+            df_ship_dock.rename(columns={'nships': 'ships_alarm'}, inplace=True)
+
+            # merging
+            df_alarms_1h = df_alarms_1h.merge(
+                df_ship_dock,
+                on='date_time',
+                how='left'
+            )
+            # if the values inside the nships is 1 or more, then 1, else 0
+            df_alarms_1h['ships_alarm'] = df_alarms_1h['ships_alarm'].apply(lambda x: 1 if x > 0 else 0)
+            logger.info(f"Adding the ships on dock to the alarms dataframe successful")                    
+
+
+
+            logger.info(f"Adding the yamnet taxonomy to the alarms dataframe")
+            columns_to_merge = ["datetime", "mid", "iso_taxonomy", "Brown_Level_2", "Brown_Level_3", "NoisePort_Level_1", "NoisePort_Level_2"]
+            df_subset = df_all_yamnet_1h[columns_to_merge]
+
+
+            df_alarms_1h = df_alarms_1h.merge(
+                df_subset,
+                left_on="date_time",
+                right_on="datetime",
+                how="left"
+            )
+            df_alarms_1h.drop(columns=["datetime"], inplace=True)
+            logger.info(f"Adding the yamnet taxonomy to the alarms dataframe successful")
+
 
             ################################
             ################################
@@ -978,13 +1002,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
             try:
                 alarms_csv_path = os.path.join(folder_output_dir_1h, f"{actual_folder_name}_full_alarms.csv")
-                if os.path.exists(alarms_csv_path):
-                    logger.info(f"File {alarms_csv_path} already exists, skipping saving alarms")
-                    df_alarms_1h = pd.read_csv(alarms_csv_path)
-                    logger.info(f"Loaded alarms dataframe from {alarms_csv_path}")
-                else:
-                    df_alarms_1h.to_csv(alarms_csv_path, index=False)
-                    logger.info(f"Saved alarms dataframe to {alarms_csv_path}")
+                df_alarms_1h.to_csv(alarms_csv_path, index=False)
+                logger.info(f"Saved alarms dataframe to {alarms_csv_path}")
+
             except Exception as e:
                 logger.error(f"An error occurred while saving the alarms dataframe: {e}")
                 continue
@@ -992,7 +1012,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             ################################
             ################################
 
-            
+
 
         except Exception as e:
             logger.error(f"An error occurred while processing folder {folder}: {e}")
