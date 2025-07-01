@@ -420,7 +420,16 @@ def transform_1h(df, columns_dict, logger, agg_period):
     """
     Transform the dataframe to 1 hour period, using the columns_dict to select the columns"""
     try:
+        print(df)
         df = df.dropna(subset=[columns_dict["LAEQ_COLUMN_COEFF"]])
+        # pd to datetime
+        df = df.copy()
+        df["Timestamp"] = pd.to_datetime(df["Timestamp"], errors='coerce')
+        df = df.set_index("Timestamp")
+        print(df)
+        
+        df = df.set_index(columns_dict["TIME_COLUMN"])
+
 
         # if there is just LAEQ_COLUMN_COEFF, then we use it for all the columns, otherwise use the max and min
         if columns_dict["LAEQ_COLUMN"] == "Value":
@@ -442,6 +451,7 @@ def transform_1h(df, columns_dict, logger, agg_period):
         logger.info(f"Using the agg_funcs: {agg_funcs}")
         df_LAeq = df.resample(f"{agg_period}s").agg(agg_funcs)
         df_LAeq.columns = ["_".join(col).strip() for col in df_LAeq.columns.values]
+        exit()
 
         # rename column
         if "LA_corrected_<lambda_0>" in df_LAeq.columns:

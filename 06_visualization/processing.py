@@ -562,7 +562,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
                 # check if the file exists
-                # df_1h_csv_path = os.path.join(folder_output_dir_1h, f"{actual_folder_name}_1h.csv")
+                df_1h_csv_path = os.path.join(folder_output_dir_1h, f"{actual_folder_name}_1h.csv")
                 # if os.path.exists(df_1h_csv_path):
                 #     logger.info(f"File {df_1h_csv_path} already exists, skipping transformation")
                 #     df_1h = pd.read_csv(df_1h_csv_path)
@@ -690,7 +690,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
 
-
+            exit()
 
             ###################################
             ###################################
