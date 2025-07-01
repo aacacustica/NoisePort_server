@@ -66,23 +66,61 @@ def ask_date_time_changes():
     )
 
 
-def collect_folders(input_folder, change_time_flag):
+def collect_folders(input_folder, change_time_flag,label_source_type, logger):
     folders, coefficients, date_time, threshold = [], {}, {}, {}
 
-    for root, dirs, _ in os.walk(input_folder):
-        if ACOUSTIC_PARAMS_FOLDER in dirs:
-            path = os.path.join(root, ACOUSTIC_PARAMS_FOLDER)
-            folder_name = path.split("\\")[-2]
-            coeff = float(input(f"Correction coefficient for {folder_name}: "))
-            new_date = new_time = t_date = t_time = None
+    if label_source_type == "raspberry":
+        logger.info("Searching for RASPBERRY")
+        for root, dirs, _ in os.walk(input_folder):
+            if ACOUSTIC_PARAMS_FOLDER in dirs:
+                path = os.path.join(root, ACOUSTIC_PARAMS_FOLDER)
+                folder_name = path.split("\\")[-2]
+                coeff = float(input(f"Correction coefficient for {folder_name}: "))
+                new_date = new_time = t_date = t_time = None
 
-            if change_time_flag:
-                new_date, new_time, t_date, t_time = ask_date_time_changes()
+                if change_time_flag:
+                    new_date, new_time, t_date, t_time = ask_date_time_changes()
 
-            folders.append(path)
-            coefficients[path] = coeff
-            date_time[path] = (new_date, new_time)
-            threshold[path] = (t_date, t_time)
+                folders.append(path)
+                coefficients[path] = coeff
+                date_time[path] = (new_date, new_time)
+                threshold[path] = (t_date, t_time)
+
+
+    if label_source_type == "audiomoth":
+        logger.info("Searching for RASPBERRY")
+        for root, dirs, _ in os.walk(input_folder):
+            if "AUDIOMOTH" in dirs:
+                path = os.path.join(root, "AUDIOMOTH")
+                folder_name = path.split("\\")[-2]
+                coeff = float(input(f"Correction coefficient for {folder_name}: "))
+                new_date = new_time = t_date = t_time = None
+
+                if change_time_flag:
+                    new_date, new_time, t_date, t_time = ask_date_time_changes()
+
+                folders.append(path)
+                coefficients[path] = coeff
+                date_time[path] = (new_date, new_time)
+                threshold[path] = (t_date, t_time)
+
+
+    if label_source_type == "sonometer":
+        logger.info("Searching for RASPBERRY")
+        for root, dirs, _ in os.walk(input_folder):
+            if "SONOMETER" in dirs:
+                path = os.path.join(root, "SONOMETER")
+                folder_name = path.split("\\")[-2]
+                coeff = float(input(f"Correction coefficient for {folder_name}: "))
+                new_date = new_time = t_date = t_time = None
+
+                if change_time_flag:
+                    new_date, new_time, t_date, t_time = ask_date_time_changes()
+
+                folders.append(path)
+                coefficients[path] = coeff
+                date_time[path] = (new_date, new_time)
+                threshold[path] = (t_date, t_time)
 
     return folders, coefficients, date_time, threshold
 
@@ -104,50 +142,60 @@ def resolve_oca_type(oca_type):
 
 
 def main():
-    logger = setup_logging()
-    args = arg_parser()
+    try:
+        logger = setup_logging()
+        args = arg_parser()
 
-    taxonomy = get_taxonomy(args, *taxonomy_json())
-    oca_limits = resolve_oca_type(args.limit_oca)
-    yamnet_csv = yamnet_class_map_csv()
-    input_folder = args.path_general
+        taxonomy = get_taxonomy(args, *taxonomy_json())
+        oca_limits = resolve_oca_type(args.limit_oca)
+        yamnet_csv = yamnet_class_map_csv()
+        input_folder = args.path_general
 
-    source_types = {
-        "AUDIOMOTH": args.audiomoth,
-        "SONOMETRO": args.sonometer,
-        "RASPBERRY": args.raspbery,
-    }
+        source_types = {
+            "AUDIOMOTH": args.audiomoth,
+            "SONOMETRO": args.sonometer,
+            "RASPBERRY": args.raspbery,
+        }
 
-    for label, active in source_types.items():
-        if not active:
-            continue
-        logger.info(f"Processing {label.lower()} data")
+        for label, active in source_types.items():
+            logger.info(f"Active: {active}")
+            logger.info(f"Trying to get label: {label}")
+            if not active:
+                continue
+            label_source_type =label.lower()
+            logger.info(f"Processing {label_source_type} data")
+            # exit()
 
-        folders, coeffs, date_map, thresh_map = collect_folders(input_folder, args.change_date)
+            ############################
+            folders, coeffs, date_map, thresh_map = collect_folders(input_folder, args.change_date, label_source_type,logger)
 
-        logger.info(f"Using percentiles {args.percentiles}")
-        logger.info(f"Aggregation period {args.agg_period}")
-        logger.info(f"Taxonomy: {taxonomy}")
-        logger.info(f"Input folder: {input_folder}")
+            logger.info(f"Using percentiles {args.percentiles}")
+            logger.info(f"Aggregation period {args.agg_period}")
+            logger.info(f"Taxonomy: {taxonomy}")
+            logger.info(f"Input folder: {input_folder}")
 
-        process_all_folders(
-            input_folder,
-            folders,
-            args.agg_period,
-            args.percentiles,
-            taxonomy,
-            yamnet_csv,
-            label,
-            coeffs,
-            date_map,
-            thresh_map,
-            oca_limits,
-            args.limit_oca,
-            logger
-        )
 
-    logger.info("Finished all processing.")
+            logger.info("Entering the process all folder function")
+            process_all_folders(
+                input_folder,
+                folders,
+                args.agg_period,
+                args.percentiles,
+                taxonomy,
+                yamnet_csv,
+                label_source_type,
+                coeffs,
+                date_map,
+                thresh_map,
+                oca_limits,
+                args.limit_oca,
+                logger
+            )
 
+        logger.info("Finished all processing.")
+
+    except Exception as e:
+        logger.error(f"Error during executing the main program: {e}")
 
 
 if __name__ == "__main__":

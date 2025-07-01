@@ -2,7 +2,6 @@ from datetime import datetime
 import os
 import pandas as pd
 from utils_vi import *
-#importing tqdm for progress bar
 from tqdm import tqdm
 from io import StringIO
 

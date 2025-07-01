@@ -420,6 +420,138 @@ def plot_predic_laeq_mean(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folde
 
 
 
+
+def plot_predic_laeq_mean_4h(df_all_yamnet: pd.DataFrame,df_ship_dock: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
+    try:
+        df_all = df_all_yamnet.copy()
+        df_all['Timestamp'] = pd.to_datetime(df_all['Timestamp'], errors='coerce')
+        df_all = df_all.dropna(subset=['LA_corrected'])
+        df_all.set_index('Timestamp', inplace=True)
+
+        df_all['hour'] = df_all.index.hour
+        df_all['time_of_day'] = df_all['hour'].apply(categorize_time_of_day_4)
+
+        display_name = 'display_name'
+        classes = 'class'
+        brown_2 = 'Brown_Level_2'
+        noiseport_1 = 'NoisePort_Level_1'
+
+        if 'Siren' in set(taxonomy_map.values()):
+            class_to_plot = noiseport_1
+            color_palet = COLOR_PALLET_PORT_L1
+            logger.info("Using 'NoisePort_Level_1' class for plotting")
+        else:
+            class_to_plot = brown_2
+            color_palet = COLOR_PALLET_URBAN
+            logger.info("Using 'Brown_Level_2' class for plotting")
+
+        #order
+        order_time_of_day = ['Ld_1', 'Ld_2', 'Ld_3', 'Le', 'Ln_1', 'Ln_2']
+        df_all['time_of_day'] = pd.Categorical(df_all['time_of_day'], categories=order_time_of_day, ordered=True)
+        df_all['order_index'] = df_all['time_of_day'].cat.codes
+
+
+
+        grouped_df = df_all.groupby([class_to_plot, 'time_of_day']).agg(
+            number=(classes, 'size'),
+            LAeq=('LA_corrected', lambda x: leq(x)),
+            order_index=('order_index', 'first')
+        ).reset_index()
+
+        grouped_df = grouped_df.dropna(subset=['LAeq'])
+        os.makedirs(folder_output_dir, exist_ok=True)
+
+        for period in order_time_of_day:
+            period_df = grouped_df[grouped_df['time_of_day'] == period]
+
+            fig = px.treemap(
+                period_df,
+                path=[px.Constant(period), class_to_plot],
+                values='number',
+                color=class_to_plot,
+                color_discrete_map=color_palet,
+                hover_data={'LAeq': True, 'number': True},
+                custom_data=['LAeq'],
+            )
+
+            fig.update_layout(title=f'{plotname} | LAeq Promedio por Clase - Periodo {period}')
+            fig.update_traces(
+                hovertemplate='<b>%{label}</b><br>LAeq: %{customdata[0]:.2f} dB<br>Count: %{value}',
+                texttemplate='%{label}<br><br>LAeq: %{customdata[0]:.2f} dB'
+            )
+
+            fig.write_html(f"{folder_output_dir}/{plotname}_LAeq_class_period_{period}.html")
+            logger.info(f"Saved treemap and CSV for period {period}")
+
+    except Exception as e:
+        logger.error(f"Error in plot_predic_laeq_mean_4h_periods: {e}")
+
+
+
+def plot_predic_laeq_mean_day(df_all_yamnet: pd.DataFrame, df_ship_dock:pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
+    try:
+        # folder outpout 
+        treemap_folder = os.path.join(folder_output_dir, 'TreeMaps_days')
+        os.makedirs(treemap_folder, exist_ok=True)
+
+
+        df_all = df_all_yamnet.copy()
+        df_all['Timestamp'] = pd.to_datetime(df_all['Timestamp'], errors='coerce')
+        df_all = df_all.dropna(subset=['LA_corrected'])
+        df_all.set_index('Timestamp', inplace=True)
+
+        df_all['date'] = df_all.index.date
+
+        display_name = 'display_name'
+        classes = 'class'
+        brown_2 = 'Brown_Level_2'
+        noiseport_1 = 'NoisePort_Level_1'
+
+        if 'Siren' in set(taxonomy_map.values()):
+            class_to_plot = noiseport_1
+            color_palet = COLOR_PALLET_PORT_L1
+            logger.info("Using 'NoisePort_Level_1' class for plotting")
+        else:
+            class_to_plot = brown_2
+            color_palet = COLOR_PALLET_URBAN
+            logger.info("Using 'Brown_Level_2' class for plotting")
+
+        grouped_df = df_all.groupby([class_to_plot, 'date']).agg(
+            number=(classes, 'size'),
+            LAeq=('LA_corrected', lambda x: leq(x))
+        ).reset_index()
+
+
+        grouped_df = grouped_df.dropna(subset=['LAeq'])
+        for date in grouped_df['date'].unique():
+            date_df = grouped_df[grouped_df['date'] == date]
+
+            fig = px.treemap(
+                date_df,
+                path=[px.Constant(str(date)), class_to_plot],
+                values='number',
+                color=class_to_plot,
+                color_discrete_map=color_palet,
+                hover_data={'LAeq': True, 'number': True},
+                custom_data=['LAeq'],
+            )
+
+            fig.update_layout(title=f'{plotname} | LAeq Promedio por Clase - Día {date}')
+            fig.update_traces(
+                hovertemplate='<b>%{label}</b><br>LAeq: %{customdata[0]:.2f} dB<br>Count: %{value}',
+                texttemplate='%{label}<br><br>LAeq: %{customdata[0]:.2f} dB'
+            )
+
+            plot_name_path = (f"{treemap_folder}/{plotname}_LAeq_class_day_{date}.html")
+            fig.write_html(plot_name_path)
+            logger.info(f"Saved treemap at {plot_name_path}")
+    
+    except Exception as e:
+        logger.error(f"Error in plot_predic_laeq_mean_day: {e}")
+
+
+
+
 def plot_predic_laeq_mean_week(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
     try:
         df_all_yamnet = df_all_yamnet.copy()
@@ -1027,7 +1159,7 @@ def plot_prediction_map(df_Pred:pd.DataFrame, taxonomy_map, folder_output_dir: s
 
 
 
-def plot_prediction_map_new(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
+def plot_prediction_map_new(df_all_yamnet: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
     try:
         df_copy = df_all_yamnet.copy()
         print(df_copy)
@@ -1125,6 +1257,108 @@ def plot_prediction_map_new(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, fol
 
     except Exception as e:
         logger.error(f"Error in plot_prediction_map: {e}")
+
+
+
+def plot_prediction_map_15_min_4h(df_all_yamnet: pd.DataFrame, df_ship_dock: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
+    try:
+        df_copy = df_all_yamnet.copy()
+        print(df_copy)
+        # exit()
+
+
+        #######################################
+        df_copy = add_datetime_columns(df_copy, logger, date_col='Timestamp')
+
+        #######################################
+        df_copy.set_index('Timestamp', inplace=True)
+        #resample 1h
+        df_all_yamnet_1h_resample = df_copy.resample('1h').agg(lambda x: x.mode().iloc[0] if not x.mode().empty else None)
+        df_all_yamnet_1h = df_all_yamnet_1h_resample
+        ########################################
+
+
+        # df_copy['mapped_class'] = df_copy['class'].map(taxonomy_map)
+        # df_copy = df_copy.dropna(subset=['mapped_class'])
+
+        # #class names to numbers
+        # class_to_num = {cls: i+1 for i, cls in enumerate(df_copy['mapped_class'].unique())}
+        # df_copy['class_num'] = df_copy['mapped_class'].map(class_to_num)
+        # name_class = {v: k for k, v in class_to_num.items()}
+        # df_copy['Timestamp'] = pd.to_datetime(df_copy['Timestamp'])
+        # df_copy.set_index('Timestamp', inplace=True)
+
+
+
+        # #######################################
+        # #resample 15 min
+        # resampled = df_copy.resample('15min').agg(lambda x: x.mode().iloc[0] if not x.mode().empty else None)
+        # resampled = resampled.dropna(subset=['class_num'])
+
+
+        # #######################################
+        # #time
+        # resampled['date'] = resampled.index.date
+        # resampled['time_block'] = resampled.index.time  # Or .strftime('%H:%M') for cleaner strings
+        # pivot = resampled.pivot(index='date', columns='time_block', values='class_num')
+
+        # #######################################
+        # #color mapping
+        # if 'Siren' in set(taxonomy_map.values()):
+        #     num_to_color = {num: COLOR_PALLET_PORT_L1[cls] for cls, num in class_to_num.items()}
+        #     logger.info("Using 'NoisePort_Level_1' class for plotting")
+
+        # ordered_colors = [num_to_color[i] for i in sorted(name_class.keys())]
+        # cmap = ListedColormap(ordered_colors)
+
+        # #######################################
+        # #plotting
+        # plt.figure(figsize=(20, 10))
+        # ax = sns.heatmap(pivot, cmap=cmap, linewidth=0.3, cbar=False, linecolor='gray')
+
+        # ax.set_title("Sound Class Predictions — Daily 15min Timeline")
+        # ax.set_xlabel("Hora del Día", fontsize=14)
+        # ax.set_ylabel("Fecha", fontsize=14)
+
+        # label_step = 1 # 15 min 96 
+        # # label_step = 2 #30 min
+        # # label_step = 4  # 1h
+
+
+        # xtick_locs = list(range(0, len(pivot.columns), label_step))
+        # xtick_labels = [t.strftime('%H:%M') for i, t in enumerate(pivot.columns) if i % label_step == 0]
+
+        # ax.set_xticks(xtick_locs)
+        # ax.set_xticklabels(xtick_labels, rotation=90, fontsize=8)
+
+
+        # # lwegend
+        # legend_elements = [
+        #     Patch(facecolor=num_to_color[num], label=f"{num} - {name_class.get(num)}")
+        #     for num in sorted(name_class.keys())
+        # ]
+
+        # plt.legend(handles=legend_elements, title="Clases", bbox_to_anchor=(1.01, 1), loc='upper left')
+        # plt.tight_layout()
+        # plt.title(f"{plotname} | Clases 15 min")
+
+
+        # #######################################
+        # plt.savefig(f"{folder_output_dir}/{plotname}_prediction_map.png", bbox_inches='tight')
+        # logger.info(f"Saved image at {folder_output_dir}/{plotname}_prediction_map.png")
+
+        # # save csv with the data
+        # pivot.to_csv(f"{folder_output_dir}/{plotname}_prediction_map.csv")
+        # logger.info(f"Saved csv at {folder_output_dir}/{plotname}_prediction_map.csv")
+        # exit()
+
+
+        return df_all_yamnet_1h
+          
+
+    except Exception as e:
+        logger.error(f"Error in plot_prediction_map: {e}")
+
 
 
 
@@ -3982,7 +4216,7 @@ def plot_density_distribution_peaks_week(df_merged: pd.DataFrame, folder_output_
 def plot_predic_peak_laeq_mean(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
     try:
         # select just the row which has a 1 value on the "Peak" column
-        df_all_yamnet = df_all_yamnet[df_all_yamnet['Peak'] == 1].copy()
+        # df_all_yamnet = df_all_yamnet[df_all_yamnet['Peak'] == 1].copy()
         # print(f"Number of peaks found: {len(df_all_yamnet)}")
         # exit()
         #########################################################
@@ -4024,7 +4258,7 @@ def plot_predic_peak_laeq_mean(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, 
             )
 
         # title and hover settings
-        fig.update_layout(title=f'{plotname} | Promedio Energético (LAeq) de Picos por Clases')
+        fig.update_layout(title=f'{plotname} | Promedio Energético (LAeq) de Picos por Clases |')
         fig.update_traces(
             hovertemplate=(
                 '<b>%{label}</b><br>'

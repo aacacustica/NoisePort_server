@@ -18,9 +18,9 @@ def load_data(file_path, logger, new_date=None, new_time=None, new_threshold_dat
     logger.info("")
     slm_type_function_mapping = {
         'tenerife_TCT': (get_data_tenerife_TCT, tenerife_tct_dict),
+        "audiomoth": (get_data_audiomoth, audiopost_dict),
         # "SV307": (get_data_SV307, sv307_dict),
         "SV307": (get_data_SV307_new, sv307_dict),
-        "audiomoth": (get_data_audiomoth, audiopost_dict),
         "814": (get_data_814, larson814_dict),
         "824": (get_data_824, larson824_dict),
         "lx_ES": (get_data_lx_ES, larsonlx_dict),
@@ -121,7 +121,10 @@ def process_folder(folder_path, folder_date_time, folder_threshold, logger, sele
 def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, taxonomy, yamnet_csv, sufix_string, folder_coefficients, folder_date_time, folder_threshold, oca_limits, oca_type, logger):
     print()
     stable_version = get_stable_version(logger)
-    
+    home_dir = os.path.expanduser('~')
+
+
+
     for folder in tqdm(folders, desc="Processing folders"): # \\192.168.205.117\AAC_Server\OCIO\24052_ZARAUTZ\CAMPAÑA_1\3-Medidas\ZARAUTZ_C1_P1\AUDIOMOTH
         logger.info("")
         logger.info(f"Suffix string: {sufix_string}")
@@ -186,11 +189,11 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info(f"Created AI visualization folder: {ia_visualization_folder}")
             
 
-
         except Exception as e:
             logger.error(f"An error occurred while setting up the folder paths: {e}")
             continue
         ########################################################
+
 
 
         #############################
@@ -401,6 +404,76 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 continue
 
             
+            try:
+                logger.info("")
+                logger.info(f"Adding the ships on dock to the general dataframe")
+
+
+                # logger.info(f"Ship dock 1h")
+                # ship_dock_1h_path = os.path.join(home_dir, RELATIVE_PATH_SHIPS_1H)
+                # #check if the file exists
+                # if not os.path.exists(ship_dock_1h_path):
+                #     logger.error(f"File {ship_dock_1h_path} does not exist. Please check the path.")
+                # else:
+                #     logger.info(f"File {ship_dock_1h_path} exist!")
+                # df_ship_dock_1h = pd.read_csv(ship_dock_1h_path, parse_dates=['datetime'])
+                
+
+
+                # logger.info(f"Ship dock 15min")
+                # ship_dock_15min_path = os.path.join(home_dir, RELATIVE_PATH_SHIPS_15MIN)
+                # #check if the file exists
+                # if not os.path.exists(ship_dock_15min_path):
+                #     logger.error(f"File {ship_dock_15min_path} does not exist. Please check the path.")
+                # else:
+                #     logger.info(f"File {ship_dock_15min_path} exist!")
+                # df_ship_dock_15min = pd.read_csv(ship_dock_15min_path, parse_dates=['datetime'])
+                
+
+                df_ship_1s_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_ship_1s.csv")
+                if os.path.exists(df_ship_1s_csv_path):
+                    logger.info(f"File {df_ship_1s_csv_path} already exists, skipping ship dock 1s analysis")
+                    df = pd.read_csv(df_ship_1s_csv_path)
+                    logger.info(f"Loaded ships on dock 1s dataframe from {df_ship_1s_csv_path}")
+                    # continue
+                
+                else:
+                    logger.info(f"Ship dock 1s")
+                    ship_dock_1s_path = os.path.join(home_dir, RELATIVE_PATH_SHIPS_1S)
+                    #check if the file exists
+                    if not os.path.exists(ship_dock_1s_path):
+                        logger.error(f"File {ship_dock_1s_path} does not exist. Please check the path.")
+                    else:
+                        logger.info(f"File {ship_dock_1s_path} exist!")
+                    df_ship_dock_1s = pd.read_csv(ship_dock_1s_path, parse_dates=['date_time'])
+                    df['Timestamp'] = pd.to_datetime(df['Timestamp'], errors='coerce')
+
+                    # df = Timestamp
+                    # df_ship_dock_1s = date_time
+
+                    # merging
+                    logger.info(f"Merging the ships on dock dataframes with the main dataframe")
+                    df = df.merge(
+                        df_ship_dock_1s[['date_time', 'nships']],
+                        left_on='Timestamp',
+                        right_on='date_time',
+                        how='left'
+                    )
+                    # remove the date_time column from the df_ship_dock_1s
+                    df.drop(columns=['date_time'], inplace=True, errors='ignore')
+                    print(df)
+
+                    df.to_csv(df_ship_1s_csv_path, index=False)
+                    logger.info(f"Saved ships on dock 1s dataframe to {df_ship_1s_csv_path}")
+                    # if the values inside the nships is 1 or more, then 1, else 0
+                    # df_alarms_1h['ships_alarm'] = df_alarms_1h['ships_alarm'].apply(lambda x: 1 if x > 0 else 0)
+                    logger.info(f"Adding the ships on dock to the alarms dataframe successful at {df_ship_1s_csv_path}")
+                    exit()
+
+            except Exception as e:
+                logger.error(f"An error occurred while adding the ships on dock to the alarms dataframe: {e}")
+                continue
+
 
 
             try:
@@ -421,6 +494,59 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.error(f"An error occurred while processing folder {folder}: {e}")
 
 
+
+
+
+            try:
+                ##################################
+                ##################################
+                ##################################
+                # PEAK + ROLLING ANALYSIS
+                ##################################
+                ##################################
+                ##################################
+                logger.info("")
+                logger.info(f"Applying find_peaks function to the whole dataframe")
+                df_peaks_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_peaks_filtered.csv")
+                
+                # if os.path.exists(df_peaks_csv_path):
+                #     logger.info(f"File {df_peaks_csv_path} already exists, skipping peaks analysis")
+                #     df_peaks = pd.read_csv(df_peaks_csv_path)
+                #     logger.info(f"Loaded peaks dataframe from {df_peaks_csv_path}")
+                
+                # else:
+
+
+                peaks, properties=find_peaks(df['LA_corrected'], prominence=PROMINENCE, width=WIDTH)
+                df_peaks = df.iloc[peaks].copy()
+
+                logger.info("")
+                logger.info(f"Rolling the data with a window of {WINDOW_SIZE} seconds")
+                # rolling median for the LA values with a window of 30 seconds
+                df_peaks['LA_cor_median'] = df_peaks['LA_corrected'].rolling(window=WINDOW_SIZE, min_periods=1).quantile(0.5) + ADDING_THRESHOLD
+                df_peaks['Peak'] = 1
+
+                #above threshold
+                logger.info(f"Calculating peaks above threshold")
+                df_peaks = df_peaks[df_peaks['LA_corrected'] > df_peaks['LA_cor_median']]
+                logger.info(f"There are {len(df_peaks)} peaks in the dataframe after filtering")
+                # 
+
+                df_peaks.to_csv(df_peaks_csv_path, index=False)
+                logger.info(f"Saved peaks filtered dataframe to {df_peaks_csv_path}, with a lenght of {len(df_peaks)}")
+
+                #Timestamp to datetime
+                df_peaks['Timestamp'] = pd.to_datetime(df_peaks['Timestamp'])
+            except Exception as e:
+                logger.error(f"An error occurred while trimming the dataframe {e}")
+                continue
+
+
+
+            
+
+            ################################################################
+            ################################################################
             try:
                 ################################################################
                 # TRANSFORMING 1 SECOND DATA TO 1 HOUR DATA
@@ -472,46 +598,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 continue
 
 
-            try:
-                ##################################
-                # PEAK + ROLLING ANALYSIS
-                ##################################
-                logger.info("")
-                logger.info(f"Applying find_peaks function to the whole dataframe")
-                df_peaks_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_peaks_filtered.csv")
-                if os.path.exists(df_peaks_csv_path):
-                    logger.info(f"File {df_peaks_csv_path} already exists, skipping peaks analysis")
-                    df_peaks = pd.read_csv(df_peaks_csv_path)
-                    logger.info(f"Loaded peaks dataframe from {df_peaks_csv_path}")
-                
-                else:
-
-
-                    peaks, properties=find_peaks(df['LA_corrected'], prominence=PROMINENCE, width=WIDTH)
-                    df_peaks = df.iloc[peaks].copy()
-
-                    logger.info("")
-                    logger.info(f"Rolling the data with a window of {WINDOW_SIZE} seconds")
-                    # rolling median for the LA values with a window of 30 seconds
-                    df_peaks['LA_cor_median'] = df_peaks['LA_corrected'].rolling(window=WINDOW_SIZE, min_periods=1).quantile(0.5) + ADDING_THRESHOLD
-                    df_peaks['Peak'] = 1
-
-                    #above threshold
-                    logger.info(f"Calculating peaks above threshold")
-                    df_peaks = df_peaks[df_peaks['LA_corrected'] > df_peaks['LA_cor_median']]
-                    logger.info(f"There are {len(df_peaks)} peaks in the dataframe after filtering")
-                    # 
-
-                    df_peaks.to_csv(df_peaks_csv_path, index=False)
-                    logger.info(f"Saved peaks filtered dataframe to {df_peaks_csv_path}, with a lenght of {len(df_peaks)}")
-
-                #Timestamp to datetime
-                df_peaks['Timestamp'] = pd.to_datetime(df_peaks['Timestamp'])
-            except Exception as e:
-                logger.error(f"An error occurred while trimming the dataframe {e}")
-                continue
-
-
             ###################################
             ###################################
             ###################################
@@ -523,24 +609,24 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             try:
                 ################################### MERGING ACOUSTIC WITH PREDICTION DATAFRAME ###################################
                 acoustic_pred_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_acoustic_pred_test.csv")
-                if os.path.exists(acoustic_pred_csv_path):
-                    logger.info(f"[1] File {acoustic_pred_csv_path} already exists, skipping merge")
-                    df_acustic_pred = pd.read_csv(acoustic_pred_csv_path)
+                # if os.path.exists(acoustic_pred_csv_path):
+                #     logger.info(f"[1] File {acoustic_pred_csv_path} already exists, skipping merge")
+                #     df_acustic_pred = pd.read_csv(acoustic_pred_csv_path)
                 
-                else:
-                    logger.info("[1] Merging the prediction dataframe with the acoustic dataframe")
-                    df_acustic_pred = df.merge(
-                        df_prediction_alarms[['class', 'probability']],
-                        left_index=True,
-                        right_index=True,
-                        how='left'
-                    )
-                    logger.info("Merge successful for the acoustic and prediction dataframes")
+                # else:
+                logger.info("[1] Merging the prediction dataframe with the acoustic dataframe")
+                df_acustic_pred = df.merge(
+                    df_prediction_alarms[['class', 'probability']],
+                    left_index=True,
+                    right_index=True,
+                    how='left'
+                )
+                logger.info("Merge successful for the acoustic and prediction dataframes")
 
 
-                    logger.info("Saving the merged dataframe to the prediction folder")
-                    df_acustic_pred.to_csv(acoustic_pred_csv_path, index=False)
-                    logger.info(f"Saved merged dataframe to {acoustic_pred_csv_path}")
+                logger.info("Saving the merged dataframe to the prediction folder")
+                df_acustic_pred.to_csv(acoustic_pred_csv_path, index=False)
+                logger.info(f"Saved merged dataframe to {acoustic_pred_csv_path}")
 
             except Exception as e:
                 logger.error(f"An error occurred while merging the ACOUSTIC PREDICT dataframE: {e}")
@@ -551,24 +637,24 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             try:
                     ############# MERGING PEAKS WITH ACOUSTIC DATAFRAME ##################
                 acoustic_pred_peak_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_acoustic_pred_peak_test.csv")
-                if os.path.exists(acoustic_pred_peak_csv_path):
-                    logger.info(f"[2] File {acoustic_pred_peak_csv_path} already exists, skipping merge")
-                    df_all = pd.read_csv(acoustic_pred_peak_csv_path)
+                # if os.path.exists(acoustic_pred_peak_csv_path):
+                #     logger.info(f"[2] File {acoustic_pred_peak_csv_path} already exists, skipping merge")
+                #     df_all = pd.read_csv(acoustic_pred_peak_csv_path)
 
-                else:
-                    logger.info("")
-                    logger.info("[2] Merging the peaks dataframe with the acoustic dataframe")
-                    df_all = df_acustic_pred.merge(
-                        df_peaks[['Peak']],
-                        left_index=True,
-                        right_index=True,
-                        how='left'
-                    )
-                    logger.info("Merge successful for the peaks and acoustic dataframes")
+                # else:
+                logger.info("")
+                logger.info("[2] Merging the peaks dataframe with the acoustic dataframe")
+                df_all = df_acustic_pred.merge(
+                    df_peaks[['Peak']],
+                    left_index=True,
+                    right_index=True,
+                    how='left'
+                )
+                logger.info("Merge successful for the peaks and acoustic dataframes")
 
-                    logger.info(f"Saving the merged dataframe to the prediction folder")
-                    df_all.to_csv(acoustic_pred_peak_csv_path, index=False)
-                    logger.info(f"Saved merged dataframe to {acoustic_pred_peak_csv_path}")
+                logger.info(f"Saving the merged dataframe to the prediction folder")
+                df_all.to_csv(acoustic_pred_peak_csv_path, index=False)
+                logger.info(f"Saved merged dataframe to {acoustic_pred_peak_csv_path}")
 
             except Exception as e:
                 logger.error(f"An error occurred while merging the ACOUSTIC PREDICT PEAKS dataframE: {e}")
@@ -578,36 +664,33 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             try:
                 ################################### MERGING ALL WITH YAMNET DATAFRAME ###################################
                 yamnet_all_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_all_yamnet_test.csv")              
-                if os.path.exists(yamnet_all_csv_path):
-                    logger.info(f"[3] File {yamnet_all_csv_path} already exists, skipping merget")
-                    df_all_yamnet = pd.read_csv(yamnet_all_csv_path)
+                # if os.path.exists(yamnet_all_csv_path):
+                #     logger.info(f"[3] File {yamnet_all_csv_path} already exists, skipping merget")
+                #     df_all_yamnet = pd.read_csv(yamnet_all_csv_path)
 
 
-                else:
-                    logger.info("")
-                    logger.info("[3] Merging the peaks dataframe with the yamnet dataframe")
-                    # [1] convert the string‐representations into reallists
-                    df_all_cp = df_all.copy()
+                # else:
+                logger.info("")
+                logger.info("[3] Merging the peaks dataframe with the yamnet dataframe")
+                # [1] convert the string‐representations into reallists
+                df_all_cp = df_all.copy()
 
-                    df_all_yamnet = df_all_cp.merge(
-                        yamnet_csv,
-                        how="left",
-                        left_on="class",
-                        right_on="display_name"
-                    )
-                    df_all_yamnet.drop(columns=['display_name'], inplace=True, errors='ignore')
-                    logger.info("Merge successful for the peaks and acoustic dataframes")
+                df_all_yamnet = df_all_cp.merge(
+                    yamnet_csv,
+                    how="left",
+                    left_on="class",
+                    right_on="display_name"
+                )
+                df_all_yamnet.drop(columns=['display_name'], inplace=True, errors='ignore')
+                logger.info("Merge successful for the peaks and acoustic dataframes")
 
 
-                    logger.info(f"Saving the merged dataframe to the prediction folder")  
-                    df_all_yamnet.to_csv(yamnet_all_csv_path, index=False)
-                    logger.info(f"Saved merged dataframe to {yamnet_all_csv_path}")
+                logger.info(f"Saving the merged dataframe to the prediction folder")  
+                df_all_yamnet.to_csv(yamnet_all_csv_path, index=False)
+                logger.info(f"Saved merged dataframe to {yamnet_all_csv_path}")
 
             except Exception as e:
                 logger.error(f"An error occurred while merging the [df_all_yamnet] ACOUSTIC dataframE: {e}")
-
-
-
 
 
 
@@ -652,14 +735,23 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             if PLOT_PREDIC_LAEQ_MEAN_WEEK:
                 logger.info(f"[3.2] Plotting PLOT_PREDIC_LAEQ_MEAN WEEK for folder {folder}")
                 plot_predic_laeq_mean_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
-            
-
 
 
             # TODO
             # if PLOT_PREDIC_LAEQ_15_MIN_PERIOD:
-            #     logger.info(f"[4] Plotting PLOT_PREDIC_LAEQ_15_MIN_PERIOD for folder {folder}")
+            #     logger.info(f"[4.1] Plotting PLOT_PREDIC_LAEQ_15_MIN_PERIOD for folder {folder}")
             #     plot_predic_laeq_15_min_period(df, yamnet_csv, taxonomy, ia_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
+
+            if PLOT_PREDIC_LAEQ_MEAN_4H:
+                logger.info(f"[4.1] Plotting PLOT_PREDIC_LAEQ_MEAN_4H for folder {folder}")
+                plot_predic_laeq_mean_4h(df_all_yamnet, df_ship_dock, taxonomy, ia_visualization_folder, logger, plotname=folder)    
+                exit()
+            
+            if PLOT_PREDIC_LAEQ_DAY:
+                logger.info(f"[4.1] Plotting PLOT_PREDIC_LAEQ_MEAN_4H for folder {folder}")
+                plot_predic_laeq_mean_day(df_all_yamnet, df_ship_dock, taxonomy, ia_visualization_folder, logger, plotname=folder)
+                exit()
+
 
             # TODO
             # if PLOT_PREDIC_LAEQ_15_MIN_4H:
@@ -674,10 +766,11 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             #     plot_prediction_stack_bar(df_prediction, yamnet_csv, taxonomy, ia_visualization_folder, logger, plotname=folder)
             
 
-            
+
+
             if PLOT_PREDICTION_MAP:
                 logger.info(f"[7.1] Plotting PLOT_PREDICTION_MAP WEEK for folder {folder}")
-                df_all_yamnet_1h = plot_prediction_map_new(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+                df_all_yamnet_1h = plot_prediction_map_new(df_all_yamnet, df_ship_dock, ia_visualization_folder, logger, plotname=folder)
                 print(df_all_yamnet_1h)
                 print(df_all_yamnet_1h.columns)
                 # print(df_all_yamnet_1h['NoisePort_Level_1'].value_counts())
