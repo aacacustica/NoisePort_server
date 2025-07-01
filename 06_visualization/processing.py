@@ -461,15 +461,11 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     )
                     # remove the date_time column from the df_ship_dock_1s
                     df.drop(columns=['date_time'], inplace=True, errors='ignore')
-                    print(df)
 
                     df.to_csv(df_ship_1s_csv_path, index=False)
                     logger.info(f"Saved ships on dock 1s dataframe to {df_ship_1s_csv_path}")
                     # if the values inside the nships is 1 or more, then 1, else 0
                     # df_alarms_1h['ships_alarm'] = df_alarms_1h['ships_alarm'].apply(lambda x: 1 if x > 0 else 0)
-                    logger.info(f"Adding the ships on dock to the alarms dataframe successful at {df_ship_1s_csv_path}")
-                    exit()
-
             except Exception as e:
                 logger.error(f"An error occurred while adding the ships on dock to the alarms dataframe: {e}")
                 continue
@@ -566,32 +562,32 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
                 # check if the file exists
-                df_1h_csv_path = os.path.join(folder_output_dir_1h, f"{actual_folder_name}_1h.csv")
-                if os.path.exists(df_1h_csv_path):
-                    logger.info(f"File {df_1h_csv_path} already exists, skipping transformation")
-                    df_1h = pd.read_csv(df_1h_csv_path)
-                    logger.info(f"Loaded 1 hour dataframe from {df_1h_csv_path}")
-                    # continue
+                # df_1h_csv_path = os.path.join(folder_output_dir_1h, f"{actual_folder_name}_1h.csv")
+                # if os.path.exists(df_1h_csv_path):
+                #     logger.info(f"File {df_1h_csv_path} already exists, skipping transformation")
+                #     df_1h = pd.read_csv(df_1h_csv_path)
+                #     logger.info(f"Loaded 1 hour dataframe from {df_1h_csv_path}")
+                #     # continue
                 
-                else:
-                    df_1h = transform_1h(df, slm_dict, logger, agg_period=3600)
-                    logger.info(f"Transformed 1 second data to 1 hour data")
-                    df_1h = df_1h.round(2)
+                # else:
+                df_1h = transform_1h(df, slm_dict, logger, agg_period=3600)
+                logger.info(f"Transformed 1 second data to 1 hour data")
+                df_1h = df_1h.round(2)
 
-                    logger.info("")
-                    logger.info("")
-                    logger.info(f"TRANSFORMATION SECTION")
-                    logger.info(f"Adding oca column")
-                    logger.info(f"OCA Limits --> {oca_limits}")
-                    # set index (which is datetime) as column
-                    df_1h.reset_index(inplace=True)
-                    
-                    df_1h = transformation(df_1h, logger, oca_limits)
+                logger.info("")
+                logger.info("")
+                logger.info(f"TRANSFORMATION SECTION")
+                logger.info(f"Adding oca column")
+                logger.info(f"OCA Limits --> {oca_limits}")
+                # set index (which is datetime) as column
+                df_1h.reset_index(inplace=True)
+                
+                df_1h = transformation(df_1h, logger, oca_limits)
 
-                    #####
-                    #ssave
-                    df_1h.to_csv(df_1h_csv_path, index=False)
-                    logger.info(f"Saved 1 hour dataframe to {df_1h_csv_path}")
+                #####
+                #ssave
+                df_1h.to_csv(df_1h_csv_path, index=False)
+                logger.info(f"Saved 1 hour dataframe to {df_1h_csv_path}")
 
             except Exception as e:
                 logger.error(f"An error occurred while transforming 1 second data to 1 hour data: {e}")
@@ -1037,40 +1033,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             ################################
             # # ADDING THE NEW ALARMS CALCULATED
             logger.info("")
-            logger.info(f"Adding new alarms to the existing alarms dataframe")
-
-            logger.info(f"Adding the ships on dock to the alarms dataframe")
-            # [1] merging the df_alarms_1h with the ships
-            print(df_alarms_1h)
-            print(df_alarms_1h.columns)
-            print(df_all_yamnet_1h)
-            print(df_all_yamnet_1h.columns)
-
-
-            #merging the df_alarms_1h with the df_all_yamnet_1h dataframes
-            df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"])
-            df_all_yamnet_1h["datetime"] = pd.to_datetime(df_all_yamnet_1h["datetime"])
-            df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"]).dt.floor("h")
-            df_all_yamnet_1h["datetime"] = pd.to_datetime(df_all_yamnet_1h["datetime"]).dt.floor("h")
-
-            df_ship_dock = pd.read_csv(RELATIVE_PATH_SHIP_ON_DOCK)
-            df_ship_dock = df_ship_dock.sort_values(by='datetime')
-            df_ship_dock['date_time'] = pd.to_datetime(df_ship_dock['datetime']).dt.floor('h')
-            df_ship_dock = df_ship_dock.groupby('date_time').agg({'nships': 'sum'}).reset_index()
-            df_ship_dock.rename(columns={'nships': 'ships_alarm'}, inplace=True)
-
-            # merging
-            df_alarms_1h = df_alarms_1h.merge(
-                df_ship_dock,
-                on='date_time',
-                how='left'
-            )
-            # if the values inside the nships is 1 or more, then 1, else 0
-            df_alarms_1h['ships_alarm'] = df_alarms_1h['ships_alarm'].apply(lambda x: 1 if x > 0 else 0)
-            logger.info(f"Adding the ships on dock to the alarms dataframe successful")                    
-
-
-
             logger.info(f"Adding the yamnet taxonomy to the alarms dataframe")
             columns_to_merge = ["datetime", "mid", "iso_taxonomy", "Brown_Level_2", "Brown_Level_3", "NoisePort_Level_1", "NoisePort_Level_2"]
             df_subset = df_all_yamnet_1h[columns_to_merge]
