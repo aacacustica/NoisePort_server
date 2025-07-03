@@ -272,7 +272,11 @@ def apply_db_correction(df, coefficient, sufix_string, logger):
         df['LA_corrected'] = df['LA'] - coefficient
         df['LAmax_corrected'] = df['LAmax'] - coefficient
         df['LAmin_corrected'] = df['LAmin'] - coefficient
-    
+        if 'LC-LA' in df.columns:
+            logger.info('Creating LC-LA column')
+            df['LCeq-LAeq_corrected'] = df['LC-LA'] - coefficient
+
+
     elif 'LC-LA' in df.columns:
         logger.info('Entering --> LC-LA')
         df['LC-LA_corrected'] = df['LC-LA'] - coefficient
@@ -421,14 +425,14 @@ def transform_1h(df, columns_dict, logger, agg_period):
     Transform the dataframe to 1 hour period, using the columns_dict to select the columns"""
     try:
         print(df)
+        print(df.columns)
         df = df.dropna(subset=[columns_dict["LAEQ_COLUMN_COEFF"]])
         # pd to datetime
-        df = df.copy()
-        df["Timestamp"] = pd.to_datetime(df["Timestamp"], errors='coerce')
-        df = df.set_index("Timestamp")
-        print(df)
-        
-        df = df.set_index(columns_dict["TIME_COLUMN"])
+        # df = df.copy()
+        # df["Timestamp"] = pd.to_datetime(df["Timestamp"], errors='coerce')
+        # df = df.set_index("Timestamp", drop=False)
+        # print(df)
+        # exit()
 
 
         # if there is just LAEQ_COLUMN_COEFF, then we use it for all the columns, otherwise use the max and min
@@ -451,7 +455,7 @@ def transform_1h(df, columns_dict, logger, agg_period):
         logger.info(f"Using the agg_funcs: {agg_funcs}")
         df_LAeq = df.resample(f"{agg_period}s").agg(agg_funcs)
         df_LAeq.columns = ["_".join(col).strip() for col in df_LAeq.columns.values]
-        exit()
+        # exit()
 
         # rename column
         if "LA_corrected_<lambda_0>" in df_LAeq.columns:
@@ -464,6 +468,86 @@ def transform_1h(df, columns_dict, logger, agg_period):
     except Exception as e:
         logger.error(f"Error transforming data to 1 hour period: {e}")
         return None
+
+
+
+
+def transform_1h_pred(df, logger, agg_period):
+    try:
+        print(df)
+        print(df.columns)
+
+        df['datetime'] = pd.to_datetime(df['Timestamp'])
+        df = df.set_index('datetime')
+        df = df.dropna(subset=["LA_corrected"])
+        df['NoisePort_Level_1'] = df['NoisePort_Level_1'].fillna("Unknown").astype(str)
+
+
+        agg_funcs = {
+            "LA_corrected": [leq, lambda x: x.quantile(0.9)],
+            "LAmax_corrected": "max",
+            "LAmin_corrected": "min",
+            "LCeq-LAeq_corrected": leq,
+        }
+        logger.info(f"Using the agg_funcs: {agg_funcs}")
+
+
+
+        df_LAeq = df.resample(f"{agg_period}s").agg(agg_funcs)
+        df_LAeq.columns = [
+            "_".join(col).strip() if isinstance(col, tuple) else col
+            for col in df_LAeq.columns
+        ]
+
+        if "LA_corrected_<lambda_0>" in df_LAeq.columns:
+            df_LAeq = df_LAeq.rename(columns={"LA_corrected_<lambda_0>": "90percentile"})
+
+
+
+
+        ############################
+        ############################
+        mode_class = df['NoisePort_Level_1'].resample(f"{agg_period}s").agg(
+            lambda x: x.mode().iloc[0] if not x.mode().empty else "Unknown"
+        )
+        df_LAeq['class_predominant'] = mode_class
+
+        # top n
+        top_classes = df['NoisePort_Level_1'].value_counts().nlargest(8).index.tolist()
+
+
+        for cls in top_classes:
+            cls_mask = df['NoisePort_Level_1'] == cls
+
+            
+            #pct
+            class_pct = cls_mask.astype(int).resample(f"{agg_period}s").sum() / df['NoisePort_Level_1'].resample(f"{agg_period}s").count()
+            df_LAeq[f'class_{cls}_pct'] = class_pct
+
+
+            #leq
+            class_LA = df[cls_mask][['LA_corrected']].resample(f"{agg_period}s").agg(leq)
+            #not really necessary, but just in case
+            class_pct_aligned = class_pct.reindex(class_LA.index)
+            class_LA_aligned = class_LA.copy()
+
+            class_LA_aligned['LA_corrected'] = class_LA_aligned['LA_corrected'].mask(class_pct_aligned == 0)
+            df_LAeq[f'class_{cls}_LAeq'] = class_LA_aligned['LA_corrected']
+
+
+
+        # df_LAeq = df_LAeq[df_LAeq['class_predominant'] != "Unknown"]
+        # df_LAeq = df_LAeq.drop(columns=['class_Unknown_pct', 'class_Unknown_LAeq'], errors='ignore')
+        df_LAeq = df_LAeq.round(2)
+
+        # df_LAeq.to_csv('df_pred_leq_perce.csv')
+        logger.info("Successfully transformed prediction dataframe to hourly aggregation.")
+        return df_LAeq
+
+    except Exception as e:
+        logger.error(f"Error transforming data to 1 hour period: {e}")
+        return None
+
 
 
 

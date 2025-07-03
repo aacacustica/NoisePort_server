@@ -180,6 +180,9 @@ def plot_night_evolution_week(df, folder_output_dir: str, logger, laeq_column: s
 
 def plot_night_evolution_15_min(df, folder_output_dir: str, logger, name_extension, laeq_column:str, plotname:str, indicador_noche:str):
     try:
+        print(df)
+        print(df.columns)
+        
         df = df.dropna(subset=[laeq_column])
         logger.info(f"Using the laeq_column: {laeq_column}")        
         sns.set_style("whitegrid")
@@ -188,7 +191,7 @@ def plot_night_evolution_15_min(df, folder_output_dir: str, logger, name_extensi
         df['Día'] = df['night_str']
         df.index = pd.to_datetime(df.index)
 
-        df_resampled = df.resample('15min')[laeq_column].mean()
+        df_resampled = df.resample('15min')[laeq_column].agg(leq)
         df_night_str = df.resample('15min')['Día'].agg(lambda x: x.value_counts().index[0] if len(x) > 0 else None)
         df_resampled = pd.DataFrame(df_resampled).join([df_night_str])
         
@@ -198,6 +201,10 @@ def plot_night_evolution_15_min(df, folder_output_dir: str, logger, name_extensi
         
         # convert time column to a plottable format with a 15-minute offset
         df_resampled['plot_time'] = [(t.hour * 60 + t.minute - 15) - (23 * 60) if t.hour >= 23 else (t.hour * 60 + t.minute - 15) + 60 for t in df_resampled['time']]
+        print(df_resampled)
+        print(df_resampled.columns)
+        print(df_resampled['plot_time'])
+        
 
         # filter data
         unique_dates = pd.to_datetime(df_resampled.index.date).unique()
@@ -275,7 +282,7 @@ def plot_night_evolution_15_min_week(df, folder_output_dir: str, logger, name_ex
         df['Día'] = df['night_str']
         df.index = pd.to_datetime(df.index)
 
-        df_resampled = df.resample('15min')[laeq_column].mean()
+        df_resampled = df.resample('15min')[laeq_column].agg(leq)
         df_night_str = df.resample('15min')['Día'].agg(lambda x: x.value_counts().index[0] if len(x) > 0 else None)
         df_resampled = pd.DataFrame(df_resampled).join([df_night_str])
 
