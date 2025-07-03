@@ -189,7 +189,13 @@ def plot_night_evolution_15_min(df, folder_output_dir: str, logger, name_extensi
         sns.set_palette("tab10")
         
         df['Día'] = df['night_str']
-        df.index = pd.to_datetime(df.index)
+        # df.index = pd.to_datetime(df.index)
+        if 'datetime' in df.columns:
+            df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce')
+            df = df.set_index('datetime')
+        else:
+            raise ValueError("The 'datetime' column is missing.")
+
 
         df_resampled = df.resample('15min')[laeq_column].agg(leq)
         df_night_str = df.resample('15min')['Día'].agg(lambda x: x.value_counts().index[0] if len(x) > 0 else None)
@@ -204,6 +210,7 @@ def plot_night_evolution_15_min(df, folder_output_dir: str, logger, name_extensi
         print(df_resampled)
         print(df_resampled.columns)
         print(df_resampled['plot_time'])
+        exit()
         
 
         # filter data

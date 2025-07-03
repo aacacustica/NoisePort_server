@@ -593,10 +593,10 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 #     # continue
                 
                 # else:
-                # df_1h = transform_1h(df, slm_dict, logger, agg_period=3600)
+                df_1h = transform_1h(df, slm_dict, logger, agg_period=3600)
 
                 # print(len(df_1h))
-                df_1h = transform_1h_pred(df, logger, agg_period=3600)
+                # df_1h = transform_1h_pred(df, logger, agg_period=3600)
                 logger.info(f"Transformed 1 second data to 1 hour data")
                 df_1h = df_1h.round(2)
 
@@ -614,8 +614,8 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 #####
                 #ssave
                 #removeing datetime column and rename datetime_y to datetime
-                df.drop(columns=['datetime'], inplace=True, errors='ignore')
-                df.rename(columns={'datetime_y': 'datetime'}, inplace=True, errors='ignore')
+                # df.drop(columns=['datetime'], inplace=True, errors='ignore')
+                # df.rename(columns={'datetime_y': 'datetime'}, inplace=True, errors='ignore')
                 # print(df_1h)
                 # print(df_1h.columns)
                 # print(df)
