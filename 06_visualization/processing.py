@@ -561,6 +561,30 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 continue
 
 
+            
+            try:
+                logger.info("")
+                
+                print(df_peaks)
+
+                #merging
+                logger.info("Merging the peaks dataframe with the acoustic dataframe")
+                df_all = df.merge(
+                    df_peaks[['Peak']],
+                    left_index=True,
+                    right_index=True,
+                    how='left'
+                )
+                logger.info("Merge successful for the peaks and acoustic dataframes")
+                print(df_all)
+                print(df_all["Peak"].value_counts())
+                print(df_all["Peak"].unique())
+                exit()
+
+
+            except Exception as e:
+                logger.error(f"An error occurred while merging the peak df and the acoustic dataframe {e}")
+                continue
 
             
 
@@ -593,12 +617,15 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 #     # continue
                 
                 # else:
-                df_1h = transform_1h(df, slm_dict, logger, agg_period=3600)
+                # df_1h = transform_1h(df, slm_dict, logger, agg_period=3600)
 
                 # print(len(df_1h))
-                # df_1h = transform_1h_pred(df, logger, agg_period=3600)
-                logger.info(f"Transformed 1 second data to 1 hour data")
+                df_1h = transform_1h_pred(df, logger, agg_period=3600)
                 df_1h = df_1h.round(2)
+                logger.info(f"Transformed 1 second data to 1 hour data")
+                print(df_1h)
+                exit()
+
 
 
                 logger.info("")
@@ -662,6 +689,11 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
             except Exception as e:
                 logger.error(f"An error occurred while merging the ACOUSTIC PREDICT PEAKS dataframE: {e}")
+
+            print(df_all)
+            print(df_all["Peak"].value_counts())
+            print(df_all["Peak"].unique())
+            exit()
             
 
 
