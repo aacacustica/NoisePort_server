@@ -72,25 +72,22 @@ def load_data_db(db, data_path, logger, table_name=ACOUSTIC_TABLE_NAME):
         INTO TABLE {table_name}
         FIELDS TERMINATED BY ','
         OPTIONALLY ENCLOSED BY '"'
-        LINES TERMINATED BY '\\n'
+        LINES TERMINATED BY '\n'
         IGNORE 1 LINES
         (
-          @id_micro,
-          Filename,
-          Timestamp,
-          @unixts,
-          LA, LC, LZ, LAmax, LAmin,
-          `12.6Hz`, `15.8Hz`, `20.0Hz`, `25.1Hz`, `31.6Hz`,
-          `39.8Hz`, `50.1Hz`, `63.1Hz`, `79.4Hz`, `100.0Hz`,
-          `125.9Hz`, `158.5Hz`, `199.5Hz`, `251.2Hz`, `316.2Hz`,
-          `398.1Hz`, `501.2Hz`, `631.0Hz`, `794.3Hz`, `1000.0Hz`,
-          `1258.9Hz`, `1584.9Hz`, `1995.3Hz`, `2511.9Hz`,
-          `3162.3Hz`, `3981.1Hz`, `5011.9Hz`, `6309.6Hz`,
-          `7943.3Hz`, `10000.0Hz`, `12589.3Hz`, `15848.9Hz`
-        )
-        SET 
-            sensor_id = TRIM(BOTH '\\r' FROM @id_micro),
-            Unixtimestamp = @unixts;
+        sensor_id,
+        Filename,
+        Timestamp,
+        Unixtimestamp,
+        LA, LC, LZ, LAmax, LAmin,
+        `12.6Hz`, `15.8Hz`, `20.0Hz`, `25.1Hz`, `31.6Hz`,
+        `39.8Hz`, `50.1Hz`, `63.1Hz`, `79.4Hz`, `100.0Hz`,
+        `125.9Hz`, `158.5Hz`, `199.5Hz`, `251.2Hz`, `316.2Hz`,
+        `398.1Hz`, `501.2Hz`, `631.0Hz`, `794.3Hz`, `1000.0Hz`,
+        `1258.9Hz`, `1584.9Hz`, `1995.3Hz`, `2511.9Hz`,
+        `3162.3Hz`, `3981.1Hz`, `5011.9Hz`, `6309.6Hz`,
+        `7943.3Hz`, `10000.0Hz`, `12589.3Hz`, `15848.9Hz`
+        );
         """
         cursor.execute(query_load)
         db.commit()
@@ -227,6 +224,7 @@ def main():
     # paths and processed csv_files
     logger.info("Starting!!")
     logger.info("")
+    
 
     try:
         # config
@@ -261,169 +259,199 @@ def main():
     logger.info("")
     points = [point for point in os.listdir(path)]
     points = [os.path.join(path, point) for point in points]
+    logger.info(f"These are the points: {points}")
+    # exit()
     all_info = []
     for point in tqdm.tqdm(points, desc="Processing points", unit="point"):
-        # if "P1_CONTENEDORES" in point:
-        try:
-            # ---------------------------
-            point_str = point.split("/")[-1]
-            acoust_folder = os.path.join(point, storage_output_acoust_folder)
-            logger.info(f"Acoustic params folder: {acoust_folder}")
-
-            # change storage_output_acoust_folder to "acoustic_params_query"
-            query_folder = os.path.join(point, "acoustic_params_query")
-            logger.info(f"Query folder: {query_folder}")
-            os.makedirs(query_folder, exist_ok=True)
-
-
-            # checking if the folder exist
-            if os.path.isdir(acoust_folder):
-                logger.info(f"Folder exists: {acoust_folder}")
-            else:
-                logger.warning(f"Folder does not exist: {acoust_folder}")
-                continue
-
-            # ---------------------------
-            # INIZIALATIN PROCESSING FILE
-            # ---------------------------
-            processed_folder_txt = os.path.join(query_folder, "processed_acoustic_query.txt")
-            logger.info(f"Saving the proicessed file txt here --> {processed_folder_txt}")
-            processed_folder = load_processed_folder(processed_folder_txt)
-        except Exception as e:
-            logger.error(f"Error setting up folders: {e}")
-            continue
-
-
-
-        try:
-            logger.info("")
-            folder_days = os.listdir(acoust_folder)
-            # filter the FILES, FUST THE FOLDERS
-            folder_days = [day_folder for day_folder in folder_days if os.path.isdir(os.path.join(acoust_folder, day_folder))]
-            logger.info("Folder days in %s: %s", acoust_folder, folder_days)
-            folder_days = [os.path.join(acoust_folder, day_folder) for day_folder in folder_days]
-        except Exception as e:
-            logger.error(f"Error listing folder days: {e}")
-            continue
-
-
-        # -.--------------------
-        # PROCESSING
-        # --------------------
-        logger.info("")
-        for day in tqdm.tqdm(folder_days, desc="Processing days", unit="day"):
-            # checking if the day is already processed
-            if day in processed_folder:
-                logger.info("Already processed: %s", day)
-                continue
-
-
+        if "P2_CONTENEDORES" in point:
             try:
-                #day string to save the concat file
-                day_str = day.split("/")[-1]
-                logger.info("Processing day_hour: %s", day_str)
-                logger.info("Processing: %s", day)
-            except Exception as e:
-                logger.error(f"Error processing day: {e}")
-                continue
-
-            
-            try:
-                csv_files = os.listdir(day)
-                csv_files = [csv_file for csv_file in csv_files if csv_file.endswith(".csv")]
-                logger.info("CSV files in %s: %s", day, csv_files)
-                csv_files = [os.path.join(day, csv_file) for csv_file in csv_files]
-            except Exception as e:
-                logger.error(f"Error listing CSV files: {e}")
-                continue
-
-            try:
-                logger.info("")
-                # concatenating the csv files
-                logger.info("Trying to concatenate the csv files to process one hour of audio data recordings")
-                df_day = pd.concat([pd.read_csv(csv_file) for csv_file in csv_files], ignore_index=True)
-            except Exception as e:
-                logger.error(f"Error concatenating CSV files: {e}")
-                continue
-
-            try:
-                # order by the timestamp
-                df_day = df_day.sort_values(by=["Timestamp"])
-                # print(df_day)
-
-                # make result csv_file
-                csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
-                logger.info("Concatenated CSV file path: %s", csv_concat_path)
-
-                # save csv file
-                df_day.to_csv(os.path.join(query_folder, f"{day_str}.csv"), index=False)
-                logger.info("Concatenated CSV files, saved as: %s", csv_concat_path)
-            except Exception as e:
-                logger.error(f"Error saving concatenated CSV file: {e}")
-                continue
-            
-
-            try:
-                logger.info("")
-                logger.info("Loading data into TABLE")
-                load_data_db(db, csv_concat_path, logger)
-                cur = db.cursor()
-                cur.execute(f"SELECT COUNT(*) FROM {ACOUSTIC_TABLE_NAME}")
-                n = cur.fetchone()[0]
-                logger.info(f"→ {ACOUSTIC_TABLE_NAME} contains {n} rows after LOAD DATA")
-                cur.close()
-            except Exception as e:
-                logger.error(f"Error loading data into database: {e}")
-                continue
-            
-            
-            
-            # ------------------------------------
-            # query and convert cesults to json
-            # ------------------------------------
-            try:
-                logger.info("")
-                logger.info("Query and Convert Results to JSON")
-                avg_results = power_laeq_avg(db, logger)
-                # print(avg_results)
-                logger.info(avg_results)
-                # addig the "day", which is "/mnt/sandisk/CONTENEDORES/CONTENEDORES/P2_CONTENEDORES/acoustic_params/20250407_03" to the avg_results
-                for result in avg_results:
-                    result["day_path"] = day
-
-                logger.info("Power LAeq Average Results:")
-                logger.info(avg_results)
-
-
-                if avg_results is not None:
-                    logger.info("Power LAeq Average Results:")
-                    # send the data MQTT
-                    send_mqtt_data(avg_results, logger)
+                # ---------------------------
+                point_str = point.split("/")[-1]
+                acoust_folder = os.path.join(point, storage_output_acoust_folder)
+                logger.info(f"Acoustic params folder: {acoust_folder}")
+                # checking if the folder exist
+                if os.path.isdir(acoust_folder):
+                    logger.info(f"Folder exists: {acoust_folder}")
                 else:
-                    logger.warning("No results returned from power_laeq_avg query.")
+                    logger.warning(f"Folder does not exist: {acoust_folder}")
+                    continue
+
+
+                logger.info(f"")
+                # change storage_output_acoust_folder to "acoustic_params_query"
+                query_folder = os.path.join(point, "acoustic_params_query")
+                if not os.path.exists(query_folder):
+                    os.makedirs(query_folder)
+                    logger.info(f"Created Query folde: {query_folder}")
+                else:
+                    logger.info(f"Folder query already exists: {query_folder}")
+
+
+                # the same fort the predictions_litle
+                query_pred_folder = os.path.join(point, "predictions_litle")
+                if not os.path.exists(query_pred_folder):
+                    os.makedirs(query_pred_folder)
+                    logger.info(f"Created output query_pred_folder: {query_pred_folder}")
+                else:
+                    logger.info(f"Folder predictions already exists: {query_pred_folder}")
+
+
+
+                # ---------------------------
+                # INIZIALATIN PROCESSING FILE
+                # ---------------------------
+                processed_folder_txt = os.path.join(query_folder, "processed_acoustic_query.txt")
+                logger.info(f"Saving the proicessed file txt here --> {processed_folder_txt}")
+                processed_folder = load_processed_folder(processed_folder_txt)
+
+
+                # the same for the prediction
+                processed_pred_folder_txt = os.path.join(query_pred_folder, "processed_pred_query.txt")
+                logger.info(f"Saving the proicessed prediction file txt here --> {processed_pred_folder_txt}")
+                processed_folder = load_processed_folder(processed_pred_folder_txt)
+                exit()
+
             except Exception as e:
-                logger.error(f"Error querying and converting results to JSON: {e}")
+                logger.error(f"Error setting up folders: {e}")
                 continue
 
 
-            # append the avg_results to the all_info list
-            all_info.append(avg_results)
-            # print(all_info)
 
-
-            # ------------------------------------
-            # update processed folder
-            # ------------------------------------
             try:
                 logger.info("")
-                update_processed_folder(processed_folder_txt, day)
-                processed_folder = load_processed_folder(processed_folder_txt)
-                logger.info("Added to processed files: %s", day)
+                folder_days = os.listdir(acoust_folder)
+                # filter the FILES, FUST THE FOLDERS
+                folder_days = [day_folder for day_folder in folder_days if os.path.isdir(os.path.join(acoust_folder, day_folder))]
+                logger.info("Folder days in %s: %s", acoust_folder, folder_days)
+                folder_days = [os.path.join(acoust_folder, day_folder) for day_folder in folder_days]
             except Exception as e:
-                logger.error(f"Error updating processed files: {e}")
+                logger.error(f"Error listing folder days: {e}")
                 continue
 
 
+            # -.--------------------
+            # PROCESSING
+            # --------------------
+            logger.info("")
+            for day in tqdm.tqdm(folder_days, desc="Processing days", unit="day"):
+                # checking if the day is already processed
+                if day in processed_folder:
+                    logger.info("Already processed: %s", day)
+                    continue
+
+
+                try:
+                    #day string to save the concat file
+                    day_str = day.split("/")[-1]
+                    logger.info("Processing day_hour: %s", day_str)
+                    logger.info("Processing: %s", day)
+                except Exception as e:
+                    logger.error(f"Error processing day: {e}")
+                    continue
+
+                
+                try:
+                    csv_files = os.listdir(day)
+                    csv_files = [csv_file for csv_file in csv_files if csv_file.endswith(".csv")]
+                    logger.info("CSV files in %s: %s", day, csv_files)
+                    csv_files = [os.path.join(day, csv_file) for csv_file in csv_files]
+                except Exception as e:
+                    logger.error(f"Error listing CSV files: {e}")
+                    continue
+
+                try:
+                    logger.info("")
+                    # concatenating the csv files
+                    logger.info("Trying to concatenate the csv files to process one hour of audio data recordings")
+                    df_day = pd.concat([pd.read_csv(csv_file) for csv_file in csv_files], ignore_index=True)
+                except Exception as e:
+                    logger.error(f"Error concatenating CSV files: {e}")
+                    continue
+
+                try:
+                    # order by the timestamp
+                    df_day = df_day.sort_values(by=["Timestamp"])
+                    #round LA values to 2 decimal places
+                    df_day["LA"] = df_day["LA"].round(2)
+                    # print(df_day)
+                    # exit()
+
+                    # make result csv_file
+                    csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
+                    logger.info("Concatenated CSV file path: %s", csv_concat_path)
+
+                    # save csv file
+                    df_day.to_csv(os.path.join(query_folder, f"{day_str}.csv"), index=False)
+                    logger.info("Concatenated CSV files, saved as: %s", csv_concat_path)
+                except Exception as e:
+                    logger.error(f"Error saving concatenated CSV file: {e}")
+                    continue
+                
+
+                try:
+                    logger.info("")
+                    logger.info("Loading data into TABLE")
+                    load_data_db(db, csv_concat_path, logger)
+                    cur = db.cursor()
+                    cur.execute(f"SELECT COUNT(*) FROM {ACOUSTIC_TABLE_NAME}")
+                    n = cur.fetchone()[0]
+                    logger.info(f"→ {ACOUSTIC_TABLE_NAME} contains {n} rows after LOAD DATA")
+                    cur.close()
+                except Exception as e:
+                    logger.error(f"Error loading data into database: {e}")
+                    continue
+                
+                
+                
+                # ------------------------------------
+                # query and convert cesults to json
+                # ------------------------------------
+                try:
+                    logger.info("")
+                    logger.info("Query and Convert Results to JSON")
+                    avg_results = power_laeq_avg(db, logger)
+                    # print(avg_results)
+                    logger.info(avg_results)
+                    # addig the "day", which is "/mnt/sandisk/CONTENEDORES/CONTENEDORES/P2_CONTENEDORES/acoustic_params/20250407_03" to the avg_results
+                    for result in avg_results:
+                        result["day_path"] = day
+
+                    logger.info("Power LAeq Average Results:")
+                    logger.info(avg_results)
+                    # exit()
+
+
+                    if avg_results is not None:
+                        logger.info("Power LAeq Average Results:")
+                        # send the data MQTT
+                        send_mqtt_data(avg_results, logger)
+                    else:
+                        logger.warning("No results returned from power_laeq_avg query.")
+                except Exception as e:
+                    logger.error(f"Error querying and converting results to JSON: {e}")
+                    continue
+
+
+                # append the avg_results to the all_info list
+                all_info.append(avg_results)
+                # print(all_info)
+
+
+                # ------------------------------------
+                # update processed folder
+                # ------------------------------------
+                try:
+                    logger.info("")
+                    update_processed_folder(processed_folder_txt, day)
+                    processed_folder = load_processed_folder(processed_folder_txt)
+                    logger.info("Added to processed files: %s", day)
+                except Exception as e:
+                    logger.error(f"Error updating processed files: {e}")
+                    continue
+
+        else:
+            logger.info("Folder not found")
+            continue
 
     # ------------------------------------
     # save all_info to json

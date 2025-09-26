@@ -28,7 +28,7 @@ warnings.filterwarnings("ignore",
 
 
 
-def inference(path,resultados_folder,id_micro, model_path, sample_rate, chunk_size, window_size, threshold, upload_s3, logging, output_wav_folder, output_predict_lt_folder, s3_bucket_name, cwd, yamnet_class_map_csv):
+def inference(path,id_micro, model_path, sample_rate, chunk_size, window_size, threshold, upload_s3, logging, output_wav_folder, output_predict_lt_folder, s3_bucket_name, cwd, yamnet_class_map_csv):
     """
     Perform inference on one or more audio files.
     Args:
@@ -42,13 +42,12 @@ def inference(path,resultados_folder,id_micro, model_path, sample_rate, chunk_si
     # ---------------------------
     # INIZIALATIN PROCESSING FILE
     # ---------------------------
-    processed_files_txt = os.path.join(resultados_folder, "processed_predictions.txt")
+    processed_files_txt = os.path.join(path, "processed_predictions.txt")
+    processed_files_txt = processed_files_txt.replace("wav_files", "predictions_litle")
     os.makedirs(os.path.dirname(processed_files_txt), exist_ok=True)
     logging.info(f"Saving the processed file txt here --> {processed_files_txt}")
     
-
     processed_files = load_processed_files(processed_files_txt)
-    logging.info(f"Processed files: {len(processed_files)}")
 
 
     
@@ -219,16 +218,10 @@ def inference(path,resultados_folder,id_micro, model_path, sample_rate, chunk_si
             else:
                 csv_filename = wav_filename.replace(".wav", f"_tflt_w_{window_size}.csv")  # e.g. 20250108_142606.csv
             logging.info(f"CSV filename --> {csv_filename}")
-            
 
 
 
-            logging.info("")
-            # logging.info(audio_file)
             prediction_folder = os.path.dirname(audio_file).replace(output_wav_folder, output_predict_lt_folder)
-            logging.info(f"Prediction folder --> {prediction_folder}")
-            prediction_folder = prediction_folder.replace(MEDIDAS_FOLDER, RESULTADOS_FOLDER)
-            logging.info(f"Prediction folder --> {prediction_folder}")
             os.makedirs(prediction_folder, exist_ok=True)
             logging.info(f"Making litRT prediction folder --> {prediction_folder}")
 
@@ -383,6 +376,8 @@ def inference(path,resultados_folder,id_micro, model_path, sample_rate, chunk_si
             logging.info(f"Final CSV file saved at {csv_full_path}")
 
             # df = pd.read_csv(csv_full_path)
+            # print(df)
+            # exit()
 
 
             # -------------------
@@ -401,8 +396,9 @@ def inference(path,resultados_folder,id_micro, model_path, sample_rate, chunk_si
             # MARKING FILE AS PROICESSED
             # ----------------------------
             update_processed_files(processed_files_txt, csv_full_path)
-            processed_files.add(audio_file)
             logging.info(f"Final CSV file added to the processed file. {csv_full_path}")
+            update_processed_files(processed_files_txt, audio_file)
+            logging.info(f"WAV file added to the processed file. {audio_file}")
 
             
         # -------------
@@ -524,121 +520,64 @@ def main():
     logging.info(f"Upload to bucket S3: {upload_s3}")
 
 
-    logging.info("")
-    for root, dirs, files in os.walk(path):
-            if storage_output_wav_folder in dirs:
-                logging.info(f"Found folder: {storage_output_wav_folder} in {root}")
-                point = os.path.basename(root)
-                logging.info(f"Point: {point}")
+    try: 
+        logging.info("")
+        for root, dirs, files in os.walk(path):
+                if storage_output_wav_folder in dirs:
+                    logging.info(f"Found folder: {storage_output_wav_folder} in {root}")
+                    point = os.path.basename(root)
+                    logging.info(f"Point: {point}")
 
 
-                if point == "P2_CONTENEDORES":
-                    logging.info("")
-                    # print("P2_CONTENEDORES")
+                    if point == "P4_CONTENEDORES":
+                        logging.info("")
+                        # print("P2_CONTENEDORES")
 
-                    if point in ID_MICROPHONE:
-                        id_micro = ID_MICROPHONE[point]
-                        logging.info(f"ID Microphone: {id_micro}")
-                    else:
-                        raise ValueError(f"ID Microphone for {point} not found in ID_MICROPHONE.")
-                
+                        if point in ID_MICROPHONE:
+                            id_micro = ID_MICROPHONE[point]
+                            logging.info(f"ID Microphone: {id_micro}")
+                        else:
+                            raise ValueError(f"ID Microphone for {point} not found in ID_MICROPHONE.")
                     
-                    wav_files_folder = os.path.join(root, storage_output_wav_folder)
-                    logging.info(f"WAV files folder: {wav_files_folder}")
+                        
+                        wav_files_folder = os.path.join(root, storage_output_wav_folder)
+                        logging.info(f"WAV files folder: {wav_files_folder}")
 
 
-                    # -------------------------------------------------
-                    # MAKING RESULTADOS FOLDER
-                    # -------------------------------------------------
-                    # output folder --> replace MEDIDAS_FOLDER with RESULTADOS_FOLDER
-                    resultados_folder = wav_files_folder.replace(MEDIDAS_FOLDER, RESULTADOS_FOLDER)
-                    logging.info(f"RESULTADOS_FOLDER: {resultados_folder}")
-                    resultados_folder = os.path.dirname(resultados_folder)
-                    resultados_folder = os.path.join(resultados_folder, storage_output_predict_lt_folder)
-                    logging.info(f"RESULTADOS_FOLDER: {resultados_folder}")
-
-
-                    # ----------
-                    # INFERENCE
-                    # ----------
-                    try:
-                        inference(
-                            path=wav_files_folder,
-                            resultados_folder=resultados_folder,
-                            
-                            id_micro=id_micro,
-                            model_path=model_path,
-                            yamnet_class_map_csv=prediction_yamnet_class_map_csv,
-                            
-                            sample_rate=prediction_sample_rate,
-                            chunk_size=prediction_chunk_size,
-                            window_size=window_size,
-                            threshold=threshold,
-                            
-                            upload_s3=upload_s3,
-                            
-                            output_wav_folder=storage_output_wav_folder,
-                            output_predict_lt_folder=storage_output_predict_lt_folder,
-                            s3_bucket_name=storage_s3_bucket_name,
-                            
-                            cwd=cwd,
-                            
-                            logging=logging
-                        )
-                        logging.info("Inference finished.")
-                    
-                    except Exception as e:
-                        logging.error(f"Error making inference: {e}")
-                    exit()
-                
-    exit()
-
-
-
-    # -----------------------
-    # GETTING AUDIO FILES
-    # -----------------------
-    try:
-        audio_files = [f for f in os.listdir(path) if f.lower().endswith('.wav')]
-        full_paths = [os.path.join(path, file) for file in audio_files]
+                        # ----------
+                        # INFERENCE
+                        # ----------
+                        try:
+                            inference(
+                                path=wav_files_folder,
+                                
+                                id_micro=id_micro,
+                                model_path=model_path,
+                                yamnet_class_map_csv=prediction_yamnet_class_map_csv,
+                                
+                                sample_rate=prediction_sample_rate,
+                                chunk_size=prediction_chunk_size,
+                                window_size=window_size,
+                                threshold=threshold,
+                                
+                                upload_s3=upload_s3,
+                                
+                                output_wav_folder=storage_output_wav_folder,
+                                output_predict_lt_folder=storage_output_predict_lt_folder,
+                                s3_bucket_name=storage_s3_bucket_name,
+                                
+                                cwd=cwd,
+                                
+                                logging=logging
+                            )
+                            logging.info("Inference finished.")
+                        
+                        except Exception as e:
+                            logging.error(f"Error making inference: {e}")
+        
     except Exception as e:
-        logging.error(f"Errorgetting the audio files: {e}")
-
-    logging.info(f"Found {len(audio_files)} audio files: {audio_files}")
-
-
-
-    # ----------
-    # INFERENCE
-    # ----------
-    try:
-        inference(
-            path=path,
-            file_list=full_paths,
-            
-            id_micro=id_micro,
-            model_path=model_path,
-            yamnet_class_map_csv=prediction_yamnet_class_map_csv,
-            
-            sample_rate=prediction_sample_rate,
-            chunk_size=prediction_chunk_size,
-            window_size=window_size,
-            threshold=threshold,
-            
-            upload_s3=upload_s3,
-            
-            output_wav_folder=storage_output_wav_folder,
-            output_predict_lt_folder=storage_output_predict_lt_folder,
-            s3_bucket_name=storage_s3_bucket_name,
-            
-            cwd=cwd,
-            
-            logging=logging
-        )
-        logging.info("Inference finished.")
-    
-    except Exception as e:
-        logging.error(f"Error making inference: {e}")
+        logging.error(f"Error processing: {e}")
+        return
 
 
 

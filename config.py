@@ -6,7 +6,7 @@ RESULTADOS_FOLDER = "5-Resultados"
 # ----------------------------------------
 #  SANDISK PATH
 # ----------------------------------------
-SANDISK_PATH_LINUX = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/"
+SANDISK_PATH_LINUX = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/3-Medidas/"
 SANDISK_PATH_WINDOWS = r"\\192.168.205.122\Contenedores"
 
 
