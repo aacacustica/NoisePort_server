@@ -78,6 +78,12 @@ ACOUSTIC_TABLE_NAME = "acoustic_data"
 PREDICT_TABLE_NAME = "predict_data"
 WAV_TABLE_NAME = "wav_data"
 
+DB_INIT_SWITCH = False
+
+ACOUSTIC_QUERY_SWITCH = False
+PREDICT_QUERY_SWITCH = False
+WAV_QUERY_SWITCH = False
+
 
 TABLES = {
     "acoustic_data": """

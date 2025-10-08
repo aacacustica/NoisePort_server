@@ -414,7 +414,7 @@ def main():
 
     logger.info("Initializing database!")
     # testing the query database
-    initialize_database(db, logger)
+    if DB_INIT_SWITCH: initialize_database(db, logger)
 
 
     # paths and processed csv_files
@@ -534,15 +534,15 @@ def main():
             logger.info("")
             for folder in os.listdir(point):
                 actual = point + '/' + folder
-                if actual == acoust_folder:
+                if actual == acoust_folder and ACOUSTIC_QUERY_SWITCH:
                     logger.info("Starting ACOUSTIC FOLDER processing")
                     process_acoustic_folder(db,logger,folder_days, all_info, query_folder, processed_folder, processed_folder_txt)
                     logger.info("Finished ACOUSTIC FOLDER processing")
-                if actual == query_pred_folder:
+                if actual == query_pred_folder and PREDICT_QUERY_SWITCH:
                     logger.info("Starting PREDICTION FOLDER processing")
                     process_pred_folder(db,logger,folder_days, all_info, query_folder, processed_folder, processed_folder_txt)
                     logger.info("Finished PREDICTION FOLDER processing")
-                if actual ==  wav_folder:
+                if actual ==  wav_folder and WAV_QUERY_SWITCH:
                     logger.info("Starting WAV FOLDER processing")
                     process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_folder, processed_folder_txt)
                     logger.info("Finished WAV FOLDER processing")
