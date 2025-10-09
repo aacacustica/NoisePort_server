@@ -74,14 +74,14 @@ PASSWORD = "Mysql_Pssw2025!"
 # ----------------------------------------
 DATABASE_NAME = "noise_port_test"
 
-ACOUSTIC_TABLE_NAME = "acoustic_data"
-PREDICT_TABLE_NAME = "predict_data"
-WAV_TABLE_NAME = "wav_data"
+ACOUSTIC_TABLE_NAME = "noise_port_test.acoustic_data"
+PREDICT_TABLE_NAME = "noise_port_test.predict_data"
+WAV_TABLE_NAME = "noise_port_test.wav_data"
 
 DB_INIT_SWITCH = False
 
-ACOUSTIC_QUERY_SWITCH = False
-PREDICT_QUERY_SWITCH = False
+ACOUSTIC_QUERY_SWITCH = True
+PREDICT_QUERY_SWITCH = True
 WAV_QUERY_SWITCH = False
 
 
