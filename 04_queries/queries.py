@@ -14,7 +14,8 @@ from config import *
 
 from ast import literal_eval
 
-
+import wave
+import contextlib
 
 def initialize_database(db, logger):
     """Ensure that the database and table exist, recreating them from scratch."""
@@ -522,88 +523,78 @@ def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_
             logger.error(f"[Wave Files] Error processing day: {e}")
             continue
         # ------------------------------------
-        # 2-Appending to list csv files in csv per day folder
+        # 2-Reading wav time lengths from wav folder
         # ------------------------------------
         try:
-            csv_files = os.listdir(day)
-            csv_files = [csv_file for csv_file in csv_files if csv_file.endswith("1.0.csv")]
-            logger.info("[Wave Files] CSV files in %s: %s", day, csv_files)
-            csv_files = [os.path.join(day, csv_file) for csv_file in csv_files]
+            duration = []
+            
+            for wavfile in os.listdir(day):
+                if wavfile.endswith(".wav"):
+                    with contextlib.closing(wave.open(os.path.join(day,wavfile),'r')) as f:
+                            frames = f.getnframes()
+                            rate = f.getframerate()
+                            duration_wav = frames / float(rate)
+                            duration.append(duration_wav)
         except Exception as e:
             logger.error(f"[Wave Files] Error listing CSV files: {e}")
             continue
         # ------------------------------------
-        # 3-Concatenation of csv files for one hour processing
+        # 3-Creating csvs with filename, timestamp and duration
         # ------------------------------------
         try:
             logger.info("")
             # concatenating the csv files
-            logger.info("[Predictions] Trying to concatenate the csv files to process one hour of audio data recordings")
-            df_day = pd.concat([pd.read_csv(csv_file,converters={
-                'class': literal_eval,
-                'probability': literal_eval}) for csv_file in csv_files], ignore_index=True)
+            logger.info("[Wave Files] Trying to create csv files with filename, timestamp and duration")
+            df_day = pd.DataFrame(columns=['filename','timestamp','duration'])
+
+            df_day['filename'] = os.listdir(day)
+            df_day['duration'] = duration
+            df_day['timestamp'] = df_day['filename'].str.extract(r'(\d{8}_\d{2})')[0]
+
+
         except Exception as e:
             logger.error(f"[Predictions] Error concatenating CSV files: {e}")
             continue
         # ------------------------------------
         # 4-ordering by timestamp 
-        # exploding prediction and probability columns  
-        # turning the result into a csv so we can use it
-        # rearranging df columns so it fits in the table
+        # saving csv to wav_files_query folder
         # ------------------------------------
         try:
-            df_day = df_day.sort_values(by=["Timestamp"])
-            df_day["prediction1"],df_day["prediction2"],df_day["prediction3"] = zip(*list(df_day['class'].values))
-            df_day['probability1'],df_day['probability2'],df_day['probability3'] = zip(*list(df_day['probability'].values))
-            
-            df_out = df_day.rename(columns={
-                'prediction1': 'Prediction_1',
-                'prediction2': 'Prediction_2',
-                'prediction3': 'Prediction_3',
-                'probability1': 'Prob_1',
-                'probability2': 'Prob_2',
-                'probability3': 'Prob_3'
-            })
+            df_day = df_day.sort_values(by=["timestamp"])
 
-            cols = ['Prediction_1','Prediction_2','Prediction_3',
-                    'Prob_1','Prob_2','Prob_3',
-                    'Filename','Timestamp']
 
-            df_out = df_out[cols]
-            
             # make result csv_file
             csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
             
-            logger.info("[Predictions] Concatenated CSV file path: %s", csv_concat_path)
-
             # save csv file
-            df_out.to_csv(os.path.join(query_folder, f"{day_str}.csv"), index=False)
-            logger.info("[Predictions] Concatenated CSV files, saved as: %s", csv_concat_path)
+            df_day.to_csv(os.path.join(query_folder, f"{day_str}.csv"), index=False)
+            logger.info(f"[Wave Files] Concatenated CSV files, saved as:{csv_concat_path}" )
+
         except Exception as e:
-            logger.error(f"[Predictions] Error saving concatenated CSV file: {e}")
+            logger.error(f"[Wave Files] Error saving concatenated CSV file: {e}")
             continue
         # ------------------------------------
         # 5-Loading PREDICTIONS csv into the DB table
         # ------------------------------------
         try:
             logger.info("")
-            logger.info("[Predictions] Loading data into TABLE")
-            load_data_db(db, csv_concat_path, logger,table_name=PREDICT_TABLE_NAME)
+            logger.info("[Wave Files] Loading data into TABLE")
+            load_data_db(db, csv_concat_path, logger,table_name=WAV_TABLE_NAME)
             cur = db.cursor()
             cur.execute(f"USE {DATABASE_NAME}")
-            cur.execute(f"SELECT COUNT(*) FROM {PREDICT_TABLE_NAME}")
+            cur.execute(f"SELECT COUNT(*) FROM {WAV_TABLE_NAME}")
             n = cur.fetchone()[0]
-            logger.info(f"[Predictions] → {PREDICT_TABLE_NAME} contains {n} rows after LOAD DATA")
+            logger.info(f"[Wave Files] → {WAV_TABLE_NAME} contains {n} rows after LOAD DATA")
             cur.close()
         except Exception as e:
-            logger.error(f"[Predictions] Error loading data into database: {e}")
+            logger.error(f"[Wave Files] Error loading data into database: {e}")
             continue
         # ------------------------------------
         # 6-query and convert results to json
         # ------------------------------------
         try:
             logger.info("")
-            logger.info("[Predictions] Query and Convert Results to JSON")
+            logger.info("[Wave Files] Query and Convert Results to JSON")
             avg_results = power_laeq_avg(db, logger)
             # print(avg_results)
             logger.info(avg_results)
@@ -611,18 +602,18 @@ def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_
             for result in avg_results:
                 result["day_path"] = day
 
-            logger.info("[Predictions] Power LAeq Average Results:")
+            logger.info("[Wave Files] Power LAeq Average Results:")
             logger.info(avg_results)
             # exit()
 
             if avg_results is not None:
-                logger.info("[Predictions] Power LAeq Average Results:")
+                logger.info("[Wave Files] Power LAeq Average Results:")
                 # send the data MQTT
                 send_mqtt_data(avg_results, logger)
             else:
-                logger.warning("[Predictions] No results returned from power_laeq_avg query.")
+                logger.warning("[Wave Files] No results returned from power_laeq_avg query.")
         except Exception as e:
-            logger.error(f"[Predictions] Error querying and converting results to JSON: {e}")
+            logger.error(f"[Wave Files] Error querying and converting results to JSON: {e}")
             continue
         # ------------------------------------
         # 7-Update processed folder #TODO: check if this is necessary
@@ -631,9 +622,9 @@ def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_
             logger.info("")
             update_processed_folder(processed_folder_txt, day)
             processed_folder = load_processed_folder(processed_folder_txt)
-            logger.info("[Predictions] Added to processed files: %s", day)
+            logger.info("[Wave Files] Added to processed files: %s", day)
         except Exception as e:
-            logger.error(f"[Predictions] Error updating processed files: {e}")
+            logger.error(f"[Wave Files] Error updating processed files: {e}")
             continue
 
 
@@ -713,30 +704,38 @@ def main():
 
 
                 logger.info(f"")
-                # change storage_output_acoust_folder to "acoustic_params_query"
+                # ---------------------------
+                # CREATING QUERY FOLDERS IF THEY DONT EXIST
+                # ---------------------------
                 query_acoustic_folder = os.path.join(point, "acoustic_params_query")
+                query_pred_folder = os.path.join(point, "predictions_litle")
+                query_acoustic_folder = os.path.join(point, "acoustic_params_query")
+                query_wav_folder = os.path.join(point, "wav_files_query")
+
                 if not os.path.exists(query_acoustic_folder):
                     os.makedirs(query_acoustic_folder)
                     logger.info(f"Created Query folde: {query_acoustic_folder}")
                 else:
                     logger.info(f"Folder query already exists: {query_acoustic_folder}")
-
-
-                # the same fort the predictions_litle
-                query_pred_folder = os.path.join(point, "predictions_litle")
-                query_acoustic_folder = os.path.join(point, "acoustic_params_query")
-                query_wav_folder = os.path.join(point, "wav_files_query")
+              
                 if not os.path.exists(query_pred_folder):
                     os.makedirs(query_pred_folder)
                     logger.info(f"Created output query_pred_folder: {query_pred_folder}")
                 else:
                     logger.info(f"Folder predictions already exists: {query_pred_folder}")
-
+                
+                if not os.path.exists(query_wav_folder):
+                    os.makedirs(query_wav_folder)
+                    logger.info(f"Created output query_wav_folder: {query_wav_folder}")
+                else:
+                    logger.info(f"Folder wav_files already exists: {query_wav_folder}")
 
 
                 # ---------------------------
                 # INIZIALATIN PROCESSING FILES
                 # ---------------------------
+
+                
                 processed_folder_acoustic_txt = os.path.join(query_acoustic_folder, "processed_acoustics.txt")
                 processed_folder_predictions_txt = os.path.join(query_pred_folder, "processed_predictions.txt")
                 processed_folder_wav_txt = os.path.join(query_wav_folder, "processed_wavs.txt")
