@@ -16,6 +16,7 @@ from ast import literal_eval
 
 import wave
 import contextlib
+from datetime import datetime
 
 def initialize_database(db, logger):
     """Ensure that the database and table exist, recreating them from scratch."""
@@ -118,17 +119,12 @@ def load_data_db(db, data_path, logger, table_name):
         elif table_name == WAV_TABLE_NAME:
             query_load = f"""
             LOAD DATA LOCAL INFILE '{data_path}'
-            INTO TABLE {table_name}
+            INTO TABLE {WAV_TABLE_NAME}
             FIELDS TERMINATED BY ','
             OPTIONALLY ENCLOSED BY '"'
             LINES TERMINATED BY '\n'
             IGNORE 1 LINES
-            (
-            id,
-            filename,
-            timestamp,
-            duration 
-            );            
+            (filename, timestamp, duration);           
             """
             cursor.execute(query_load)
             db.commit()
@@ -545,12 +541,15 @@ def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_
             logger.info("")
             # concatenating the csv files
             logger.info("[Wave Files] Trying to create csv files with filename, timestamp and duration")
-            df_day = pd.DataFrame(columns=['filename','timestamp','duration'])
+            df_day = pd.DataFrame(columns=['Filename','Timestamp','Duration'])
 
-            df_day['filename'] = os.listdir(day)
-            df_day['duration'] = duration
-            df_day['timestamp'] = df_day['filename'].str.extract(r'(\d{8}_\d{2})')[0]
-
+            df_day['Filename'] = os.listdir(day)
+            df_day['Duration'] = duration
+            df_day['Timestamp'] = pd.to_datetime(
+                df_day['Filename'].astype(str).str.replace('.wav', '', regex=False),
+                format='%Y%m%d_%H%M%S',
+                errors='raise'  # usa 'coerce' si quieres NaT cuando no coincida
+            )
 
         except Exception as e:
             logger.error(f"[Predictions] Error concatenating CSV files: {e}")
@@ -560,7 +559,7 @@ def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_
         # saving csv to wav_files_query folder
         # ------------------------------------
         try:
-            df_day = df_day.sort_values(by=["timestamp"])
+            df_day = df_day.sort_values(by=["Timestamp"])
 
 
             # make result csv_file
@@ -580,7 +579,7 @@ def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_
             logger.info("")
             logger.info("[Wave Files] Loading data into TABLE")
             load_data_db(db, csv_concat_path, logger,table_name=WAV_TABLE_NAME)
-            cur = db.cursor()
+            cur = db.cursor(buffered=True)
             cur.execute(f"USE {DATABASE_NAME}")
             cur.execute(f"SELECT COUNT(*) FROM {WAV_TABLE_NAME}")
             n = cur.fetchone()[0]
@@ -708,7 +707,7 @@ def main():
                 # CREATING QUERY FOLDERS IF THEY DONT EXIST
                 # ---------------------------
                 query_acoustic_folder = os.path.join(point, "acoustic_params_query")
-                query_pred_folder = os.path.join(point, "predictions_litle")
+                query_pred_folder = os.path.join(point, "predictions_litle_query")
                 query_acoustic_folder = os.path.join(point, "acoustic_params_query")
                 query_wav_folder = os.path.join(point, "wav_files_query")
 
