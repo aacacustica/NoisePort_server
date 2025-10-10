@@ -814,7 +814,7 @@ def main():
         json.dump(all_info, f, indent=4, default=decimal_to_native)
     logger.info("Saved all_info to: %s", all_info_path)
 
-
+        
 
     #CLOSING THE DB
     try:

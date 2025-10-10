@@ -4,10 +4,11 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "Python Debugger: queries debugging",
             "type": "debugpy",
-            "module": "04_queries.queries",
+            "module": "05_queries.queries",
             "request": "launch",
             "console": "integratedTerminal",
             "args": [
