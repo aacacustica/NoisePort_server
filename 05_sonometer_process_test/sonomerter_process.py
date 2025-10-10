@@ -19,7 +19,7 @@ def index_transform(excel_index):
 
     return y_cell, x_cell
 
-def process_one_third_octave_xlsx(xlsx_path, output_folder="acoustics_sonometer"):
+def process_one_third_octave_xlsx(xlsx_path, output_folder):
     """
     Reads and processes a 1/3 octave band data XLSX file.
     Saves the processed statistics to the specified output folder.
@@ -36,38 +36,71 @@ def process_one_third_octave_xlsx(xlsx_path, output_folder="acoustics_sonometer"
     ]
     XLS = pd.ExcelFile(xlsx_path)
 
-    df_summary = pd.DataFrame()
-    df_measurements = pd.DataFrame()
+    df_summary = pd.DataFrame(columns=['Filename', 'Timestamp', 'Unixtimestamp', 'sensor_id'])
+    df_measurements = pd.DataFrame(columns=third_octaves)
 
     # ---------------------------------------------------
     # 1- Processing Summary Sheet
     # ---------------------------------------------------
+    try:
 
-    df_summary['Filename'] = pd.read_excel(XLS,'Summary').iloc[index_transform(['B',3])].reset_index(drop=True)
-    df_summary['Timestamp'] = pd.to_datetime(pd.read_excel(XLS,'Summary').iloc[index_transform(['B',14])], format='%Y%m%d_%H%M%S').reset_index(drop=True)
-    df_summary['sensor_id'] = pd.read_excel(XLS,'Summary').iloc[index_transform(['B',4])].reset_index(drop=True)
+        y, x = index_transform('B3')
+        sensor_id = pd.read_excel(XLS, sheet_name='Summary').iloc[y, x]
+        y, x = index_transform('B13')
+        timestamp = pd.read_excel(XLS, sheet_name='Summary').iloc[y, x]
+        y, x = index_transform('B13')
+        unixtimestamp = timestamp.strftime('%s')
+        y,x = index_transform('B2')
+        filename = pd.read_excel(XLS, sheet_name='Summary').iloc[y, x]
+        df_summary = pd.DataFrame({'Filename': [filename], 'Timestamp': [timestamp] , 'Unixtimestamp': [unixtimestamp] , 'sensor_id': [sensor_id] })
 
-    df_summary['Unixtimestamp'] = datetime.datetime(df_summary['Timestamp'].split('-')).strftime('%s')
-
+    except Exception as e:
+        logger.error(f"Error processing Summary sheet in {xlsx_path}: {e}")
+        return
     # ---------------------------------------------------
     # 2- Processing Measurements Sheet
     # ---------------------------------------------------
+    try:
+        
+        df_measurements = pd.read_excel(XLS, 'Measurement History').loc[1:, 'AR':'CA'].reset_index(drop=True)
 
-    df_measurements = pd.read_excel(XLS, 'Measurement History').loc[1:, 'AR':'CA'].reset_index(drop=True)
+    except Exception as e:
 
+        logger.error(f"Error processing Measurement History sheet in {xlsx_path}: {e}")
+        df_measurements = pd.read_excel(XLS, 'Measurement History').loc[1:, 'I':'AR'].reset_index(drop=True)
+
+    except Exception as e:
+        
+        logger.error(f"Error processing Time History sheet in {xlsx_path}: {e}")
+        
+        return
 
     # ---------------------------------------------------
     # 3- Concatenating Summary and Measurements DataFrames
     # ---------------------------------------------------
+    try:
 
-    df_final = pd.concat([df_final, df_measurements], axis=1)
+        df_final = pd.concat([df_final, df_measurements], axis=1)
 
+    except Exception as e:
+
+        logger.error(f"Error concatenating dataframes for {xlsx_path}: {e}")
+        
+        return
     # ---------------------------------------------------
     # 4- Saving final dataframe to CSV
     # ---------------------------------------------------
+    try:
 
-    point = output_folder.split('/')[-1]
-    df_final.to_csv(os.path.join(output_folder, f"{point}_processed.csv"), index=False)
+        point = output_folder.split('/')[-1]
+        df_final.to_csv(os.path.join(output_folder, f"{point}_processed.csv"), index=False)
+
+    except Exception as e:  
+        logger.error(f"Error saving processed data for {xlsx_path}: {e}")
+        return
+    
+
+
 
 
 
@@ -80,17 +113,18 @@ if __name__ == "__main__":
 
     for point_folder in os.listdir(path):
         if point_folder == "P2_CONTENEDORES":
-            points_folders = os.path.join(path, point_folder)
-            if point_folder == "sonometer_files_test":
-                for point in points_folders:
-                    point_path = os.path.join("05_sonometer_process_test/sonometer_files_test", point)
-                    output_point_folder = os.path.join("05_sonometer_process_test/sonometer_acoustics", point)
-                    if os.path.isdir(point_path):
-                        lxt_files = [f for f in os.listdir(point_path) if f.endswith('.csv')]
-                        for file in lxt_files:
-                            file_path = os.path.join(point_path, file)
-                            logger.info(f"[SONOMETER] -> Processing file: {file_path}")
-                            process_one_third_octave_xlsx(file_path, output_point_folder, point)
-                            logger.info(f"[SONOMETER] -> Processed data saved at {output_point_folder}")
+            
+            output_point_folder = os.path.join(path, point_folder,'acoustics_sonometer')
+            points_folders = os.path.join(path, point_folder, "sonometer_files_test")
+            
+            
+            for point in os.listdir(points_folders):
+                
+                    lxt_files = [f for f in os.listdir(os.path.join(points_folders,point)) if f.endswith('.xlsx')]
+                    for file in lxt_files:
+                        file_path = os.path.join(points_folders,point, file)
+                        logger.info(f"[SONOMETER] -> Processing file: {file_path}")
+                        process_one_third_octave_xlsx(file_path, output_point_folder)
+                        logger.info(f"[SONOMETER] -> Processed data saved at {output_point_folder}")
 
 

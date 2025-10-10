@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+        
 
         {
             "name": "Python Debugger: queries debugging",
@@ -13,6 +14,17 @@
             "console": "integratedTerminal",
             "args": [
                 "-m", "04_queries.queries"
+            ]
+        }
+
+        ,{
+            "name": "Python Debugger: sonomter debugging",
+            "type": "debugpy",
+            "module": "05_sonometer_process_test.sonomerter_process",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "args": [
+                "-m", "05_sonometer_process_test.sonomerter_process"
             ]
         }
     ]
