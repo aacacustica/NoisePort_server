@@ -39,6 +39,7 @@ def process_one_third_octave_xlsx(xlsx_path, output_folder):
     df_summary = pd.DataFrame(columns=['Filename', 'Timestamp', 'Unixtimestamp', 'sensor_id'])
     df_measurements = pd.DataFrame(columns=third_octaves)
 
+    df_final = pd.DataFrame()
     # ---------------------------------------------------
     # 1- Processing Summary Sheet
     # ---------------------------------------------------
@@ -62,12 +63,13 @@ def process_one_third_octave_xlsx(xlsx_path, output_folder):
     # ---------------------------------------------------
     try:
         
-        df_measurements = pd.read_excel(XLS, 'Measurement History').loc[1:, 'AR':'CA'].reset_index(drop=True)
+        df_measurements = pd.read_excel(XLS, 'Measurement History').loc[1:, '1/3 LZeq 6.3':'1/3 LZeq 20000'].reset_index(drop=True)
 
     except Exception as e:
 
-        logger.error(f"Error processing Measurement History sheet in {xlsx_path}: {e}")
-        df_measurements = pd.read_excel(XLS, 'Measurement History').loc[1:, 'I':'AR'].reset_index(drop=True)
+        logger.error(f"Error processing Measurement History sheet in {xlsx_path}, trying Time History Sheet: {e}")
+        df_measurements = pd.read_excel(XLS, 'Time History').loc[1:, '1/3 LZeq 6.3':'1/3 LZeq 20000'].reset_index(drop=True)
+
 
     except Exception as e:
         
@@ -80,7 +82,7 @@ def process_one_third_octave_xlsx(xlsx_path, output_folder):
     # ---------------------------------------------------
     try:
 
-        df_final = pd.concat([df_final, df_measurements], axis=1)
+        df_final = pd.concat([df_summary, df_measurements], axis=1)
 
     except Exception as e:
 
@@ -92,7 +94,7 @@ def process_one_third_octave_xlsx(xlsx_path, output_folder):
     # ---------------------------------------------------
     try:
 
-        point = output_folder.split('/')[-1]
+        point = file_path.split('/')[-2]
         df_final.to_csv(os.path.join(output_folder, f"{point}_processed.csv"), index=False)
 
     except Exception as e:  
@@ -114,17 +116,17 @@ if __name__ == "__main__":
     for point_folder in os.listdir(path):
         if point_folder == "P2_CONTENEDORES":
             
-            output_point_folder = os.path.join(path, point_folder,'acoustics_sonometer')
+            output_point_folder = os.path.join(path, point_folder,'sonometer_acoustics')
             points_folders = os.path.join(path, point_folder, "sonometer_files_test")
             
-            
             for point in os.listdir(points_folders):
-                
+                    count = 0
                     lxt_files = [f for f in os.listdir(os.path.join(points_folders,point)) if f.endswith('.xlsx')]
                     for file in lxt_files:
                         file_path = os.path.join(points_folders,point, file)
                         logger.info(f"[SONOMETER] -> Processing file: {file_path}")
                         process_one_third_octave_xlsx(file_path, output_point_folder)
+                        count += 1
                         logger.info(f"[SONOMETER] -> Processed data saved at {output_point_folder}")
 
 
