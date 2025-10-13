@@ -6,6 +6,8 @@ import regex as re
 import datetime
 from config import *
 
+from xlsx2csv import Xlsx2csv
+
 def index_transform(excel_index):
     match = re.match(r"^([a-z]+)(\d+)$", excel_index.lower())
     if not match:
@@ -35,6 +37,16 @@ def process_one_third_octave_xlsx(xlsx_path, output_folder):
         '1/3 LZeq 6300', '1/3 LZeq 8000', '1/3 LZeq 10000', '1/3 LZeq 12500', '1/3 LZeq 16000', '1/3 LZeq 20000'
     ]
     XLS = pd.ExcelFile(xlsx_path)
+
+    with Xlsx2csv(xlsx_path, outputencoding="utf-8") as xlsx2csv:
+
+        try:
+            xlsx2csv.convert(xlsx_path, sheetname="Measurement History", outputencoding="utf-8")
+        except Exception as e:
+            xlsx2csv.convert(xlsx_path, sheetname="Time History", outputencoding="utf-8")
+        except Exception as e:
+            logger.error(f"Error converting XLSX to CSV for {xlsx_path}: {e}")
+            return
 
     df_summary = pd.DataFrame(columns=['Filename', 'Timestamp', 'Unixtimestamp', 'sensor_id'])
     df_measurements = pd.DataFrame(columns=third_octaves)
