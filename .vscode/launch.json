@@ -19,7 +19,7 @@
         }
 
         ,{
-            "name": "Python Debugger: sonomter debugging",
+            "name": "Python Debugger: sonometer debugging",
             "type": "debugpy",
             "module": "05_sonometer_process_test.sonometer_process",
             "request": "launch",
