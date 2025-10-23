@@ -1,10 +1,16 @@
 import os
 import pandas as pd
+import numpy as np
+import openpyxl
+import tqdm
+import time
+
+
 from logging_config import setup_logging
 from config import *
-import tqdm
+from datetime import  datetime
 
-from datetime import  timedelta
+
 
 third_octaves = [
     '1/3 LZeq 6.3', '1/3 LZeq 8.0', '1/3 LZeq 10.0', '1/3 LZeq 12.5', '1/3 LZeq 16.0',
@@ -18,155 +24,176 @@ third_octaves = [
 
 output_csv_folder = os.getcwd() + '/05_sonometer_process_test/temp_csvs/'
 
+def read_first_row_excel(path):
+    """
+    Reads the first row of an Excel file to determine the total number of rows.
+    """
+    try:
+        try:
+            df_first_row = pd.read_excel(path, sheet_name='Time History',skiprows=1,nrows=1)
+        except:
+            df_first_row = pd.read_excel(path, sheet_name='Measurement History')
+    
+        return df_first_row
+    except Exception as e:
+        logger.error(f"Error reading first row of Excel file {path}: {e}")
+        return 0
 
-def process_one_third_octave_xlsx(xlsx_path, output_folder,count,excel_rows):
+def get_length_excel(path,sheet_name):
+    wb = openpyxl.load_workbook(path,read_only=True,data_only=True)
+    ws = wb[f'{sheet_name}'] if sheet_name else wb.active
+
+    last_row_idx = ws.max_row
+    
+    return last_row_idx
+
+def handle_not_finished_minute(datetime):
+
+    if not datetime.minute == 00:
+        datetime = datetime.replace(second=00)
+        return datetime 
+
+def get_row_indices_by_column(path, sheet_name, column_name, row_content_list, header_row=1):
+    
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    ws = wb[sheet_name] if sheet_name else wb.active
+
+    excel_length = ws.max_row
+
+    results = np.arange(start = 1,stop=excel_length ,step = 60)
+    return results
+
+
+def get_days_in_df(result_df):
+
+    days_list = []
+
+    for day in result_df['Timestamp']:
+
+        if day.day not in days_list:
+            days_list.append(day.day)
+    
+    return days_list
+
+def process_one_third_octave_xlsx(xlsx_path, output_folder,count):
     
       
     """
     Reads and processes a 1/3 octave band data XLSX file from a LxT sonometer.
     Saves the processed statistics to the specified output folder.
     """
+    
+    try:
+        df_first_row = pd.read_excel(xlsx_path, sheet_name='Measurement History',header= None,skiprows=1,nrows=1)
+        try:
+        # ------------------------------------
+        # 1-Getting first and last row info
+        # ------------------------------------
+            logger.info("[XSLX Processing] Getting info from first and last rows of XLSX file")
 
-    total = excel_rows
-    chunksize = 1000  # Number of rows to read per chunk
-
-
-
-    df_final = pd.DataFrame(columns= ['Filename', 'sensor_id', 'Timestamp', 'Unixtimestamp'] + third_octaves)
-    for skip in tqdm.tqdm(range(0,total,chunksize),desc=f"Processing {chunksize} rows/it of {os.path.basename(xlsx_path)}"):
+            initial_date = handle_not_finished_minute(pd.to_datetime(df_first_row.iloc[0,1],format='%Y-%M-%D'))            
+            excel_length = get_length_excel(xlsx_path,'Measurement History')
+            
+            df_last_row = pd.read_excel(xlsx_path, sheet_name='Measurement History',header= None,skiprows=excel_length-1,nrows=1)
+            final_date = pd.to_datetime(df_last_row.iloc[0,1],format='%Y-%M-%D')
+            
+            df_last_row = df_last_row.drop(np.r_[0:43,79:151],axis=1)
+            df_last_row.dropna(axis=1,inplace=True)
+            df_last_row.columns = third_octaves
         
-        # ---------------------------------------------------
-        # 1- Initializing DataFrames
-        # ---------------------------------------------------
-
-        df_summary = pd.DataFrame(columns=['Filename', 'sensor_id', 'Timestamp', 'Unixtimestamp'],index = [0])
-        df_measurements = pd.DataFrame(columns=third_octaves)
-        df_sum_pivot = pd.DataFrame(columns=['Filename', 'sensor_id', 'Timestamp', 'Unixtimestamp'],index = [0])
-
-        # ---------------------------------------------------
-        # 2- Reading CSVs from XLSX Sheets
-        # ---------------------------------------------------
-        try:
-            df_sum_pivot = pd.read_excel(xlsx_path, sheet_name='Summary', header=None)
-
-            try:
-                
-                if skip == 0:
-                    
-                        df_measurements_pivot = pd.read_excel(xlsx_path, sheet_name='Time History',header = 0,usecols="H:AQ",skiprows = skip,nrows = chunksize)
-                        if df_measurements_pivot.columns.to_list() != third_octaves:
-                            logger.warning(f"Error reading Time History using columns H:AQ {xlsx_path}, trying I:AR")
-                            df_measurements_pivot = pd.read_excel(xlsx_path, sheet_name='Time History',header = 0,usecols="I:AR",skiprows = skip,nrows = chunksize)
-
-                else:
-                    
-                    df_measurements_pivot = pd.read_excel(xlsx_path, sheet_name='Time History', header=None,names = third_octaves,usecols="H:AQ",skiprows = 1+ skip,nrows = chunksize)
-                    if df_measurements_pivot.columns.tolist() != third_octaves:
-
-                        logger.warning(f"Error reading Time History using columns H:AQ {xlsx_path}, trying I:AR")
-                        df_measurements_pivot = pd.read_excel(xlsx_path, sheet_name='Time History', header=None,names = third_octaves,usecols="I:AR",skiprows = 1+ skip,nrows = chunksize)
-            except Exception as e:
-
-                logger.warning(f"Time History sheet not found in {xlsx_path}, trying Measurement History sheet: {e}")
-                
-                if skip == 0:
-                    df_measurements_pivot = pd.read_excel(xlsx_path, sheet_name='Measurement History',header = 0,usecols="H:AQ",skiprows = skip,nrows = chunksize)
-                else:
-                    df_measurements_pivot = pd.read_excel(xlsx_path, sheet_name='Measurement History', header=None,names = third_octaves,usecols="I:AR",skiprows = 1+ skip,nrows = chunksize)
-
-            except Exception as e:
-                
-                logger.error(f"Neither Measurement History nor Time History sheets found in {xlsx_path}: {e}")
-                
-                return
-        except Exception as e:
-            
-            logger.error(f"Error processing XLSX to CSV for {xlsx_path}: {e}")
-            
-            return
-        
-        # ---------------------------------------------------
-        # 3- Processing Summary Sheet
-        # ---------------------------------------------------
-        try:
-
-            
-            df_summary['Filename'] = df_sum_pivot[1][2]
-            df_summary['sensor_id'] = df_sum_pivot[1][3]
-            df_summary['Timestamp'] = pd.to_datetime(df_sum_pivot[1][13], format="%Y-%m-%d  %H:%M:%S")
-            df_summary['Unixtimestamp'] = df_summary['Timestamp'].apply(lambda x: int(x.timestamp()))
-
-        except Exception as e:
-            
-            logger.error(f"Error processing Summary sheet in {xlsx_path}: {e}")
-            
-            return
-        # ---------------------------------------------------
-        # 3- Processing Measurements Sheet
-        # ---------------------------------------------------
-
-        try:
-            
-            df_measurements = df_measurements_pivot[third_octaves].iloc[skip:]   
-            if skip == 0: df_measurements = df_measurements.dropna()         
+            df_first_row = df_first_row.drop(np.r_[0:43,79:151],axis=1)
+            df_first_row.dropna(axis=1,inplace=True)
+            df_first_row.columns = third_octaves
         
         except Exception as e:
-            
-            logger.error(f"Error processing Time/Measurement History sheet in {xlsx_path}: {e}")
-            
-            return
+            logger.error(f"Error reading first or last rows of excel file: {xlsx_path}")
 
-        # ---------------------------------------------------
-        # 3- Concatenating Summary and Measurements DataFrames, extending Filename and sensor_id columns,
-        #    adapting timestamp and unixtimestamp to a minute frequency
-        # ---------------------------------------------------
-
+        # ------------------------------------
+        # 2-Getting content and index info from the desired hourly range
+        # ------------------------------------
         try:
-            
-            start_len = len(df_final)
-            df_final = pd.concat([df_final, df_measurements_pivot], ignore_index=True)
+            logger.info("[XSLX Processing] Getting content and index info from the desired hourly range")
 
-            end_len = len(df_final)
-            df_final.loc[start_len:end_len-1, 'Filename'] = df_summary['Filename'].iloc[0]
-            df_final.loc[start_len:end_len-1, 'sensor_id'] = df_summary['sensor_id'].iloc[0]
-            df_final.loc[start_len:end_len-1, 'Timestamp'] = df_summary['Timestamp'].iloc[0]
-            df_final.loc[start_len:end_len-1, 'Unixtimestamp'] = df_summary['Unixtimestamp'].iloc[0]
+            row_content_list = pd.Series(pd.date_range(initial_date,final_date,freq = 'H')
+                                            .strftime('%Y-%m-%d %H:%M:%S'))
+            
+            row_indexs = get_row_indices_by_column(xlsx_path,sheet_name='Measurement History',column_name = 'Time',row_content_list = row_content_list)
 
         except Exception as e:
+            logger.error(f"Error getting index and context info from hourly range from file: {xlsx_path}")
 
-            logger.error(f"Error concatenating dataframes for {xlsx_path}: {e}")
+
+        try:
+            # ------------------------------------
+            # 3-Reading excel file and naming columns
+            # ------------------------------------
+            logger.info("[XSLX Processing] Reading excel file and naming columns")
+
+            df_result = pd.read_excel(xlsx_path,sheet_name = 'Measurement History',usecols = "AR:CA",header = 0,skiprows = lambda x: x not in row_indexs )
+            df_result.columns = third_octaves
+        except Exception as e:
+            logger.error(f"Error reading excel file and naming columns from file: {xlsx_path}")
+
+        try:
+
+            # ------------------------------------
+            # 4-Implementing data into columns from previously retrieved data
+            # ------------------------------------
+            logger.info("[XSLX Processing] Implementing data into columns from previously retrieved data")
             
-            return
-    
-    first_idx = df_final['Timestamp'].first_valid_index()
-    first_ts  = df_final.loc[first_idx, 'Timestamp']  
+            df_last_row['Timestamp'] = final_date
+            
+            df_result = pd.concat([df_result,df_last_row],ignore_index = True)
 
-    n_rest = len(df_final) - first_idx - 1
-    
-    if n_rest > 0 : 
-        df_final['Timestamp']=pd.date_range(
-            start=first_ts,
-            end = first_ts + timedelta(seconds = int(n_rest + 1)),
-            freq='s')
+            df_result['Timestamp'] = row_content_list
+            df_result['Timestamp'] = pd.to_datetime(df_result['Timestamp'], errors='coerce')
+            df_result['Filename'] = os.path.basename(xlsx_path)
+            df_result['Filename'].fillna(os.path.basename(xlsx_path)) 
+            df_result['Unixtimestamp'] = (df_result['Timestamp'].view('int64') // 10**9).astype('Int64')
+
+            df_result.sort_values(by='Timestamp')            
+
+        except Exception as e:
+            logger.error(f"Error implementing data into columns of xlsx file: {xlsx_path}")
+
+        try:
+            # ------------------------------------
+            # 4-Saving per day CSV files from whole DF, and whole DF
+            # ------------------------------------
+
+            logger.info("[XSLX Processing] Saving per day CSV files from whole DF, and whole DF")
+
+            days = get_days_in_df(df_result)
+            output_folder = output_folder + f'/{point}'
+
+            os.makedirs(output_folder, exist_ok=True)
+            
+            for day in days:
+                
+                day_df = df_result.loc[df_result['Timestamp'].dt.day == int(day)].copy()
+                filename = os.path.join(output_folder, f"day{day}_{point}_Processed_{count}.csv") 
+                day_df.to_csv(filename, index=False)
+
+            df_result.to_csv(output_folder + f"/{point}_Processed_{count}.csv")
+
+        except Exception as e:
+            logger.error(f"Error splitting whole DF into per day DFs:{e}")
 
 
-    df_final['Unixtimestamp'] = (
-    df_final['Timestamp']
-    .dt.tz_localize('Europe/Madrid', nonexistent='shift_forward', ambiguous='NaT')
-    .dt.tz_convert('UTC')
-    .view('int64') // 10**9
-    )
-    point = file_path.split('/')[-2]
-    name = point + '_processed.csv' if count == 0 else point + f'_processed_{count}.csv'
-    
-    df_final.dropna(inplace=True)
-    df_final.to_csv(os.path.join(output_folder, name), index=False)
+
+
+
+
+    except Exception as e:
+        logger.error(f"Error reading Measurement History sheet from {path} ,  trying Time History sheet")
+
 
 if __name__ == "__main__":
 
+    start_time = time.time()
     logger = setup_logging("sonometer_process")
 
-    logger.info("[SONOMETER] -> [Starting 1/3 Octave Band Data Processing from LxT CSV files]")
+    logger.info("[SONOMETER] -> [Starting 1/3 Octave Band Data Processing from LxT XLSX files]")
 
     path = SANDISK_PATH_LINUX
     for point_folder in os.listdir(path):
@@ -183,8 +210,12 @@ if __name__ == "__main__":
                             
                             file_path = os.path.join(points_folders,point, file)
                             logger.info(f"[SONOMETER] -> Processing file: {file_path}")                            
-                            process_one_third_octave_xlsx(file_path, output_point_folder,count,600000)
+                            process_one_third_octave_xlsx(file_path, output_point_folder,count)
                             count += 1
-                            logger.info(f"[SONOMETER] -> Processed data saved at {output_point_folder}")
+                            logger.info(f"[SONOMETER] -> Processed data saved at: {output_point_folder}")
 
+    logger.info("---------------------------")
+    logger.info("--- Execution Time:%s  ---" % round(time.time() - start_time,2))
+    logger.info("---------------------------")
 
+    print("--- %s seconds ---" % round(time.time() - start_time,2))
