@@ -5,12 +5,13 @@
     "version": "0.2.0",
     "configurations": [
 
+
         
 
         {
             "name": "Python Debugger: queries debugging",
             "type": "debugpy",
-            "module": "05_queries.queries",
+            "module": "04_queries.queries",
             "request": "launch",
             "console": "integratedTerminal",
             "args": [

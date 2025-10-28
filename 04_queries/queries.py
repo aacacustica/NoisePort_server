@@ -6,17 +6,16 @@ import pandas as pd
 import tqdm 
 import decimal
 import ssl
+import time
+import sys
 
-
-from logging_config import setup_logging
+sys.path.insert(0, "/home/aac_s3_test/noisePort_server/04_queries")
+from processing import *
+from logging_config import *
 from utils import *
 from config import *
 
-from ast import literal_eval
 
-import wave
-import contextlib
-from datetime import datetime
 
 def initialize_database(db, logger):
     """Ensure that the database and table exist, recreating them from scratch."""
@@ -61,93 +60,80 @@ def initialize_database(db, logger):
 
 
 
-def load_data_db(db, data_path, logger, table_name):
-    cursor = db.cursor()
+def load_data_db(db, data_path, logger, table_name=ACOUSTIC_TABLE_NAME):
+    cursor = db.cursor(dictionary=True)
+    
+
+    if table_name == ACOUSTIC_TABLE_NAME: query_load = QUERYS['load_acoustics_db'].format(data_path=data_path,table_name=table_name)
+    if table_name == WAV_TABLE_NAME: query_load = QUERYS['load_wavs_db'].format(data_path=data_path,table_name=table_name)
+    if table_name == PREDICT_TABLE_NAME: query_load = QUERYS['load_preds_db'].format(data_path=data_path,table_name=table_name)
+    if table_name == SONOMETER_TABLE_NAME: query_load = QUERYS['load_sonometers_db'].format(data_path=data_path,table_name=table_name) 
+    
     try:
-
-
-        # 2) load new CSV
-        if table_name == ACOUSTIC_TABLE_NAME:
-            query_load = f"""
-            LOAD DATA LOCAL INFILE '{data_path}'
-            INTO TABLE {table_name}
-            FIELDS TERMINATED BY ','
-            OPTIONALLY ENCLOSED BY '"'
-            LINES TERMINATED BY '\n'
-            IGNORE 1 LINES
-            (
-            sensor_id,
-            Filename,
-            Timestamp,
-            Unixtimestamp,
-            LA, LC, LZ, LAmax, LAmin,
-            `12.6Hz`, `15.8Hz`, `20.0Hz`, `25.1Hz`, `31.6Hz`,
-            `39.8Hz`, `50.1Hz`, `63.1Hz`, `79.4Hz`, `100.0Hz`,
-            `125.9Hz`, `158.5Hz`, `199.5Hz`, `251.2Hz`, `316.2Hz`,
-            `398.1Hz`, `501.2Hz`, `631.0Hz`, `794.3Hz`, `1000.0Hz`,
-            `1258.9Hz`, `1584.9Hz`, `1995.3Hz`, `2511.9Hz`,
-            `3162.3Hz`, `3981.1Hz`, `5011.9Hz`, `6309.6Hz`,
-            `7943.3Hz`, `10000.0Hz`, `12589.3Hz`, `15848.9Hz`
-            );
-            """
-            cursor.execute(query_load)
-            db.commit()
-            logger.info("Acoustic data successfully loaded in the DB")
-        elif table_name == PREDICT_TABLE_NAME:
-            query_load = f""" 
-            LOAD DATA LOCAL INFILE '{data_path}'
-            INTO TABLE {table_name} 
-            FIELDS TERMINATED BY ','
-            OPTIONALLY ENCLOSED BY '"' 
-            LINES TERMINATED BY '\n'
-            IGNORE 1 LINES
-            (
-            id,
-             Prediction_1,
-             Prediction_2, 
-             Prediction_3, 
-             Prob_1, 
-             Prob_2, 
-             Prob_3, 
-             Filename, 
-             Timestamp 
-             );
-            """
-            cursor.execute(query_load)
-            db.commit()
-            logger.info("Predictios data successfully loaded in the DB")
-        elif table_name == WAV_TABLE_NAME:
-            query_load = f"""
-            LOAD DATA LOCAL INFILE '{data_path}'
-            INTO TABLE {WAV_TABLE_NAME}
-            FIELDS TERMINATED BY ','
-            OPTIONALLY ENCLOSED BY '"'
-            LINES TERMINATED BY '\n'
-            IGNORE 1 LINES
-            (filename, timestamp, duration);           
-            """
-            cursor.execute(query_load)
-            db.commit()
-            logger.info("WAV data successfully loaded in the DB")
-
+        # execute the query to load data.
+        cursor.execute(query_load)
+        # commit the transaction so changes are saved.
+        db.commit()
+        logger.info("Data loaded successfully")
     except mysql.connector.Error as err:
         logger.error("Error loading data: %s", err)
         db.rollback()
-
     finally:
         cursor.close()
+        # db.close() 
+
+
+def get_columns_for_table(table_name):
+    """
+    Devuelve la lista de columnas para cada tabla como strings,
+    para usar en LOAD DATA LOCAL INFILE.
+    """
+    
+    if table_name == ACOUSTIC_TABLE_NAME:
+        return [
+            "sensor_id", "Filename", "Timestamp", "Unixtimestamp",
+            "LA","LC","LZ","LAmax","LAmin",
+            "`1/3 LZeq 6.3`", "`1/3 LZeq 8.0`", "`1/3 LZeq 10.0`", "`1/3 LZeq 12.5`","`1/3 LZeq 16.0`",
+            "`1/3 LZeq 20.0`", "`1/3 LZeq 25.0`", "`1/3 LZeq 31.5`", "`1/3 LZeq 40.0`", "`1/3 LZeq 50.0`",
+            "`1/3 LZeq 63.0`", "`1/3 LZeq 80.0`", "`1/3 LZeq 100`", "`1/3 LZeq 125`", "`1/3 LZeq 160`",
+            "`1/3 LZeq 200`", "`1/3 LZeq 250`", "`1/3 LZeq 315`", "`1/3 LZeq 400`", "`1/3 LZeq 500`",
+            "`1/3 LZeq 630`", "`1/3 LZeq 800`", "`1/3 LZeq 1000`", "`1/3 LZeq 1250`", "`1/3 LZeq 1600`",
+            "`1/3 LZeq 2000`", "`1/3 LZeq 2500`", "`1/3 LZeq 3150`"," `1/3 LZeq 4000`"," `1/3 LZeq 5000`",
+            "`1/3 LZeq 6300`", "`1/3 LZeq 8000`", "`1/3 LZeq 10000`", "`1/3 LZeq 12500`", "`1/3 LZeq 16000`"," `1/3 LZeq 20000`"
+
+        ]
+    elif table_name == PREDICT_TABLE_NAME:
+        return ["id","Prediction_1","Prediction_2","Prediction_3",
+                "Prob_1","Prob_2","Prob_3","Filename","Timestamp"]
+    elif table_name == WAV_TABLE_NAME:
+        return ["filename","timestamp","duration"]
+    elif table_name == SONOMETER_TABLE_NAME:
+        return [
+            "sensor_id", "Filename", "Timestamp", "Unixtimestamp",
+            "LA","LC","LAmax","LAmin",
+            "`1/3 LZeq 6.3`", "`1/3 LZeq 8.0`", "`1/3 LZeq 10.0`", "`1/3 LZeq 12.5`","`1/3 LZeq 16.0`",
+            "`1/3 LZeq 20.0`", "`1/3 LZeq 25.0`", "`1/3 LZeq 31.5`", "`1/3 LZeq 40.0`", "`1/3 LZeq 50.0`",
+            "`1/3 LZeq 63.0`", "`1/3 LZeq 80.0`", "`1/3 LZeq 100`", "`1/3 LZeq 125`", "`1/3 LZeq 160`",
+            "`1/3 LZeq 200`", "`1/3 LZeq 250`", "`1/3 LZeq 315`", "`1/3 LZeq 400`", "`1/3 LZeq 500`",
+            "`1/3 LZeq 630`", "`1/3 LZeq 800`", "`1/3 LZeq 1000`", "`1/3 LZeq 1250`", "`1/3 LZeq 1600`",
+            "`1/3 LZeq 2000`", "`1/3 LZeq 2500`", "`1/3 LZeq 3150`"," `1/3 LZeq 4000`"," `1/3 LZeq 5000`",
+            "`1/3 LZeq 6300`", "`1/3 LZeq 8000`", "`1/3 LZeq 10000`", "`1/3 LZeq 12500`", "`1/3 LZeq 16000`"," `1/3 LZeq 20000`"
+        ]
+    else:
+        return []
 
 
 
 def power_laeq_avg(db, logger, table_name=ACOUSTIC_TABLE_NAME):
     cursor = db.cursor(dictionary=True)
+    
     query = f"""
     SELECT
-      sensor_id,
-      MIN(Unixtimestamp)                  AS unixtimestamp,
-      10 * LOG10(AVG(POWER(10, LA/10)))   AS AVG_LAeq,
-      MAX(LAmax)                          AS max_LAmax,
-      MIN(LAmin)                          AS min_LAmin
+    sensor_id,
+    MIN(Unixtimestamp)                  AS unixtimestamp,
+    10 * LOG10(AVG(POWER(10, LA/10)))   AS AVG_LAeq,
+    MAX(LAmax)                          AS max_LAmax,
+    MIN(LAmin)                          AS min_LAmin
     FROM {table_name}
     GROUP BY sensor_id;
     """
@@ -243,388 +229,22 @@ def decimal_to_native(obj):
 
 
 
-def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processed_folder,processed_folder_txt):
-    # 1) clear old data --> comment this when db is working fine
-    for day in tqdm.tqdm(folder_days, desc="[Acoustics] Processing days", unit="day"):
-        # checking if the day is already processed
-        if day in processed_folder:
-            logger.info("[Acoustics] Already processed: %s", day)
-            continue
-
-        # ------------------------------------
-        # 1-Taking day string to save the concat file
-        # ------------------------------------
-        try:
-            day_str = day.split("/")[-1]
-            logger.info("[Acoustics] Processing day_hour: %s", day_str)
-            logger.info("[Acoustics] Processing: %s", day)
-        except Exception as e:
-            logger.error(f"[Acoustics] Error processing day: {e}")
-            continue
-
-        # ------------------------------------
-        # 2-Appending to list csv files in csv per day folder
-        # ------------------------------------
-        try:
-            csv_files = os.listdir(day)
-            csv_files = [csv_file for csv_file in csv_files if csv_file.endswith(".csv")]
-            logger.info("[Acoustics] CSV files in %s: %s", day, csv_files)
-            csv_files = [os.path.join(day, csv_file) for csv_file in csv_files]
-        except Exception as e:
-            logger.error(f"[Acoustics] Error listing CSV files: {e}")
-            continue
-
-        # ------------------------------------
-        # 3-Concatenation of csv files for one hour processing
-        # ------------------------------------
-        try:
-            logger.info("")
-            # concatenating the csv files
-            logger.info("[Acoustics] Trying to concatenate the csv files to process one hour of audio data recordings")
-            df_day = pd.concat([pd.read_csv(csv_file) for csv_file in csv_files], ignore_index=True)
-        except Exception as e:
-            logger.error(f"[Acoustics] Error concatenating CSV files: {e}")
-            continue
-
-        # ------------------------------------
-        # 4-ordering by timestamp and turning the result into a csv so we can use it
-        # ------------------------------------
-        try:
-            df_day = df_day.sort_values(by=["Timestamp"])
-            # round LA values to 2 decimal places
-            df_day["LA"] = df_day["LA"].round(1)
-            # print(df_day)
-            # exit()
-
-            # make result csv_file
-            csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
-            logger.info("[Acoustics] Concatenated CSV file path: %s", csv_concat_path)
-
-            # save csv file
-            df_day.to_csv(os.path.join(query_folder, f"{day_str}.csv"), index=False)
-            logger.info("[Acoustics] Concatenated CSV files, saved as: %s", csv_concat_path)
-        except Exception as e:
-            logger.error(f"[Acoustics] Error saving concatenated CSV file: {e}")
-            continue
-
-        # ------------------------------------
-        # 5-Loading ACOUSTIC csv into the DB table
-        # ------------------------------------
-        try:
-            logger.info("")
-            logger.info("[Acoustics] Loading data into TABLE")
-            load_data_db(db, csv_concat_path, logger,table_name=ACOUSTIC_TABLE_NAME)
-            cur = db.cursor()
-            cur.execute(f"SELECT COUNT(*) FROM {ACOUSTIC_TABLE_NAME}")
-            n = cur.fetchone()[0]
-            logger.info(f"[Acoustics] → {ACOUSTIC_TABLE_NAME} contains {n} rows after LOAD DATA")
-            cur.close()
-        except Exception as e:
-            logger.error(f"[Acoustics] Error loading data into database: {e}")
-            continue
-
-        # ------------------------------------
-        # 6-query and convert results to json
-        # ------------------------------------
-        try:
-            logger.info("")
-            logger.info("[Acoustics] Query and Convert Results to JSON")
-            avg_results = power_laeq_avg(db, logger)
-            # print(avg_results)
-            logger.info(avg_results)
-            # addig the "day", which is "/mnt/sandisk/CONTENEDORES/CONTENEDORES/P2_CONTENEDORES/acoustic_params/20250407_03" to the avg_results
-            for result in avg_results:
-                result["day_path"] = day
-
-            logger.info("[Acoustics] Power LAeq Average Results:")
-            logger.info(avg_results)
-            # exit()
-
-            if avg_results is not None:
-                logger.info("[Acoustics] Power LAeq Average Results:")
-                # send the data MQTT
-                send_mqtt_data(avg_results, logger)
-            else:
-                logger.warning("[Acoustics] No results returned from power_laeq_avg query.")
-        except Exception as e:
-            logger.error(f"[Acoustics] Error querying and converting results to JSON: {e}")
-            continue
-
-        # append the avg_results to the all_info list
-        all_info.append(avg_results)
-        # print(all_info)
-
-        # ------------------------------------
-        # 7-Update processed folder
-        # ------------------------------------
-        try:
-            logger.info("")
-            update_processed_folder(processed_folder_txt, day)
-            processed_folder = load_processed_folder(processed_folder_txt)
-            logger.info("[Acoustics] Added to processed files: %s", day)
-        except Exception as e:
-            logger.error(f"[Acoustics] Error updating processed files: {e}")
-            continue
-
-def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed_folder, processed_folder_txt):
-    
-    # 1) clear old data --> comment this when db is working fine
-    
-
-    for day in tqdm.tqdm(folder_days, desc="[Predictions] Processing days", unit="day"):
-        if day in processed_folder:
-            logger.info("Already processed: %s", day)
-            continue
-        # ------------------------------------
-        # 1-Taking day string to save the concat file
-        # ------------------------------------
-
-        try:
-            day_str = day.split("/")[-1]
-            logger.info("[Predictions] Processing day_hour: %s", day_str)
-            logger.info("[Predictions] Processing: %s", day)
-        except Exception as e:
-            logger.error(f"[Predictions] Error processing day: {e}")
-            continue
-        # ------------------------------------
-        # 2-Appending to list csv files in csv per day folder
-        # ------------------------------------
-        try:
-            csv_files = os.listdir(day)
-            csv_files = [csv_file for csv_file in csv_files if csv_file.endswith("1.0.csv")]
-            logger.info("[Predictions] CSV files in %s: %s", day, csv_files)
-            csv_files = [os.path.join(day, csv_file) for csv_file in csv_files]
-        except Exception as e:
-            logger.error(f"[Predictions] Error listing CSV files: {e}")
-            continue
-        # ------------------------------------
-        # 3-Concatenation of csv files for one hour processing
-        # ------------------------------------
-        try:
-            logger.info("")
-            # concatenating the csv files
-            logger.info("[Predictions] Trying to concatenate the csv files to process one hour of audio data recordings")
-            df_day = pd.concat([pd.read_csv(csv_file,converters={
-                'class': literal_eval,
-                'probability': literal_eval}) for csv_file in csv_files], ignore_index=True)
-        except Exception as e:
-            logger.error(f"[Predictions] Error concatenating CSV files: {e}")
-            continue
-        # ------------------------------------
-        # 4-ordering by timestamp 
-        # exploding prediction and probability columns  
-        # turning the result into a csv so we can use it
-        # rearranging df columns so it fits in the table
-        # ------------------------------------
-        try:
-            df_day = df_day.sort_values(by=["Timestamp"])
-            df_day["prediction1"],df_day["prediction2"],df_day["prediction3"] = zip(*list(df_day['class'].values))
-            df_day['probability1'],df_day['probability2'],df_day['probability3'] = zip(*list(df_day['probability'].values))
-            
-            df_out = df_day.rename(columns={
-                'prediction1': 'Prediction_1',
-                'prediction2': 'Prediction_2',
-                'prediction3': 'Prediction_3',
-                'probability1': 'Prob_1',
-                'probability2': 'Prob_2',
-                'probability3': 'Prob_3'
-            })
-
-            cols = ['Prediction_1','Prediction_2','Prediction_3',
-                    'Prob_1','Prob_2','Prob_3',
-                    'Filename','Timestamp']
-
-            df_out = df_out[cols]
-            
-            # make result csv_file
-            csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
-            
-            logger.info("[Predictions] Concatenated CSV file path: %s", csv_concat_path)
-
-            # save csv file
-            df_out.to_csv(os.path.join(query_folder, f"{day_str}.csv"), index=False)
-            logger.info("[Predictions] Concatenated CSV files, saved as: %s", csv_concat_path)
-        except Exception as e:
-            logger.error(f"[Predictions] Error saving concatenated CSV file: {e}")
-            continue
-        # ------------------------------------
-        # 5-Loading PREDICTIONS csv into the DB table
-        # ------------------------------------
-        try:
-            logger.info("")
-            logger.info("[Predictions] Loading data into TABLE")
-            load_data_db(db, csv_concat_path, logger,table_name=PREDICT_TABLE_NAME)
-            cur = db.cursor()
-            cur.execute(f"USE {DATABASE_NAME}")
-            cur.execute(f"SELECT COUNT(*) FROM {PREDICT_TABLE_NAME}")
-            n = cur.fetchone()[0]
-            logger.info(f"[Predictions] → {PREDICT_TABLE_NAME} contains {n} rows after LOAD DATA")
-            cur.close()
-        except Exception as e:
-            logger.error(f"[Predictions] Error loading data into database: {e}")
-            continue
-        # ------------------------------------
-        # 6-query and convert results to json
-        # ------------------------------------
-        try:
-            logger.info("")
-            logger.info("[Predictions] Query and Convert Results to JSON")
-            avg_results = power_laeq_avg(db, logger)
-            # print(avg_results)
-            logger.info(avg_results)
-            # addig the "day", which is "/mnt/sandisk/CONTENEDORES/CONTENEDORES/P2_CONTENEDORES/acoustic_params/20250407_03" to the avg_results
-            for result in avg_results:
-                result["day_path"] = day
-
-            logger.info("[Predictions] Power LAeq Average Results:")
-            logger.info(avg_results)
-            # exit()
-
-            if avg_results is not None:
-                logger.info("[Predictions] Power LAeq Average Results:")
-                # send the data MQTT
-                send_mqtt_data(avg_results, logger)
-            else:
-                logger.warning("[Predictions] No results returned from power_laeq_avg query.")
-        except Exception as e:
-            logger.error(f"[Predictions] Error querying and converting results to JSON: {e}")
-            continue
-        # ------------------------------------
-        # 7-Update processed folder #TODO: check if this is necessary
-        # ------------------------------------
-        try:
-            logger.info("")
-            update_processed_folder(processed_folder_txt, day)
-            processed_folder = load_processed_folder(processed_folder_txt)
-            logger.info("[Predictions] Added to processed files: %s", day)
-        except Exception as e:
-            logger.error(f"[Predictions] Error updating processed files: {e}")
-            continue
-
-def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_folder, processed_folder_txt):
-
-    for day in tqdm.tqdm(folder_days, desc="[Wave Files] Processing days", unit="day"):
-        if day in processed_folder:
-            logger.info("Already processed: %s", day)
-            continue
-        # ------------------------------------
-        # 1-Taking day string to save the concat file
-        # ------------------------------------
-
-        try:
-            day_str = day.split("/")[-1]
-            logger.info("[Wave Files] Processing day_hour: %s", day_str)
-            logger.info("[Wave Files] Processing: %s", day)
-        except Exception as e:
-            logger.error(f"[Wave Files] Error processing day: {e}")
-            continue
-        # ------------------------------------
-        # 2-Reading wav time lengths from wav folder
-        # ------------------------------------
-        try:
-            duration = []
-            
-            for wavfile in os.listdir(day):
-                if wavfile.endswith(".wav"):
-                    with contextlib.closing(wave.open(os.path.join(day,wavfile),'r')) as f:
-                            frames = f.getnframes()
-                            rate = f.getframerate()
-                            duration_wav = frames / float(rate)
-                            duration.append(duration_wav)
-        except Exception as e:
-            logger.error(f"[Wave Files] Error listing CSV files: {e}")
-            continue
-        # ------------------------------------
-        # 3-Creating csvs with filename, timestamp and duration
-        # ------------------------------------
-        try:
-            logger.info("")
-            # concatenating the csv files
-            logger.info("[Wave Files] Trying to create csv files with filename, timestamp and duration")
-            df_day = pd.DataFrame(columns=['Filename','Timestamp','Duration'])
-
-            df_day['Filename'] = os.listdir(day)
-            df_day['Duration'] = duration
-            df_day['Timestamp'] = pd.to_datetime(
-                df_day['Filename'].astype(str).str.replace('.wav', '', regex=False),
-                format='%Y%m%d_%H%M%S',
-                errors='raise'  # usa 'coerce' si quieres NaT cuando no coincida
-            )
-
-        except Exception as e:
-            logger.error(f"[Predictions] Error concatenating CSV files: {e}")
-            continue
-        # ------------------------------------
-        # 4-ordering by timestamp 
-        # saving csv to wav_files_query folder
-        # ------------------------------------
-        try:
-            df_day = df_day.sort_values(by=["Timestamp"])
 
 
-            # make result csv_file
-            csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
-            
-            # save csv file
-            df_day.to_csv(os.path.join(query_folder, f"{day_str}.csv"), index=False)
-            logger.info(f"[Wave Files] Concatenated CSV files, saved as:{csv_concat_path}" )
 
-        except Exception as e:
-            logger.error(f"[Wave Files] Error saving concatenated CSV file: {e}")
-            continue
-        # ------------------------------------
-        # 5-Loading PREDICTIONS csv into the DB table
-        # ------------------------------------
-        try:
-            logger.info("")
-            logger.info("[Wave Files] Loading data into TABLE")
-            load_data_db(db, csv_concat_path, logger,table_name=WAV_TABLE_NAME)
-            cur = db.cursor(buffered=True)
-            cur.execute(f"USE {DATABASE_NAME}")
-            cur.execute(f"SELECT COUNT(*) FROM {WAV_TABLE_NAME}")
-            n = cur.fetchone()[0]
-            logger.info(f"[Wave Files] → {WAV_TABLE_NAME} contains {n} rows after LOAD DATA")
-            cur.close()
-        except Exception as e:
-            logger.error(f"[Wave Files] Error loading data into database: {e}")
-            continue
-        # ------------------------------------
-        # 6-query and convert results to json
-        # ------------------------------------
-        try:
-            logger.info("")
-            logger.info("[Wave Files] Query and Convert Results to JSON")
-            avg_results = power_laeq_avg(db, logger)
-            # print(avg_results)
-            logger.info(avg_results)
-            # addig the "day", which is "/mnt/sandisk/CONTENEDORES/CONTENEDORES/P2_CONTENEDORES/acoustic_params/20250407_03" to the avg_results
-            for result in avg_results:
-                result["day_path"] = day
 
-            logger.info("[Wave Files] Power LAeq Average Results:")
-            logger.info(avg_results)
-            # exit()
 
-            if avg_results is not None:
-                logger.info("[Wave Files] Power LAeq Average Results:")
-                # send the data MQTT
-                send_mqtt_data(avg_results, logger)
-            else:
-                logger.warning("[Wave Files] No results returned from power_laeq_avg query.")
-        except Exception as e:
-            logger.error(f"[Wave Files] Error querying and converting results to JSON: {e}")
-            continue
-        # ------------------------------------
-        # 7-Update processed folder #TODO: check if this is necessary
-        # ------------------------------------
-        try:
-            logger.info("")
-            update_processed_folder(processed_folder_txt, day)
-            processed_folder = load_processed_folder(processed_folder_txt)
-            logger.info("[Wave Files] Added to processed files: %s", day)
-        except Exception as e:
-            logger.error(f"[Wave Files] Error updating processed files: {e}")
-            continue
+
+
+
+
+
+
+
+
+
+
+
 
 
 def main():
@@ -710,6 +330,7 @@ def main():
                 query_pred_folder = os.path.join(point, "predictions_litle_query")
                 query_acoustic_folder = os.path.join(point, "acoustic_params_query")
                 query_wav_folder = os.path.join(point, "wav_files_query")
+                query_sonometer_folder = os.path.join(point,"sonometer_acoustics_query")
 
                 if not os.path.exists(query_acoustic_folder):
                     os.makedirs(query_acoustic_folder)
@@ -738,6 +359,7 @@ def main():
                 processed_folder_acoustic_txt = os.path.join(query_acoustic_folder, "processed_acoustics.txt")
                 processed_folder_predictions_txt = os.path.join(query_pred_folder, "processed_predictions.txt")
                 processed_folder_wav_txt = os.path.join(query_wav_folder, "processed_wavs.txt")
+                processed_folder_sonometer_txt = os.path.join(query_sonometer_folder,"processed_sonometers.txt")
 
                 logger.info(f"Saving the proicessed file txt here --> {processed_folder_acoustic_txt}")
                 processed_acoustics = load_processed_folder(processed_folder_acoustic_txt)
@@ -778,24 +400,57 @@ def main():
             query_acoustic_folder = point + '/' + 'acoustic_params_query'
             query_wav_folder = point + '/' + 'wav_files_query'
             
+            whole_start_time = time.time()
+            
             
             for folder in os.listdir(point):
 
                 if folder == 'acoustic_params'  and ACOUSTIC_QUERY_SWITCH:
+                    
                     folder_days = get_desired_query_folder(folder_days,folder)
                     logger.info("Starting ACOUSTIC FOLDER processing")
-                    process_acoustic_folder(db,logger,folder_days, all_info, query_acoustic_folder, processed_acoustics, processed_folder_acoustic_txt)
+                    start_time = time.time()
+                    
+                    #process_acoustic_folder(db,logger,folder_days, all_info, query_acoustic_folder, processed_acoustics, processed_folder_acoustic_txt)
+                    
+                    print(" --- %s seconds in execution ---" % round(time.time() - start_time,2))
                     logger.info("Finished ACOUSTIC FOLDER processing")
+                
                 if folder == 'predictions_litle' and PREDICT_QUERY_SWITCH:
+                    
                     folder_days = get_desired_query_folder(folder_days,folder)
                     logger.info("Starting PREDICTION FOLDER processing")
-                    process_pred_folder(db,logger,folder_days, all_info, query_pred_folder, processed_predictions, processed_folder_predictions_txt)
+                    start_time = time.time()
+
+                    #process_pred_folder(db,logger,folder_days, all_info, query_pred_folder, processed_predictions, processed_folder_predictions_txt)
+                    
+                    print(" --- %s seconds in execution ---" % round(time.time() - start_time,2))
                     logger.info("Finished PREDICTION FOLDER processing")
+                
                 if folder == 'wav_files' and WAV_QUERY_SWITCH:
+                    
                     folder_days = get_desired_query_folder(folder_days,folder)
                     logger.info("Starting WAV FOLDER processing")
-                    process_wav_folder(db,logger,folder_days, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)
+                    start_time = time.time()
+                    
+                    #process_wav_folder(db,logger,folder_days, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)
+                    
+                    print(" --- %s seconds in execution ---" % round(time.time() - start_time,2))
                     logger.info("Finished WAV FOLDER processing")
+        
+                if folder == 'sonometer_files' and SONOMETER_QUERY_SWITCH:  
+
+                    
+                    logger.info("Starting SONOMETER FOLDER processing")
+                    start_time = time.time()
+                    sonometer_path = point + f'/{folder}'
+                    process_sonometer_folder(db,logger,sonometer_path)
+
+            print(" --- %s seconds in total execution ---" % round(time.time() - whole_start_time,2))
+        
+        
+        
+        
         else:
             logger.info("Folder not found")
             continue
