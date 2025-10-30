@@ -126,17 +126,28 @@ def get_columns_for_table(table_name):
 
 def power_laeq_avg(db, logger, table_name=ACOUSTIC_TABLE_NAME):
     cursor = db.cursor(dictionary=True)
-    
-    query = f"""
-    SELECT
-    sensor_id,
-    MIN(Unixtimestamp)                  AS unixtimestamp,
-    10 * LOG10(AVG(POWER(10, LA/10)))   AS AVG_LAeq,
-    MAX(LAmax)                          AS max_LAmax,
-    MIN(LAmin)                          AS min_LAmin
-    FROM {table_name}
-    GROUP BY sensor_id;
-    """
+    if table_name == SONOMETER_TABLE_NAME:
+        query = f"""
+        SELECT
+        sensor_id,
+        MIN(Unixtimestamp)                  AS unixtimestamp,
+        10 * LOG10(AVG(POWER(10, LAeq/10)))   AS AVG_LAeq,
+        MAX(LAmax)                          AS max_LAmax,
+        MIN(LAmin)                          AS min_LAmin
+        FROM {table_name}
+        GROUP BY sensor_id;
+        """
+    else:
+            query = f"""
+        SELECT
+        sensor_id,
+        MIN(Unixtimestamp)                  AS unixtimestamp,
+        10 * LOG10(AVG(POWER(10, LA/10)))   AS AVG_LAeq,
+        MAX(LAmax)                          AS max_LAmax,
+        MIN(LAmin)                          AS min_LAmin
+        FROM {table_name}
+        GROUP BY sensor_id;
+        """
     try:
         cursor.execute(query)
         rows = cursor.fetchall()
@@ -310,11 +321,15 @@ def main():
     for point in tqdm.tqdm(points, desc="Processing points", unit="point"):
         if "P2_CONTENEDORES" in point:
             try:
+                
                 # ---------------------------
+                
                 point_str = point.split("/")[-1]
                 acoust_folder = os.path.join(point, storage_output_acoust_folder)
                 logger.info(f"Acoustic params folder: {acoust_folder}")
+                
                 # checking if the folder exist
+                
                 if os.path.isdir(acoust_folder):
                     logger.info(f"Folder exists: {acoust_folder}")
                 else:
@@ -323,9 +338,11 @@ def main():
 
 
                 logger.info(f"")
+                
                 # ---------------------------
                 # CREATING QUERY FOLDERS IF THEY DONT EXIST
                 # ---------------------------
+                
                 query_acoustic_folder = os.path.join(point, "acoustic_params_query")
                 query_pred_folder = os.path.join(point, "predictions_litle_query")
                 query_acoustic_folder = os.path.join(point, "acoustic_params_query")
@@ -407,44 +424,38 @@ def main():
 
                 if folder == 'acoustic_params'  and ACOUSTIC_QUERY_SWITCH:
                     
-                    folder_days = get_desired_query_folder(folder_days,folder)
+                    folder_days = get_desired_query_folder(folder_days,folder)                  
                     logger.info("Starting ACOUSTIC FOLDER processing")
-                    start_time = time.time()
-                    
-                    #process_acoustic_folder(db,logger,folder_days, all_info, query_acoustic_folder, processed_acoustics, processed_folder_acoustic_txt)
-                    
+                    start_time = time.time()                 
+                    process_acoustic_folder(db,logger,folder_days, all_info, query_acoustic_folder, processed_acoustics, processed_folder_acoustic_txt)                 
                     print(" --- %s seconds in execution ---" % round(time.time() - start_time,2))
                     logger.info("Finished ACOUSTIC FOLDER processing")
                 
                 if folder == 'predictions_litle' and PREDICT_QUERY_SWITCH:
                     
-                    folder_days = get_desired_query_folder(folder_days,folder)
+                    folder_days = get_desired_query_folder(folder_days,folder)                 
                     logger.info("Starting PREDICTION FOLDER processing")
                     start_time = time.time()
-
-                    #process_pred_folder(db,logger,folder_days, all_info, query_pred_folder, processed_predictions, processed_folder_predictions_txt)
-                    
+                    process_pred_folder(db,logger,folder_days, all_info, query_pred_folder, processed_predictions, processed_folder_predictions_txt)                 
                     print(" --- %s seconds in execution ---" % round(time.time() - start_time,2))
                     logger.info("Finished PREDICTION FOLDER processing")
                 
                 if folder == 'wav_files' and WAV_QUERY_SWITCH:
                     
-                    folder_days = get_desired_query_folder(folder_days,folder)
+                    folder_days = get_desired_query_folder(folder_days,folder)                   
                     logger.info("Starting WAV FOLDER processing")
-                    start_time = time.time()
-                    
-                    #process_wav_folder(db,logger,folder_days, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)
-                    
+                    start_time = time.time()                   
+                    process_wav_folder(db,logger,folder_days, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)                   
                     print(" --- %s seconds in execution ---" % round(time.time() - start_time,2))
                     logger.info("Finished WAV FOLDER processing")
         
                 if folder == 'sonometer_files' and SONOMETER_QUERY_SWITCH:  
-
-                    
+                   
                     logger.info("Starting SONOMETER FOLDER processing")
                     start_time = time.time()
-                    sonometer_path = point + f'/{folder}'
-                    process_sonometer_folder(db,logger,sonometer_path)
+                    sonometer_path = point + f'/{folder}'                   
+                    process_sonometer_folder(db,logger,sonometer_path,processed_folder_sonometer_txt)
+                    print(" --- %s seconds in execution ---" % round(time.time() - start_time,2))
 
             print(" --- %s seconds in total execution ---" % round(time.time() - whole_start_time,2))
         
