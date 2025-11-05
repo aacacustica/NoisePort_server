@@ -5,41 +5,18 @@ import pandas as pd
 import numpy as np
 import wave
 import contextlib
+import datetime
 
-from config import WAV_TABLE_NAME,ACOUSTIC_TABLE_NAME,PREDICT_TABLE_NAME,SONOMETER_TABLE_NAME,DATABASE_NAME
-from queries import load_data_db,power_laeq_avg,send_mqtt_data,update_processed_folder,load_processed_folder
+from config import *
+from queries import *
 from ast import literal_eval
 from pathlib import Path
 
 import warnings
 warnings.filterwarnings("ignore")
 
-third_octaves = [
-    '1/3 LZeq 6.3', '1/3 LZeq 8.0', '1/3 LZeq 10.0', '1/3 LZeq 12.5', '1/3 LZeq 16.0',
-    '1/3 LZeq 20.0', '1/3 LZeq 25.0', '1/3 LZeq 31.5', '1/3 LZeq 40.0', '1/3 LZeq 50.0',
-    '1/3 LZeq 63.0', '1/3 LZeq 80.0', '1/3 LZeq 100', '1/3 LZeq 125', '1/3 LZeq 160',
-    '1/3 LZeq 200', '1/3 LZeq 250', '1/3 LZeq 315', '1/3 LZeq 400', '1/3 LZeq 500',
-    '1/3 LZeq 630', '1/3 LZeq 800', '1/3 LZeq 1000', '1/3 LZeq 1250', '1/3 LZeq 1600',
-    '1/3 LZeq 2000', '1/3 LZeq 2500', '1/3 LZeq 3150', '1/3 LZeq 4000', '1/3 LZeq 5000',
-    '1/3 LZeq 6300', '1/3 LZeq 8000', '1/3 LZeq 10000', '1/3 LZeq 12500', '1/3 LZeq 16000', '1/3 LZeq 20000'
-]
-
-third_octaves_time_history = [
-    '1/3 LZeq 6,3', '1/3 LZeq 8,0', '1/3 LZeq 10,0', '1/3 LZeq 12,5', '1/3 LZeq 16,0',
-    '1/3 LZeq 20,0', '1/3 LZeq 25,0', '1/3 LZeq 31,5', '1/3 LZeq 40,0', '1/3 LZeq 50,0',
-    '1/3 LZeq 63,0', '1/3 LZeq 80,0', '1/3 LZeq 100', '1/3 LZeq 125', '1/3 LZeq 160',
-    '1/3 LZeq 200', '1/3 LZeq 250', '1/3 LZeq 315', '1/3 LZeq 400', '1/3 LZeq 500',
-    '1/3 LZeq 630', '1/3 LZeq 800', '1/3 LZeq 1000', '1/3 LZeq 1250', '1/3 LZeq 1600',
-    '1/3 LZeq 2000', '1/3 LZeq 2500', '1/3 LZeq 3150', '1/3 LZeq 4000', '1/3 LZeq 5000',
-    '1/3 LZeq 6300', '1/3 LZeq 8000', '1/3 LZeq 10000', '1/3 LZeq 12500', '1/3 LZeq 16000',
-    '1/3 LZeq 20000'
-]
-
 
 def read_first_row_excel(path):
-    """
-    Reads the first row of an Excel file to determine the total number of rows.
-    """
     try:
         try:
             df_first_row = pd.read_excel(path, sheet_name='Time History',skiprows=1,nrows=1)
@@ -86,14 +63,10 @@ def get_days_in_df(result_df):
     
     return days_list
 
-
-                                    ###TODO###
-    "Define the process_sonometer_csv func when sonometers are in office for csv dump testing"
-                                    ###TODO###
 def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,count):
 
         # ------------------------------------
-        # 1-check if file is in processed txt list
+        # 1-    Check if file is in processed txt list
         # ------------------------------------
     file = os.path.basename(csv_path)
     with open(processed_txt) as myfile:
@@ -102,10 +75,9 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
     
     
     try:
-
-        
+     
         # ------------------------------------
-        # 2-placing columns into starter DFs
+        # 2-    Placing columns into starter DFs
         # ------------------------------------
 
         base_cols = ['LAeq', 'LCeq', 'LAmax', 'LAmin']  
@@ -117,22 +89,25 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
         logger.error(f'[CSV Sonometer]Error placing columns into starter DFs: {e}')
 
     try:
+        # ------------------------------------
+        # 3-    Managing different Svantek output files
+        # ------------------------------------
         for csv_file in os.listdir(csv_path):
             
             csv_file_path = os.path.join(csv_path,csv_file)
             
-            fname = Path(csv_file).name  # o csv_file si es sólo el nombre
+            fname = Path(csv_file).name  
             if fname.endswith(('_Summary.csv', '_Resumen.csv')):
                 df_summary = pd.read_csv(csv_file_path, encoding="ISO-8859-1")
             elif fname.endswith(('_Measurement History.csv', '_Historia de mediciones.csv')):
                 df_measurement = pd.read_csv(csv_file_path, header=0)
                 csv_measurement_path = csv_file_path
-                df_final = pd.DataFrame(columns = base_cols + third_octaves + tail_cols)
+                df_final = pd.DataFrame(columns = base_cols + THIRD_OCTAVES + tail_cols)
 
             elif fname.endswith(('_Time History.csv', '_Historia del tiempo.csv')):
                 df_time = pd.read_csv(csv_file_path, header=0)
                 csv_time_history_path = csv_file_path
-                df_final = pd.DataFrame(columns = base_cols + third_octaves_time_history + tail_cols)
+                df_final = pd.DataFrame(columns = base_cols + THIRD_OCTAVES_TIME_HISTORY + tail_cols)
 
     except Exception as e:
         logger.error(f'[CSV Sonometer] Error checking for available sheets in CSV: {e}')
@@ -141,7 +116,7 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
 
         
         # ------------------------------------
-        # 3-Reading hourly rows in CSV data sheet
+        # 4-    Reading hourly rows in CSV data sheet
         # ------------------------------------
         
         if not df_measurement.empty:
@@ -151,8 +126,40 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
             
             df_measurement = pd.read_csv(csv_measurement_path,header = 0,skiprows = lambda x: x not in np.append(row_indexs,[0]))
             
-            df_final[third_octaves] = df_measurement[third_octaves]
             
+
+            try:
+
+                df_final[THIRD_OCTAVES] = df_measurement[THIRD_OCTAVES]
+                df_final[THIRD_OCTAVES] = df_final[THIRD_OCTAVES].astype(str).replace(',','.',regex=True)
+                df_final = df_final.iloc[1:]
+                df_final[THIRD_OCTAVES].apply(pd.to_numeric)
+            
+            except KeyError as e:
+                
+                df_final[THIRD_OCTAVES_TIME_HISTORY] = df_measurement[THIRD_OCTAVES_TIME_HISTORY]
+                df_final[THIRD_OCTAVES_TIME_HISTORY] = df_final[THIRD_OCTAVES_TIME_HISTORY].astype(str).replace(',','.',regex=True)
+                df_final = df_final.iloc[1:]
+                df_final[THIRD_OCTAVES_TIME_HISTORY].apply(pd.to_numeric)
+            
+            df_final['LAeq'] = df_measurement['LAeq']
+            df_final['LCeq'] = df_measurement[' LCeq']
+            
+            df_final = df_final.dropna(subset=['LAeq'])
+            df_final['LAeq'] = df_final['LAeq'].astype(str).str.replace(',','.')
+            
+            df_final['LAeq'].apply(pd.to_numeric)
+            df_final['LAmax'] = df_final['LAeq'].max()
+            df_final['LAmin'] = df_final['LAeq'].min()
+            df_final['LAmax'].fillna(df_final['LAmax'],inplace=True)
+            df_final['LAmin'].fillna(df_final['LAmin'],inplace=True)
+            
+            first_row = pd.read_csv(csv_time_history_path,header = None,skiprows=1,nrows=1)
+            last_row = df_time.tail(1)
+        
+            initial_date = handle_not_finished_minute(pd.to_datetime(f'{first_row.iloc[0,2]}' +' '+ f'{first_row.iloc[0,3]}'))
+            final_date = pd.to_datetime(f'{last_row.iloc[0,2]}' +' '+ f'{last_row.iloc[0,3]}')
+            """
             df_final['LAeq'] = df_measurement['LAeq']
             df_final['LCeq'] = df_measurement[' LCeq']
             df_final['LAmax'] = df_final['LAeq'].max()
@@ -165,32 +172,41 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
         
             initial_date = handle_not_finished_minute(pd.to_datetime(f'{first_row.iloc[0,1]}' +' '+ f'{first_row.iloc[0,2]}'))
             final_date = pd.to_datetime(f'{last_row.iloc[0,1]}' +' '+ f'{last_row.iloc[0,2]}')
-
+            """
         else:
             
             row_indexs = np.arange(start=1,stop=df_time.shape[0],step = 60)
             csv_length = df_time.shape[0]
             
             df_time = pd.read_csv(csv_time_history_path,header = 0,skiprows = lambda x: x not in np.append(row_indexs,[0]))
+            
             try:
-                df_final[third_octaves] = df_time[third_octaves]
-            except KeyError as e:
-                df_final[third_octaves_time_history] = df_time[third_octaves_time_history]
 
-            df_final['LA'] = df_time['LAeq']
-            df_final.dropna(inplace=True)
-            df_final['LC'] = '-'
-            df_final['LC'].fillna('-',inplace=True)
-          
-            df_final['LA'] = df_final['LA'].astype(str).str.replace(',','.')
-            df_final['LA'].apply(pd.to_numeric)
-            df_final['LAmax'] = df_final['LA'].max()
-            df_final['LAmin'] = df_final['LA'].min()
+                df_final[THIRD_OCTAVES] = df_time[THIRD_OCTAVES]
+                df_final[THIRD_OCTAVES] = df_final[THIRD_OCTAVES].astype(str).replace(',','.',regex=True)
+                df_final = df_final.iloc[1:]
+                df_final[THIRD_OCTAVES].apply(pd.to_numeric)
+            
+            except KeyError as e:
+                
+                df_final[THIRD_OCTAVES_TIME_HISTORY] = df_time[THIRD_OCTAVES_TIME_HISTORY]
+                df_final[THIRD_OCTAVES_TIME_HISTORY] = df_final[THIRD_OCTAVES_TIME_HISTORY].astype(str).replace(',','.',regex=True)
+                df_final = df_final.iloc[1:]
+                df_final[THIRD_OCTAVES_TIME_HISTORY].apply(pd.to_numeric)
+        
+            df_final['LAeq'] = df_time['LAeq']
+            
+            df_final = df_final.dropna(subset=['LAeq'])
+            df_final['LAeq'] = df_final['LAeq'].astype(str).str.replace(',','.')
+            
+            df_final['LAeq'].apply(pd.to_numeric)
+            df_final['LAmax'] = df_final['LAeq'].max()
+            df_final['LAmin'] = df_final['LAeq'].min()
             df_final['LAmax'].fillna(df_final['LAmax'],inplace=True)
             df_final['LAmin'].fillna(df_final['LAmin'],inplace=True)
-
+            
             first_row = pd.read_csv(csv_time_history_path,header = None,skiprows=1,nrows=1)
-            last_row = pd.read_csv(csv_time_history_path,header = None,skiprows = csv_length ,nrows = 1)
+            last_row = df_time.tail(1)
         
             initial_date = handle_not_finished_minute(pd.to_datetime(f'{first_row.iloc[0,2]}' +' '+ f'{first_row.iloc[0,3]}'))
             final_date = pd.to_datetime(f'{last_row.iloc[0,2]}' +' '+ f'{last_row.iloc[0,3]}')
@@ -199,10 +215,9 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
         logger.error(f'[CSV Sonometer] Error reading hourly rows in CSV data sheet: {e}')
 
     try:
-        
-        
+               
         # ------------------------------------
-        # 4-asignning desired columns from CSV Summary sheet, and getting timestamp info
+        # 5-    Asignning desired columns from CSV Summary sheet, and getting timestamp and unixtimestamp info
         # ------------------------------------
         
         df_final['sensor_id'] = df_summary.iloc[2,1]
@@ -212,7 +227,13 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
                                             .strftime('%Y-%m-%d %H:%M:%S'))
 
         df_final['Timestamp'] = row_content_list
-    
+        
+        ts = pd.to_datetime(df_final['Timestamp'], errors='coerce')  # datetime64[ns], NaT si no se puede parsear
+        unixt = (ts.view('int64') // 10**9).astype('Int64')
+        unixt[ts.isna()] = pd.NA
+        df_final['Unixtimestamp'] = unixt
+        
+        df_final.sort_values(by='Timestamp',inplace=True)
     except Exception as e:
         logger.error(f'[CSV Sonometer] Error asignning desired columns from CSV Summary sheet: {e}')
 
@@ -221,11 +242,10 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
 
     try:
 
-
         # ------------------------------------
-        # 5-Saving per day CSV files from whole DF, and whole DF
+        # 6-    Saving per day CSV files from whole DF, and whole DF
         # ------------------------------------
-
+        """
         days = get_days_in_df(df_final)
         output_folder_days = output_folder + f'/daily_{point}'
         output_folder_whole = output_folder 
@@ -237,27 +257,32 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
                 day_df = df_final.loc[pd.to_datetime(df_final['Timestamp']).dt.day == int(day)].copy()
                 filename = os.path.join(output_folder_days, f"day{day}_{point}_Processed_{count}.csv") 
                 day_df.to_csv(filename, index=False)
+        """
 
-        file_name = output_folder_whole + f"/{point}_Processed.csv"
+    
+        file_name = output_folder + f"/{point}_Processed.csv"
         df_final.to_csv(file_name,index = False)
+    
     except Exception as e:
         logger.error(f'[CSV Sonometer]Error eaving per day CSV files from whole DF, and whole DF: {e}')
 
     try:
 
-
         # ------------------------------------
-        # 6- DB upload of result CSV
+        # 7-    DB upload of result CSV
         # ------------------------------------
 
         logger.info(f"[CSV Processing] Loading data into TABLE")
 
         load_data_db(db,file_name,logger,table_name=SONOMETER_TABLE_NAME)
+        
         cur = db.cursor()
         cur.execute(f"SELECT COUNT(*) FROM {SONOMETER_TABLE_NAME}")
         n = cur.fetchone()[0]
         logger.info(f"[Acoustics] → {ACOUSTIC_TABLE_NAME} contains {n} rows after LOAD DATA")
+        
         cur.close()  
+    
     except Exception as e:
         logger.error(f"[CSV Processing] Error at: DB upload of result CSV:{e}")
 
@@ -266,9 +291,8 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
 
     try:
 
-
         # ------------------------------------
-        # 7- query and convert results to JSON
+        # 8-    Query and convert results to JSON
         # ------------------------------------
         
         logger.info("[CSV Processing] Query and Convert Results to JSON")
@@ -286,17 +310,15 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
 
 
     try:
-           
-         
+                   
         # ------------------------------------
-        # 8- Update processed folder
+        # 9-    Update processed folder
         # ------------------------------------
         
         logger.info("")
         update_processed_folder(processed_txt,file)
         processed_txt = load_processed_folder(processed_txt)
-        logger.info("[CSV Processing] Added to processed files: %s",day)
-
+        logger.info("[CSV Processing] Added to processed files: %s")
 
     except Exception as e:
         logger.error(f"[CSV Processing] Error updating processed files: {e}")
@@ -305,23 +327,24 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
 
 def process_sonometer_xlsx(db,xlsx_path,logger,point, output_folder,count,processed_folder_txt):
     
-      
-    """
-    Reads and processes a 1/3 octave band data XLSX file from a LxT sonometer.
-    Saves the processed statistics to the specified output folder.
-    """
+        # ------------------------------------
+        # 1-    Check if file is in processed txt list
+        # ------------------------------------
+    
+    file = os.path.basename(xlsx_path)
+    with open(processed_folder_txt) as myfile:
+     if file in myfile.read():
+         return
     try:
 
         df_first_row = pd.read_excel(xlsx_path, sheet_name='Measurement History',header= None,skiprows=1,nrows=1)
           
         try:
 
-
             # ------------------------------------
-            # 1-Getting first and last row info
+            # 2-    Getting first and last row info
             # ------------------------------------
-            
-            
+                        
             logger.info("[XSLX Processing] Getting info from first and last rows of XLSX file")
 
             initial_date = handle_not_finished_minute(pd.to_datetime(df_first_row.iloc[0,1],format='%Y-%M-%D'))            
@@ -332,11 +355,11 @@ def process_sonometer_xlsx(db,xlsx_path,logger,point, output_folder,count,proces
             
             df_last_row = df_last_row.drop(np.r_[0:43,79:151],axis=1)
             df_last_row.dropna(axis=1,inplace=True)
-            df_last_row.columns = third_octaves
+            df_last_row.columns = THIRD_OCTAVES
         
             df_first_row = df_first_row.drop(np.r_[0:43,79:151],axis=1)
             df_first_row.dropna(axis=1,inplace=True)
-            df_first_row.columns = third_octaves
+            df_first_row.columns = THIRD_OCTAVES
         
         except Exception as e:
             logger.error(f"[XSLX Processing] Error reading first or last rows of excel file: {xlsx_path}")
@@ -344,11 +367,9 @@ def process_sonometer_xlsx(db,xlsx_path,logger,point, output_folder,count,proces
 
         try:
 
-
             # ------------------------------------
-            # 2-Getting content and index info from the desired hourly range
-            # ------------------------------------
-            
+            # 3-    Getting content and index info from the desired hourly range
+            # ------------------------------------           
             
             logger.info("[XSLX Processing] Getting content and index info from the desired hourly range")
 
@@ -363,17 +384,15 @@ def process_sonometer_xlsx(db,xlsx_path,logger,point, output_folder,count,proces
 
         try:
 
-
             # ------------------------------------
-            # 3-Reading excel file and naming columns
+            # 4-    Reading excel file and naming columns
             # ------------------------------------
-            
-            
+                        
             logger.info("[XSLX Processing] Reading excel file and naming columns")
             df_result = pd.read_excel(xlsx_path,sheet_name = 'Measurement History',usecols = "AR:CA",header = 0,skiprows = lambda x: x not in row_indexs )
             df_summary = pd.read_excel(xlsx_path,sheet_name = 'Summary')
 
-            df_result.columns = third_octaves
+            df_result.columns = THIRD_OCTAVES
             df_result[['LA','LC']] = pd.read_excel(xlsx_path,sheet_name = 'Measurement History',usecols = "AH:AI",header = 0,skiprows = lambda x: x not in row_indexs )
             df_result['sensor_id'] = df_summary.iloc[2,1]
             df_result['LAmax'] = df_result['LA'].max()
@@ -388,9 +407,8 @@ def process_sonometer_xlsx(db,xlsx_path,logger,point, output_folder,count,proces
         try:
 
             # ------------------------------------
-            # 4-Implementing data into columns from previously retrieved data and reordering columns
-            # ------------------------------------
-            
+            # 5-    Implementing data into columns from previously retrieved data and reordering columns
+            # ------------------------------------        
             
             logger.info("[XSLX Processing] Implementing data into columns from previously retrieved data")
             
@@ -405,7 +423,7 @@ def process_sonometer_xlsx(db,xlsx_path,logger,point, output_folder,count,proces
             df_result['Unixtimestamp'] = (df_result['Timestamp'].view('int64') // 10**9).astype('Int64')
 
             columns = ['sensor_id','Filename','Timestamp','Unixtimestamp','LA','LC','LAmax','LAmin']          
-            df_result = df_result[columns + third_octaves]
+            df_result = df_result[columns + THIRD_OCTAVES]
             
             df_result.sort_values(by='Timestamp')            
 
@@ -414,9 +432,8 @@ def process_sonometer_xlsx(db,xlsx_path,logger,point, output_folder,count,proces
 
         try:
 
-
             # ------------------------------------
-            # 5-Saving per day CSV files from whole DF, and whole DF
+            # 6-    Saving per day CSV files from whole DF, and whole DF
             # ------------------------------------
 
             logger.info("[XSLX Processing] Saving per day CSV files from whole DF, and whole DF")
@@ -441,9 +458,8 @@ def process_sonometer_xlsx(db,xlsx_path,logger,point, output_folder,count,proces
 
         try:
 
-
             # ------------------------------------
-            # 6- DB upload of result CSV
+            # 7-    DB upload of result CSV
             # ------------------------------------
 
             logger.info(f"[XSLX Processing] Loading data into TABLE")
@@ -454,18 +470,16 @@ def process_sonometer_xlsx(db,xlsx_path,logger,point, output_folder,count,proces
             cur.execute(f"SELECT COUNT(*) FROM {SONOMETER_TABLE_NAME}")
             n = cur.fetchone()[0]
             logger.info(f"[Acoustics] → {ACOUSTIC_TABLE_NAME} contains {n} rows after LOAD DATA")
-            cur.close()            
-        
+            cur.close()                
         
         except Exception as e:
             logger.error(f"[XSLX Processing] Error at: DB upload of result CSV:{e}")
 
 
         try:
-
-            
+         
             # ------------------------------------
-            # 7- query and convert results to JSON
+            # 8-    Query and convert results to JSON
             # ------------------------------------
             
             logger.info("[XLSX Processing] Query and Convert Results to JSON")
@@ -482,17 +496,15 @@ def process_sonometer_xlsx(db,xlsx_path,logger,point, output_folder,count,proces
             logger.warning("[XLSX Processing] No results returned from power_laeq_avg query.")
 
         try:
-            
-            
+                        
             # ------------------------------------
             # 8- Update processed folder
             # ------------------------------------
             
             logger.info("")
             update_processed_folder(processed_folder_txt,day)
-            processed_folder = load_processed_folder(processed_folder_txt)
+            load_processed_folder(processed_folder_txt)
             logger.info("[XLSX Processing] Added to processed files: %s",day)
-
 
         except Exception as e:
             logger.error(f"[XLSX Processing] Error updating processed files: {e}")
@@ -506,11 +518,8 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
         if day in processed_folder:
             logger.info("[Acoustics] Already processed: %s", day)
             continue
-
-
-        
+      
         try:
-
 
             # ------------------------------------
             # 1-Taking day string to save the concat file
@@ -519,6 +528,7 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
             day_str = day.split("/")[-1]
             logger.info("[Acoustics] Processing day_hour: %s", day_str)
             logger.info("[Acoustics] Processing: %s", day)
+        
         except Exception as e:
             logger.error(f"[Acoustics] Error processing day: {e}")
             continue
@@ -526,7 +536,6 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
 
         try:
             
-
             # ------------------------------------
             # 2-Appending to list csv files in csv per day folder
             # ------------------------------------
@@ -535,13 +544,13 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
             csv_files = [csv_file for csv_file in csv_files if csv_file.endswith(".csv")]
             logger.info("[Acoustics] Processing CSV files in %s: %s", day, csv_files)
             csv_files = [os.path.join(day, csv_file) for csv_file in csv_files]
+        
         except Exception as e:
             logger.error(f"[Acoustics] Error listing CSV files: {e}")
             continue
 
 
         try:
-            
 
             # ------------------------------------
             # 3-Concatenation of csv files for one hour processing
@@ -550,26 +559,27 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
             logger.info("")
             logger.info("[Acoustics] Trying to concatenate the csv files to process one hour of audio data recordings")
             df_day = pd.concat([pd.read_csv(csv_file) for csv_file in csv_files], ignore_index=True)
+        
         except Exception as e:
             logger.error(f"[Acoustics] Error concatenating CSV files: {e}")
             continue
 
-        try:
-            
+        try:           
             
             # ------------------------------------
-            # 4-ordering by timestamp and turning the result into a csv so we can use it
+            # 4-ordering by timestamp, selecting columns, and turning the result into a csv so we can use it
             # ------------------------------------
 
             df_day = df_day.sort_values(by=["Timestamp"])
             df_day["LA"] = df_day["LA"].round(1)
 
-
-            # make result csv_file
             csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
             logger.info("[Acoustics] Concatenated CSV file path: %s", csv_concat_path)
 
-
+            columns = ["LA", "LC", "LZ", "LAmax", "LAmin"] + THIRD_OCTAVES_SECOND_FORMAT + [
+                        "Timestamp","Filename","Unixtimestamp","id_micro"]
+            
+            df_day = df_day[columns]
             df_day.to_csv(os.path.join(query_folder, f"{day_str}.csv"), index=False)
             logger.info("[Acoustics] Concatenated CSV files, saved as: %s", csv_concat_path)
         
@@ -579,7 +589,6 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
 
 
         try:
-
 
             # ------------------------------------
             # 5-Loading ACOUSTIC csv into the DB table
@@ -593,6 +602,7 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
             n = cur.fetchone()[0]
             logger.info(f"[Acoustics] → {ACOUSTIC_TABLE_NAME} contains {n} rows after LOAD DATA")
             cur.close()
+        
         except Exception as e:
             logger.error(f"[Acoustics] Error loading data into database: {e}")
             continue
@@ -600,7 +610,6 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
 
         try:
             
-
             # ------------------------------------
             # 6-query and convert results to json
             # ------------------------------------            
@@ -620,6 +629,7 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
                 send_mqtt_data(avg_results, logger)
             else:
                 logger.warning("[Acoustics] No results returned from power_laeq_avg query.")
+        
         except Exception as e:
             logger.error(f"[Acoustics] Error querying and converting results to JSON: {e}")
             continue
@@ -627,8 +637,7 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
         all_info.append(avg_results)
 
 
-        try:
-            
+        try:          
 
             # ------------------------------------
             # 7-Update processed folder
@@ -638,6 +647,7 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
             update_processed_folder(processed_folder_txt, day)
             processed_folder = load_processed_folder(processed_folder_txt)
             logger.info("[Acoustics] Added to processed files: %s", day)
+        
         except Exception as e:
             logger.error(f"[Acoustics] Error updating processed files: {e}")
             continue
@@ -647,37 +657,49 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
 def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed_folder, processed_folder_txt):
         
     for day in tqdm.tqdm(folder_days, desc="[Predictions] Processing days", unit="day"):
-        if day in processed_folder:
-            logger.info("Already processed: %s", day)
-            continue
-        # ------------------------------------
-        # 1-Taking day string to save the concat file
-        # ------------------------------------
+        with open(processed_folder_txt) as myfile:
+            if day in myfile.read():
+                return
+
 
         try:
+
+            # ------------------------------------
+            # 1-    Taking day string to save the concat file
+            # ------------------------------------
+
             day_str = day.split("/")[-1]
             logger.info("[Predictions] Processing day_hour: %s", day_str)
             logger.info("[Predictions] Processing: %s", day)
+        
         except Exception as e:
             logger.error(f"[Predictions] Error processing day: {e}")
             continue
-        # ------------------------------------
-        # 2-Appending to list csv files in csv per day folder
-        # ------------------------------------
+
         try:
+
+            # ------------------------------------
+            # 2-    Appending to list csv files in csv per day folder
+            # ------------------------------------
+
+
             csv_files = os.listdir(day)
             csv_files = [csv_file for csv_file in csv_files if csv_file.endswith("1.0.csv")]
             logger.info("[Predictions] CSV files in %s: %s", day, csv_files)
             csv_files = [os.path.join(day, csv_file) for csv_file in csv_files]
+        
         except Exception as e:
             logger.error(f"[Predictions] Error listing CSV files: {e}")
             continue
-        # ------------------------------------
-        # 3-Concatenation of csv files for one hour processing
-        # ------------------------------------
+
         try:
+
+            # ------------------------------------
+            # 3-    Concatenation of csv files for one hour processing
+            # ------------------------------------
+
+
             logger.info("")
-            # concatenating the csv files
             logger.info("[Predictions] Trying to concatenate the csv files to process one hour of audio data recordings")
             df_day = pd.concat([
                 pd.read_csv(
@@ -687,16 +709,21 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
                 for csv_file in csv_files
                 if csv_file.endswith("1.0.csv")
             ], ignore_index=True)
+        
         except Exception as e:
             logger.error(f"[Predictions] Error concatenating CSV files: {e}")
             continue
-        # ------------------------------------
-        # 4-ordering by timestamp 
-        # exploding prediction and probability columns  
-        # turning the result into a csv so we can use it
-        # rearranging df columns so it fits in the table
-        # ------------------------------------
+
         try:
+
+            # ------------------------------------
+            # 4-    Ordering by timestamp 
+            # exploding prediction and probability columns  
+            # turning the result into a csv so we can use it
+            # rearranging df columns so it fits in the table
+            # ------------------------------------
+
+
             df_day = df_day.sort_values(by=["Timestamp"])
             df_day["prediction1"],df_day["prediction2"],df_day["prediction3"] = zip(*list(df_day['class'].values))
             df_day['probability1'],df_day['probability2'],df_day['probability3'] = zip(*list(df_day['probability'].values))
@@ -716,21 +743,22 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
 
             df_out = df_out[cols]
             
-            # make result csv_file
             csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
-            
             logger.info("[Predictions] Concatenated CSV file path: %s", csv_concat_path)
-
-            # save csv file
-            df_out.to_csv(os.path.join(query_folder, f"{day_str}.csv"), index=False)
+            df_out.to_csv(csv_concat_path, index=False)
             logger.info("[Predictions] Concatenated CSV files, saved as: %s", csv_concat_path)
+        
         except Exception as e:
             logger.error(f"[Predictions] Error saving concatenated CSV file: {e}")
             continue
-        # ------------------------------------
-        # 5-Loading PREDICTIONS csv into the DB table
-        # ------------------------------------
+
         try:
+
+            # ------------------------------------
+            # 5-    Loading PREDICTIONS csv into the DB table
+            # ------------------------------------
+
+
             logger.info("")
             logger.info("[Predictions] Loading data into TABLE")
             load_data_db(db, csv_concat_path, logger,table_name=PREDICT_TABLE_NAME)
@@ -740,43 +768,50 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
             n = cur.fetchone()[0]
             logger.info(f"[Predictions] → {PREDICT_TABLE_NAME} contains {n} rows after LOAD DATA")
             cur.close()
+        
         except Exception as e:
             logger.error(f"[Predictions] Error loading data into database: {e}")
             continue
-        # ------------------------------------
-        # 6-query and convert results to json
-        # ------------------------------------
+
         try:
+
+            # ------------------------------------
+            # 6-    Query and convert results to json
+            # ------------------------------------
+
+
             logger.info("")
             logger.info("[Predictions] Query and Convert Results to JSON")
             avg_results = power_laeq_avg(db, logger)
-            # print(avg_results)
             logger.info(avg_results)
-            # addig the "day", which is "/mnt/sandisk/CONTENEDORES/CONTENEDORES/P2_CONTENEDORES/acoustic_params/20250407_03" to the avg_results
             for result in avg_results:
                 result["day_path"] = day
 
             logger.info("[Predictions] Power LAeq Average Results:")
             logger.info(avg_results)
-            # exit()
 
             if avg_results is not None:
                 logger.info("[Predictions] Power LAeq Average Results:")
-                # send the data MQTT
                 send_mqtt_data(avg_results, logger)
             else:
                 logger.warning("[Predictions] No results returned from power_laeq_avg query.")
+        
         except Exception as e:
             logger.error(f"[Predictions] Error querying and converting results to JSON: {e}")
             continue
-        # ------------------------------------
-        # 7-Update processed folder #TODO: check if this is necessary
-        # ------------------------------------
+
         try:
+
+            # ------------------------------------
+            # 7-    Update processed folder 
+            # ------------------------------------
+
+
             logger.info("")
             update_processed_folder(processed_folder_txt, day)
             processed_folder = load_processed_folder(processed_folder_txt)
             logger.info("[Predictions] Added to processed files: %s", day)
+        
         except Exception as e:
             logger.error(f"[Predictions] Error updating processed files: {e}")
             continue
@@ -785,24 +820,31 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
 def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_folder, processed_folder_txt):
 
     for day in tqdm.tqdm(folder_days, desc="[Wave Files] Processing days", unit="day"):
-        if day in processed_folder:
-            logger.info("Already processed: %s", day)
-            continue
-        # ------------------------------------
-        # 1-Taking day string to save the concat file
-        # ------------------------------------
+        with open(processed_folder_txt) as myfile:
+            if day in myfile.read():
+                continue
+
 
         try:
+
+            # ------------------------------------
+            # 1-    Taking day string to save the concat file
+            # ------------------------------------
+            
             day_str = day.split("/")[-1]
             logger.info("[Wave Files] Processing day_hour: %s", day_str)
             logger.info("[Wave Files] Processing: %s", day)
         except Exception as e:
             logger.error(f"[Wave Files] Error processing day: {e}")
             continue
-        # ------------------------------------
-        # 2-Reading wav time lengths from wav folder
-        # ------------------------------------
+
         try:
+
+            # ------------------------------------
+            # 2-    Reading wav time lengths from wav folder
+            # ------------------------------------
+
+
             duration = []
             
             for wavfile in os.listdir(day):
@@ -815,12 +857,14 @@ def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_
         except Exception as e:
             logger.error(f"[Wave Files] Error listing CSV files: {e}")
             continue
-        # ------------------------------------
-        # 3-Creating csvs with filename, timestamp and duration
-        # ------------------------------------
+
         try:
+
+            # ------------------------------------
+            # 3-    Creating csvs with filename, timestamp and duration
+            # ------------------------------------
+            
             logger.info("")
-            # concatenating the csv files
             logger.info("[Wave Files] Trying to create csv files with filename, timestamp and duration")
             df_day = pd.DataFrame(columns=['Filename','Timestamp','Duration'])
 
@@ -829,74 +873,82 @@ def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_
             df_day['Timestamp'] = pd.to_datetime(
                 df_day['Filename'].astype(str).str.replace('.wav', '', regex=False),
                 format='%Y%m%d_%H%M%S',
-                errors='raise'  # usa 'coerce' si quieres NaT cuando no coincida
+                errors='raise'  
             )
 
         except Exception as e:
             logger.error(f"[Predictions] Error concatenating CSV files: {e}")
             continue
-        # ------------------------------------
-        # 4-ordering by timestamp 
-        # saving csv to wav_files_query folder
-        # ------------------------------------
+
         try:
-            df_day = df_day.sort_values(by=["Timestamp"])
-
-
-            # make result csv_file
-            csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
             
-            # save csv file
+            # ------------------------------------
+            # 4-    Ordering by timestamp 
+            # saving csv to wav_files_query folder
+            # ------------------------------------
+
+            df_day = df_day.sort_values(by=["Timestamp"])
+            csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
             df_day.to_csv(os.path.join(query_folder, f"{day_str}.csv"), index=False)
             logger.info(f"[Wave Files] Concatenated CSV files, saved as:{csv_concat_path}" )
 
         except Exception as e:
             logger.error(f"[Wave Files] Error saving concatenated CSV file: {e}")
             continue
-        # ------------------------------------
-        # 5-Loading PREDICTIONS csv into the DB table
-        # ------------------------------------
+
         try:
+
+            # ------------------------------------
+            # 5-    Loading PREDICTIONS csv into the DB table
+            # ------------------------------------
+
             logger.info("")
             logger.info("[Wave Files] Loading data into TABLE")
+            
             load_data_db(db, csv_concat_path, logger,table_name=WAV_TABLE_NAME)
+            
             cur = db.cursor(buffered=True)
             cur.execute(f"USE {DATABASE_NAME}")
             cur.execute(f"SELECT COUNT(*) FROM {WAV_TABLE_NAME}")
             n = cur.fetchone()[0]
             logger.info(f"[Wave Files] → {WAV_TABLE_NAME} contains {n} rows after LOAD DATA")
             cur.close()
+        
         except Exception as e:
             logger.error(f"[Wave Files] Error loading data into database: {e}")
             continue
-        # ------------------------------------
-        # 6-query and convert results to json
-        # ------------------------------------
+
         try:
+
+            # ------------------------------------
+            # 6-    Query and convert results to json
+            # ------------------------------------
+
             logger.info("")
             logger.info("[Wave Files] Query and Convert Results to JSON")
             avg_results = power_laeq_avg(db, logger)
-            # print(avg_results)
             logger.info(avg_results)
-            # addig the "day", which is "/mnt/sandisk/CONTENEDORES/CONTENEDORES/P2_CONTENEDORES/acoustic_params/20250407_03" to the avg_results
+            
             for result in avg_results:
                 result["day_path"] = day
 
             logger.info("[Wave Files] Power LAeq Average Results:")
             logger.info(avg_results)
-            # exit()
 
             if avg_results is not None:
+                
                 logger.info("[Wave Files] Power LAeq Average Results:")
-                # send the data MQTT
                 send_mqtt_data(avg_results, logger)
+            
             else:
+                
                 logger.warning("[Wave Files] No results returned from power_laeq_avg query.")
+        
         except Exception as e:
             logger.error(f"[Wave Files] Error querying and converting results to JSON: {e}")
             continue
         # ------------------------------------
-        # 7-Update processed folder #TODO: check if this is necessary
+        # 7-    Update processed folder 
         # ------------------------------------
         try:
             logger.info("")
@@ -910,38 +962,32 @@ def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_
 
 
 def process_sonometer_folder(db,logger,files_folder,processed_sonometers_txt):
-
-
-
         
         output_folder = files_folder.replace('sonometer_files','sonometer_acoustics_query')
         
         for point in tqdm.tqdm(os.listdir(files_folder), desc="[Sonometers] Processing Points"):
                 point_folder = os.path.join(files_folder,point)
-                if point != 'San Andres':
-                    count = 0
+                file_count = 0
+                
+                lxt_files = [f for f in os.listdir(point_folder) if f.endswith('.xlsx')]                    
+                csvs_files = [f for f in os.listdir(point_folder) if f.endswith('_CSV')]
+                
+                if csvs_files != []:
                     
-                    lxt_files = [f for f in os.listdir(point_folder) if f.endswith('.xlsx')]                    
-                    csvs_folders = [f for f in os.listdir(point_folder) if f.endswith('_CSV')]
-                    
-                    if csvs_folders != []:
-                        for file in tqdm.tqdm(csvs_folders, desc=f"Processing files in {point}"):
-                            
-                            file_path = os.path.join(point_folder,file)
-                            
-                            logger.info(f"[SONOMETER] -> Processing file: {file_path}")                            
-                            process_sonometer_csv(db,file_path,logger,point,output_folder,processed_sonometers_txt,count)                            
-                            
-                            count += 1
-                            logger.info(f"[SONOMETER] -> Processed data saved at: {output_folder}")
-                    else:
+                    for file in tqdm.tqdm(csvs_files, desc=f"Processing files in {point}"):
+                        
+                        file_path = os.path.join(point_folder,file)                        
+                        logger.info(f"[SONOMETER] -> Processing file: {file_path}")                            
+                        process_sonometer_csv(db,file_path,logger,point,output_folder,processed_sonometers_txt,file_count)                                                    
+                        file_count += 1
+                        logger.info(f"[SONOMETER] -> Processed data saved at: {output_folder}")
+                
+                else:
 
-                        for file in tqdm.tqdm(lxt_files,desc = f'Processing files in {point}'):
+                    for file in tqdm.tqdm(lxt_files,desc = f'Processing files in {point}'):
 
-                            file_path = os.path.join(files_folder,point, file)
-                            logger.info(f"[SONOMETER] -> Processing file: {file_path}")                            
-                            process_sonometer_xlsx(file_path, output_folder,count)
-                            
-                            
-                            count += 1
-                            logger.info(f"[SONOMETER] -> Processed data saved at: {output_folder}")
+                        file_path = os.path.join(files_folder,point, file)
+                        logger.info(f"[SONOMETER] -> Processing file: {file_path}")                            
+                        process_sonometer_xlsx(db,file_path,logger,point,output_folder,file_count,processed_sonometers_txt)
+                        file_count += 1
+                        logger.info(f"[SONOMETER] -> Processed data saved at: {output_folder}")

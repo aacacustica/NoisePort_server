@@ -10,6 +10,7 @@ import time
 import sys
 
 sys.path.insert(0, "/home/aac_s3_test/noisePort_server/04_queries")
+
 from processing import *
 from logging_config import *
 from utils import *
@@ -241,31 +242,13 @@ def decimal_to_native(obj):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def main():
     # ------------------------------------
     # INITIALIZATION
     # ------------------------------------
-    # logger
+    
     logger = setup_logging('query_automatize')
-
-    # database
+    
     db = mysql.connector.connect(
             host=HOST,
             user=USER,
@@ -273,33 +256,32 @@ def main():
             allow_local_infile=True)
 
     logger.info("Initializing database!")
-    # testing the query database
+    
     if DB_INIT_SWITCH: initialize_database(db, logger)
 
-
-    # paths and processed csv_files
     logger.info("Starting!!")
     logger.info("")
     
-
     try:
-        # config
+        
         logger.info("Getting the element form the yamnl file")
         id_micro, location_record, location_place, location_point, \
         audio_sample_rate, audio_window_size, audio_calibration_constant,\
         storage_s3_bucket_name, storage_output_wav_folder, \
         storage_output_acoust_folder = load_config_acoustic('config.yaml')
         logger.info("Config loaded successfully")   
+    
     except Exception as e:
+        
         logger.error(f"Error loading config: {e}")
+        
         return
 
-
-    # [1] setup the folder to process
-    path = SANDISK_PATH_LINUX
     
-    # check if it exist
+    path = SANDISK_PATH_LINUX
+        
     isdir = os.path.isdir(path)
+    
     if isdir:
         logger.info(f"Path exists --> {path}")
     else:
@@ -316,20 +298,17 @@ def main():
     points = [point for point in os.listdir(path)]
     points = [os.path.join(path, point) for point in points]
     logger.info(f"These are the points: {points}")
-    # exit()
+
     all_info = []
     for point in tqdm.tqdm(points, desc="Processing points", unit="point"):
         if "P2_CONTENEDORES" in point:
             try:
                 
-                # ---------------------------
                 
                 point_str = point.split("/")[-1]
                 acoust_folder = os.path.join(point, storage_output_acoust_folder)
                 logger.info(f"Acoustic params folder: {acoust_folder}")
-                
-                # checking if the folder exist
-                
+                                
                 if os.path.isdir(acoust_folder):
                     logger.info(f"Folder exists: {acoust_folder}")
                 else:
@@ -395,9 +374,13 @@ def main():
 
 
             try:
+
+                # ------------------------------------
+                #   Filter the FILES, FUST THE FOLDERS
+                # ------------------------------------
+
                 logger.info("")
                 folder_days = os.listdir(acoust_folder)
-                # filter the FILES, FUST THE FOLDERS
                 folder_days = [day_folder for day_folder in folder_days if os.path.isdir(os.path.join(acoust_folder, day_folder))]
                 logger.info("Folder days in %s: %s", acoust_folder, folder_days)
                 folder_days = [os.path.join(acoust_folder, day_folder) for day_folder in folder_days]
@@ -411,6 +394,7 @@ def main():
             # -.--------------------
             # PROCESSING
             # ----------------------
+            
             logger.info("")
             
             query_pred_folder = point + '/' + 'predictions_litle_query'
@@ -428,6 +412,7 @@ def main():
                     logger.info("Starting ACOUSTIC FOLDER processing")
                     start_time = time.time()                 
                     process_acoustic_folder(db,logger,folder_days, all_info, query_acoustic_folder, processed_acoustics, processed_folder_acoustic_txt)                 
+                    
                     print(" --- %s seconds in execution ---" % round(time.time() - start_time,2))
                     logger.info("Finished ACOUSTIC FOLDER processing")
                 
@@ -437,6 +422,7 @@ def main():
                     logger.info("Starting PREDICTION FOLDER processing")
                     start_time = time.time()
                     process_pred_folder(db,logger,folder_days, all_info, query_pred_folder, processed_predictions, processed_folder_predictions_txt)                 
+                    
                     print(" --- %s seconds in execution ---" % round(time.time() - start_time,2))
                     logger.info("Finished PREDICTION FOLDER processing")
                 
@@ -446,6 +432,7 @@ def main():
                     logger.info("Starting WAV FOLDER processing")
                     start_time = time.time()                   
                     process_wav_folder(db,logger,folder_days, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)                   
+                    
                     print(" --- %s seconds in execution ---" % round(time.time() - start_time,2))
                     logger.info("Finished WAV FOLDER processing")
         
@@ -455,6 +442,7 @@ def main():
                     start_time = time.time()
                     sonometer_path = point + f'/{folder}'                   
                     process_sonometer_folder(db,logger,sonometer_path,processed_folder_sonometer_txt)
+                    
                     print(" --- %s seconds in execution ---" % round(time.time() - start_time,2))
 
             print(" --- %s seconds in total execution ---" % round(time.time() - whole_start_time,2))
@@ -467,14 +455,17 @@ def main():
             continue
 
     # ------------------------------------
-    # save all_info to json
+    #   Save all_info to json
     # ------------------------------------
+    
     logger.info("")
     logger.info("Saving all_info to JSON")
     logger.info("all_info: %s", all_info)
 
-    # adding the folder processed to the all_info
-
+    # ------------------------------------
+    #   Adding the folder processed to the all_info
+    # ------------------------------------
+    
     all_info_path = os.path.join(query_acoustic_folder, f"{point_str}_all.json")
     with open(all_info_path, "w") as f:
         json.dump(all_info, f, indent=4, default=decimal_to_native)
@@ -482,7 +473,10 @@ def main():
 
         
 
-    #CLOSING THE DB
+    # ------------------------------------
+    #   Closing DB
+    # ------------------------------------
+    
     try:
         logger.info("")
         db.close()

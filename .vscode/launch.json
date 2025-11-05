@@ -20,14 +20,15 @@
         }
 
         ,{
-            "name": "Python Debugger: sonometer debugging",
+            "name": "Python Debugger: peaks debugging",
             "type": "debugpy",
-            "module": "05_sonometer_process_test.sonometer_process",
+            "module": "05_peak.peak_detection_L50",
             "request": "launch",
             "console": "integratedTerminal",
             "args": [
-                "-m", "05_sonometer_process_test.sonometer_process"
+                 "-p", "\/\/192.168.205.120/Contenedores/3-Medidas/P5_TEST" 
             ]
         }
+        
     ]
 }

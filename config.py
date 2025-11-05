@@ -1,4 +1,6 @@
-# `20158.74Hz` DECIMAL(10,2),
+# ----------------------------------------
+#  FOLDERS
+# ----------------------------------------
 
 MEDIDAS_FOLDER = "3-Medidas"
 RESULTADOS_FOLDER = "5-Resultados"
@@ -6,9 +8,9 @@ RESULTADOS_FOLDER = "5-Resultados"
 # ----------------------------------------
 #  SANDISK PATH
 # ----------------------------------------
+
 SANDISK_PATH_LINUX = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/3-Medidas/"
 SANDISK_PATH_WINDOWS = r"\\192.168.205.122\Contenedores"
-
 
 # -------------------------
 # ID MICRO
@@ -18,8 +20,40 @@ ID_MICROPHONE = {
     "P2_CONTENEDORES": "RPI_2",
     "P3_CONTENEDORES": "RPI_3",
     "P4_CONTENEDORES": "RPI_4",
+    "P5_TEST": "RPI_5",
 }
 
+# -------------------------
+# THIRD OCTAVE BAND FREQUENCIES
+# -------------------------
+
+THIRD_OCTAVES = [
+    '1/3 LZeq 6.3', '1/3 LZeq 8.0', '1/3 LZeq 10.0', '1/3 LZeq 12.5', '1/3 LZeq 16.0',
+    '1/3 LZeq 20.0', '1/3 LZeq 25.0', '1/3 LZeq 31.5', '1/3 LZeq 40.0', '1/3 LZeq 50.0',
+    '1/3 LZeq 63.0', '1/3 LZeq 80.0', '1/3 LZeq 100', '1/3 LZeq 125', '1/3 LZeq 160',
+    '1/3 LZeq 200', '1/3 LZeq 250', '1/3 LZeq 315', '1/3 LZeq 400', '1/3 LZeq 500',
+    '1/3 LZeq 630', '1/3 LZeq 800', '1/3 LZeq 1000', '1/3 LZeq 1250', '1/3 LZeq 1600',
+    '1/3 LZeq 2000', '1/3 LZeq 2500', '1/3 LZeq 3150', '1/3 LZeq 4000', '1/3 LZeq 5000',
+    '1/3 LZeq 6300', '1/3 LZeq 8000', '1/3 LZeq 10000', '1/3 LZeq 12500', '1/3 LZeq 16000', '1/3 LZeq 20000'
+]
+
+THIRD_OCTAVES_TIME_HISTORY = [
+    '1/3 LZeq 6,3', '1/3 LZeq 8,0', '1/3 LZeq 10,0', '1/3 LZeq 12,5', '1/3 LZeq 16,0',
+    '1/3 LZeq 20,0', '1/3 LZeq 25,0', '1/3 LZeq 31,5', '1/3 LZeq 40,0', '1/3 LZeq 50,0',
+    '1/3 LZeq 63,0', '1/3 LZeq 80,0', '1/3 LZeq 100', '1/3 LZeq 125', '1/3 LZeq 160',
+    '1/3 LZeq 200', '1/3 LZeq 250', '1/3 LZeq 315', '1/3 LZeq 400', '1/3 LZeq 500',
+    '1/3 LZeq 630', '1/3 LZeq 800', '1/3 LZeq 1000', '1/3 LZeq 1250', '1/3 LZeq 1600',
+    '1/3 LZeq 2000', '1/3 LZeq 2500', '1/3 LZeq 3150', '1/3 LZeq 4000', '1/3 LZeq 5000',
+    '1/3 LZeq 6300', '1/3 LZeq 8000', '1/3 LZeq 10000', '1/3 LZeq 12500', '1/3 LZeq 16000',
+    '1/3 LZeq 20000'
+]
+
+THIRD_OCTAVES_SECOND_FORMAT = [
+    "12.6Hz", "15.8Hz", "20.0Hz", "25.1Hz", "31.6Hz", "39.8Hz", "50.1Hz", "63.1Hz", "79.4Hz",
+    "100.0Hz", "125.9Hz", "158.5Hz", "199.5Hz", "251.2Hz", "316.2Hz", "398.1Hz", "501.2Hz",
+    "631.0Hz", "794.3Hz", "1000.0Hz", "1258.9Hz", "1584.9Hz", "1995.3Hz", "2511.9Hz", "3162.3Hz",
+    "3981.1Hz", "5011.9Hz", "6309.6Hz", "7943.3Hz", "10000.0Hz", "12589.3Hz", "15848.9Hz"
+]
 
 # -------------------------
 # CALIBRATION CONSTANTS
@@ -33,6 +67,7 @@ CALIBRATION_CONSTANTS = {
     "P3_CONTENEDORES": 0,
     # "P4_CONTENEDORES": -82.24,
     "P4_CONTENEDORES": 0,
+    "P5_TEST": 0,
 }
 
 
@@ -86,6 +121,9 @@ PREDICT_QUERY_SWITCH = True
 WAV_QUERY_SWITCH = True
 SONOMETER_QUERY_SWITCH = True
 
+# ----------------------------------------
+# DATABASE OPERATIONS 
+# ----------------------------------------
 
 QUERYS = {
     "load_acoustics_db":"""
@@ -144,9 +182,14 @@ QUERYS = {
     );
     """
 }
+
+# ----------------------------------------
+# DATABASE DEFINITIONS 
+# ----------------------------------------
+
 TABLES = {
     "acoustic_data": """
-        CREATE TABLE IF NOT EXISTS acoustic_data (
+        CREATE TABLE IF NOT EXISTS noise_port_test.acoustic_data (
             record_id INT AUTO_INCREMENT PRIMARY KEY,
             LA DECIMAL(10,2),
             LC DECIMAL(10,2),
@@ -194,7 +237,7 @@ TABLES = {
 
 
     "predict_data": """
-        CREATE TABLE IF NOT EXISTS predict_data (
+        CREATE TABLE IF NOT EXISTS noise_port_test.predict_data (
             id INT AUTO_INCREMENT PRIMARY KEY,
             Prediction_1 VARCHAR(100),
             Prediction_2 VARCHAR(100),
@@ -209,7 +252,7 @@ TABLES = {
 
 
     "wav_data": """
-        CREATE TABLE IF NOT EXISTS wav_data (
+        CREATE TABLE IF NOT EXISTS noise_port_test.wav_data (
             id INT AUTO_INCREMENT PRIMARY KEY,
             Filename VARCHAR(255),
             Timestamp DATETIME,
@@ -217,7 +260,7 @@ TABLES = {
         );
     """,
     "sonometer_acoustic_data":
-    """CREATE TABLE IF NOT EXISTS sonometer_acoustic_data (
+    """CREATE TABLE IF NOT EXISTS noise_port_test.sonometer_acoustic_data (
         record_id INT AUTO_INCREMENT PRIMARY KEY,
         LAeq DECIMAL(10,2),
         LCeq DECIMAL(10,2),

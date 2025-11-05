@@ -224,7 +224,7 @@ class LeqLevelOct:
                 x, _ = sf.read(audio_file)
                 
                 #naming
-                name_split = audio_file.split("\\")[-1]  # '20250107_130000'
+                name_split = audio_file.split("/")[-1]  # '20250107_130000'
                 name_split = name_split.split(".")[0]  # '20250107_130000'
                 self.logging.info(f"Name split: {name_split}")
                 
@@ -466,7 +466,7 @@ def main():
                 logging.info(f"Point: {point}")
 
 
-                if point == "P1_CONTENEDORES":
+                if point == "P5_TEST":
                     ##########################################################
                     ##########################################################
                     ##########################################################
