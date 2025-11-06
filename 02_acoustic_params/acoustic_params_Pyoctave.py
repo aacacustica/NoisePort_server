@@ -19,7 +19,7 @@ from scipy.signal import lfilter
 from logging_config import setup_logging
 from PyOctaveBand import *
 
-
+logging = setup_logging(script_name="acoustic_params")
 
 class LeqLevelOct:
     def __init__(self, id_micro, fs, calibration_constant, window_size, audio_path, wav_files, acoustic_params, s3_bucket_name, upload_s3, logging):
@@ -34,6 +34,8 @@ class LeqLevelOct:
         :param audio_path:
             Path to the audio files
         """
+        
+        
         self.id_micro = id_micro
         self.fs = fs
         self.C = calibration_constant
@@ -60,6 +62,8 @@ class LeqLevelOct:
         Calculate 1/3-octave levels for a frame of audio data.
         Returns a list of 1/3-octave levels.
         """
+        
+        
         y_oct, _ = self.third_oct.filter(frame)
         oct_level_temp = [get_db_level(y_band, self.C) for y_band in y_oct.T]
         return oct_level_temp
@@ -73,6 +77,9 @@ class LeqLevelOct:
         :param audio_files: List of .wav filenames in self.audio_path
         :return: all_data, a list of lists (one sub-list per file).
         """
+        
+        
+        
         # ---------------------------
         # INIZIALATIN PROCESSING FILE
         # ---------------------------
@@ -134,7 +141,7 @@ class LeqLevelOct:
         total_missing = expect_wav_files - total_audio_files
 
 
-        #convertinto to hours, minutes and seconds, 60x60 3600
+        #convert into to hours, minutes and seconds, 60x60 3600
         # 1 audio files = 60 seconds
         # 1 folder = 60 audio files
         # 1 folder = 60 minutes
@@ -170,6 +177,8 @@ class LeqLevelOct:
 
         # ----------------------------------
         # saving the missing files information to the previous json file
+        # ----------------------------------
+        
         report = {
             "expected_wav_files": expect_wav_files,
             "total_audio_files": total_audio_files,
@@ -195,7 +204,7 @@ class LeqLevelOct:
 
 
         # ----------------------------------
-        #HEADERS
+        # HEADERS
         # ----------------------------------
         col_names = ['id_micro', 'Filename', 'Timestamp', 'Unixtimestamp', 'LA', 'LC', 'LZ', 'LAmax', 'LAmin']
         freq_labels = None
@@ -204,13 +213,11 @@ class LeqLevelOct:
         # ----------------------------------
         # PROCESSING
         # ----------------------------------
-        # folder_to_process = "20250404_19"
+        
         all_data = []
         # for audio_file in tqdm(full_paths[:1], desc="Processing audio files", unit="file"):
         for audio_file in tqdm(full_paths, desc="Processing audio files", unit="file"):
-            # if folder_to_process not in audio_file:
-            #     continue
-            # ----------------------------------
+
             self.logging.info(f"Processing file: {audio_file}")
             try:
                 if audio_file in processed_files:
@@ -232,14 +239,13 @@ class LeqLevelOct:
                 local_tz = datetime.datetime.now().astimezone().tzinfo
                 start_timestamp = datetime.datetime.strptime(name_split, '%Y%m%d_%H%M%S')
                 start_timestamp = start_timestamp.replace(tzinfo=local_tz)
-                self.logging.info(start_timestamp)
-                # exit()
-                
+                self.logging.info(start_timestamp)                
 
                 # build a list of frame start timestamps
                 # each frame has length self.window_size samples, so:
                 # fstart is 0, window_size, 2*window_size, ...
                 # timestamps will be used in each row
+                
                 timestamps = [
                     start_timestamp + datetime.timedelta(seconds=fstart/self.fs) 
                     for fstart in range(0, len(x) - self.window_size + 1, self.window_size)
@@ -341,8 +347,9 @@ class LeqLevelOct:
                 # exit()
 
                 # --------------------------------------------------
-                #UPLOAD TO BUCKET S3
+                # UPLOAD TO BUCKET S3
                 # --------------------------------------------------
+                
                 if self.upload_s3 is not None:
                     try:
                         self.logging.info("Uploading the csv file to bucket S3")
@@ -376,7 +383,12 @@ class LeqLevelOct:
 
 
 def load_processed_files(processed_file_path):
+    
+      
     """Load the set of processed filenames from a text file."""
+    
+    
+ 
     if os.path.exists(processed_file_path):
         with open(processed_file_path, "r") as f:
             return {line.strip() for line in f if line.strip()}
@@ -385,11 +397,69 @@ def load_processed_files(processed_file_path):
 
 
 def update_processed_files(processed_file_path, filename):
+    
+    
+    
     """Append a processed filename to the text file."""
+    
+    
     with open(processed_file_path, "a") as f:
         f.write(filename + "\n")
 
 
+def point_iteration_acoustics(point, root, storage_output_wav_folder,audio_sample_rate, audio_window_size,
+                              storage_s3_bucket_name, storage_output_acoust_folder, upload_s3, logging):
+
+    """
+    Creates leq_processor object for given params in order to process given wav_file_folder    
+    """
+
+    # ------------------------------
+    # POINT PARAMS
+    # ------------------------------
+    if point in CALIBRATION_CONSTANTS:
+        calib = CALIBRATION_CONSTANTS[point]
+        logging.info(f"Calibration constant: {calib}")
+    else:
+        raise ValueError(f"Calibration constant for {point} not found in CALIBRATION_CONSTANTS.")
+
+    if point in ID_MICROPHONE:
+        id_micro = ID_MICROPHONE[point]
+        logging.info(f"ID Microphone: {id_micro}")
+    else:
+        raise ValueError(f"ID Microphone for {point} not found in ID_MICROPHONE.")
+
+    # ------------------------------
+    # WAV FILES FOLDER
+    # ------------------------------
+    wav_files_folder = os.path.join(root, storage_output_wav_folder)
+    logging.info(f"WAV files folder: {wav_files_folder}")
+
+    logging.info("Creating the leq_processor")
+    
+    # ------------------------------
+    # LEQ PROCESSOR IMPLEMENTATION
+    # ------------------------------
+    leq_processor = LeqLevelOct(
+            audio_path=wav_files_folder,
+
+            id_micro=id_micro,
+            fs=audio_sample_rate,
+            window_size=audio_window_size,
+            calibration_constant=calib,
+            
+            acoustic_params=storage_output_acoust_folder,
+            wav_files=storage_output_wav_folder,
+            s3_bucket_name=storage_s3_bucket_name,
+            
+            upload_s3=upload_s3,
+            logging=logging
+        )
+    
+    # ------------------------------
+    # END
+    # ------------------------------
+    return leq_processor,wav_files_folder
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Make prediction with YAMNet model for audio files')
@@ -408,7 +478,7 @@ def main():
     usage: python.exe -m 02_acoustic_params.acoustic_params_test -p '\\192.168.205.122\Contenedores'
     """
     try:
-        logging = setup_logging(script_name="acoustic_params")
+        
         args = parse_arguments()
 
         logging.info("Staarting process!!")
@@ -416,106 +486,108 @@ def main():
         
         
         try:
-            # config
+            
+            #-------------------------------
+            #   1- Get acoustic config from config.yaml local file
+            #-------------------------------
+               
             logging.info("Getting the element form the yamnl file")
             id_micro, location_record, location_place, location_point, \
             audio_sample_rate, audio_window_size, audio_calibration_constant,\
             storage_s3_bucket_name, storage_output_wav_folder, \
             storage_output_acoust_folder = load_config_acoustic('config.yaml')
             logging.info("Config loaded successfully")    
+       
+       
         except Exception as e:
             logging.error(f"Error loading config: {e}")
+            
+            return
+
+        try:
+
+            #-------------------------------
+            #   2- Upload to bucket S3
+            #-------------------------------
+            
+            if args.upload_S3:
+                upload_s3 = args.upload_S3
+            else:
+                upload_s3 = None
+        
+        except Exception as e:
+            logging.error(f"Error setting upload_s3: {e}")
+            
             return
 
 
-        # upload to bucket S3
-        if args.upload_S3:
-            upload_s3 = args.upload_S3
-        else:
-            upload_s3 = None
 
+        try:
 
-        if args.path:
-            path = args.path
-        else:
-            # if not, try to set the SANDISK_PATH_LINUX and if it fails, set the SANDISK_PATH_WINDOWS
-            try:
-                path = SANDISK_PATH_LINUX
-                logging.info(f"Using path: {path}")
-            except Exception as e:
-                logging.error(f"Error setting path: {e}")
-                path = SANDISK_PATH_WINDOWS
-                logging.info(f"Using path: {path}")
+            #-------------------------------
+            #   3- Set base path from arguments or config
+            #-------------------------------
+
+            if args.path: path = args.path  
+            else:
+
+                if os.name == 'posix':
+                    path = SANDISK_PATH_LINUX
+                    logging.info(f"Using path: {path}")
+                elif os.name == 'nt':
+                    path = SANDISK_PATH_WINDOWS
+                    logging.info(f"Using path: {path}")
                 
 
+            if os.path.isdir(path): logging.info(f"Path exists --> {path}")
+            else: raise ValueError(f'Path ({path}) doesnt exist.')
+               
+        except Exception as e:
+            logging.error(f"Error setting path: {e}")
+            
+            return
+            
+            #-------------------------------
+            #   4- Iterate through points in "3- Medidas" folder and:
+            #-------------------------------
 
-        # check if it exist
-        isdir = os.path.isdir(path)
-        if isdir:
-            logging.info(f"Path exists --> {path}")
-            # continue
-        else:
-            raise ValueError(f'Path ({path}) doesnt exist.')
-        
-        
-        # find the folder called "storage_output_wav_folder" with walk in the point_folders
         for root, dirs, files in os.walk(path):
+            
             if storage_output_wav_folder in dirs:
+
+
+            #-------------------------------
+            #   5- When wav_folder found in point folder, create leq_processor and leq_process wav_folder
+            #-------------------------------
                 logging.info(f"Found folder: {storage_output_wav_folder} in {root}")
                 point = os.path.basename(root)
                 logging.info(f"Point: {point}")
 
 
                 if point == "P5_TEST":
-                    ##########################################################
-                    ##########################################################
-                    ##########################################################
-                    # select the calibration constant for the point
-                    if point in CALIBRATION_CONSTANTS:
-                        calib = CALIBRATION_CONSTANTS[point]
-                        logging.info(f"Calibration constant: {calib}")
-                    else:
-                        raise ValueError(f"Calibration constant for {point} not found in CALIBRATION_CONSTANTS.")
-                    
-                    if point in ID_MICROPHONE:
-                        id_micro = ID_MICROPHONE[point]
-                        logging.info(f"ID Microphone: {id_micro}")
-                    else:
-                        raise ValueError(f"ID Microphone for {point} not found in ID_MICROPHONE.")
-                    
-                    
-                    ##########################################################
-                    ##########################################################
-                    ##########################################################
-                    wav_files_folder = os.path.join(root, storage_output_wav_folder)
-                    logging.info(f"WAV files folder: {wav_files_folder}")
 
+                    leq_processor, wav_files_folder = point_iteration_acoustics(
+                        point,
+                        root,
+                        storage_output_wav_folder,
+                        audio_sample_rate,
+                        audio_window_size,
+                        storage_s3_bucket_name,
+                        storage_output_acoust_folder,
+                        upload_s3,
+                        logging
+                    )
 
-                    ##########################################################
-                    ##########################################################
-                    ##########################################################
-                    logging.info("Creating the leq_processor")
-                    leq_processor = LeqLevelOct(
-                            audio_path=wav_files_folder,
-
-                            id_micro=id_micro,
-                            fs=audio_sample_rate,
-                            window_size=audio_window_size,
-                            calibration_constant=calib,
-                            
-                            acoustic_params=storage_output_acoust_folder,
-                            wav_files=storage_output_wav_folder,
-                            s3_bucket_name=storage_s3_bucket_name,
-                            
-                            upload_s3=upload_s3,
-                            logging=logging
-                        )
                     logging.info("Processing audio files...")
                     leq_processor.process_audio_files(wav_files_folder)
                 
                 
                 else:
+                    
+                    
                     logging.info(f"Skipping point: {point}")
+                    
+                    
                     continue
 
     except KeyboardInterrupt:
@@ -524,7 +596,10 @@ def main():
         logging.error(f"An unexpected error occurred: {e}")
 
 
-    #logging end of script
+
+            #-------------------------------
+            #   6- End !
+            #-------------------------------
     logging.info("")
     logging.info("Done!")
 

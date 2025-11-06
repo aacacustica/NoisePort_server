@@ -6,11 +6,15 @@ import numpy as np
 import wave
 import contextlib
 import datetime
+import sys
 
-from config import *
+
+sys.path.insert(0, "/home/aac_s3_test/noisePort_server/04_queries")
 from queries import *
 from ast import literal_eval
 from pathlib import Path
+from queries import *
+from config import *
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -68,10 +72,11 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
         # ------------------------------------
         # 1-    Check if file is in processed txt list
         # ------------------------------------
-    file = os.path.basename(csv_path)
+    if not os.path.exists(processed_txt): open(processed_txt, 'w').close()
     with open(processed_txt) as myfile:
-     if file in myfile.read():
-         return
+        file = os.path.basename(csv_path)
+        if file in myfile.read():
+            return
     
     
     try:
@@ -331,10 +336,12 @@ def process_sonometer_xlsx(db,xlsx_path,logger,point, output_folder,count,proces
         # 1-    Check if file is in processed txt list
         # ------------------------------------
     
-    file = os.path.basename(xlsx_path)
+    
+    if not os.path.exists(processed_folder_txt): open(processed_folder_txt, 'w').close()
     with open(processed_folder_txt) as myfile:
-     if file in myfile.read():
-         return
+        file = os.path.basename(xlsx_path)
+        if file in myfile.read():
+            return
     try:
 
         df_first_row = pd.read_excel(xlsx_path, sheet_name='Measurement History',header= None,skiprows=1,nrows=1)
@@ -513,11 +520,12 @@ def process_sonometer_xlsx(db,xlsx_path,logger,point, output_folder,count,proces
 
 
 def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processed_folder,processed_folder_txt):
+    if not os.path.exists(processed_folder_txt): open(processed_folder_txt, 'w').close()
     for day in tqdm.tqdm(folder_days, desc="[Acoustics] Processing days", unit="day"):
         
-        if day in processed_folder:
-            logger.info("[Acoustics] Already processed: %s", day)
-            continue
+        with open(processed_folder_txt) as myfile:
+            if day in myfile.read():
+                return
       
         try:
 
@@ -655,7 +663,7 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
 
 
 def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed_folder, processed_folder_txt):
-        
+    if not os.path.exists(processed_folder_txt): open(processed_folder_txt, 'w').close()
     for day in tqdm.tqdm(folder_days, desc="[Predictions] Processing days", unit="day"):
         with open(processed_folder_txt) as myfile:
             if day in myfile.read():
@@ -818,7 +826,7 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
 
 
 def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_folder, processed_folder_txt):
-
+    if not os.path.exists(processed_folder_txt): open(processed_folder_txt, 'w').close()
     for day in tqdm.tqdm(folder_days, desc="[Wave Files] Processing days", unit="day"):
         with open(processed_folder_txt) as myfile:
             if day in myfile.read():
@@ -961,11 +969,12 @@ def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_
 
 
 
-def process_sonometer_folder(db,logger,files_folder,processed_sonometers_txt):
+def process_sonometer_folder(db,logger,files_folder,query_sonometer_folder,processed_sonometers_txt):
         
-        output_folder = files_folder.replace('sonometer_files','sonometer_acoustics_query')
+        output_folder = query_sonometer_folder
         
         for point in tqdm.tqdm(os.listdir(files_folder), desc="[Sonometers] Processing Points"):
+            if point == 'Boluda':
                 point_folder = os.path.join(files_folder,point)
                 file_count = 0
                 

@@ -24,6 +24,23 @@ warnings.filterwarnings("ignore",
                         category=UserWarning)
 
 
+(
+    S3_BUCKET_NAME,
+    PLACE,
+    POINT,
+    OUTPUT_PARENT_FOLDER,
+    OUTPUT_WAV_FOLDER,
+    OUTPUT_ACOUST_FOLDER,
+    OUTPUT_PREDICT_FOLDER,
+    _,
+    SAMPLE_RATE,
+    CHUNK_SIZE,
+    MODEL_TF,
+    _,
+    YAMNET_CLASS_MAP_CSV
+
+) = load_config_inference('config.yaml', os.getcwd())
+
 
 
 
@@ -177,8 +194,29 @@ def inference(file_list, model_path, sample_rate, chunk_size, window_size, thres
             logging.warning("The final CVS final will not be update to the bucket S3")
 
 
+def load_args_config(model_path,window_size,threshold,upload_s3,home_dir,path):
 
+        if path: path = path       
+        else: path = os.path.join(home_dir, PLACE, POINT, OUTPUT_WAV_FOLDER)
+              
+        if os.path.exists(path):
+            logging.info(f"Path exists --> {path}")
+        else:
+            raise Exception('Path doesnt exist.')
 
+        if model_path: model_path = model_path
+        else: model_path = MODEL_TF
+
+        if window_size: window_size = window_size
+        else: window_size = None
+            
+        if threshold: threshold = threshold
+        else: threshold = None
+            
+        if upload_s3: upload_s3 = upload_s3
+        else: upload_s3 = None
+        
+        return model_path,window_size,threshold,upload_s3,path
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Make prediction with YAMNet model for audio files')
@@ -201,99 +239,72 @@ def parse_arguments():
     return parser.parse_args()
 
 
-
-
 def main():
+    
+    
+    
     try:
+
+    # ----------------------------
+    # 1 - PARSE ARGUMENTS & CONFIG
+    # ----------------------------
         logging = setup_logging(script_name="inference")
         args = parse_arguments()
         cwd = os.path.dirname(os.path.realpath(__file__))
         home_dir = os.getenv("HOME")
-
-        s3_bucket_name, place, point, output_parent_folder, output_wav_folder, output_acoust_folder, output_predict_folder, _, sample_rate, chunk_size, model_tf, _, yamnet_class_map_csv = load_config_inference('config.yaml',cwd)
+        model_path,window_size,threshold,upload_s3,path = load_args_config(args.model_path,args.window_size,args.threshold,args.upload_S3,home_dir)
         
-        # ----------------------------
-        # PARSE ARGUMENTS & CONFIG
-        # ----------------------------
-        #WAV PÀTH
-        if args.path:
-            path = args.path
-        else:
-            path = os.path.join(home_dir, place, point, output_wav_folder)
-            if os.path.exists(path):
-                logging.info(f"Path exists --> {path}")
-            else:
-                raise Exception('Path doesnt exist.')
-
-        # DEEP LEARNING MODEL PATH
-        if args.model_path:
-            model_path = args.model_path
-        else:
-            model_path = model_tf
-
-        # WINDOW
-        if args.window_size:
-            window_size = args.window_size
-        else:
-            window_size = None
-
-        # THRESHOLD
-        if args.threshold:
-            threshold = args.threshold
-        else:
-            threshold = None
-
-        # UPLOAD BUCKET S3
-        if args.upload_S3:
-            upload_s3 = args.upload_S3
-        else:
-            upload_s3 = None
-
+        logging.info(f"Path: {path}")
+        logging.info(f"Model path: {model_path}")
+        logging.info(f"Window size: {window_size}")
+        logging.info(f"Probability treshold: {threshold}")
+        logging.info(f"Upload to bucket S3: {upload_s3}")
+    
     except Exception as e:
         logging.error(f"Errorgetting the config info: {e}")
 
 
-    logging.info(f"Path: {path}")
-    logging.info(f"Model path: {model_path}")
-    logging.info(f"Window size: {window_size}")
-    logging.info(f"Probability treshold: {threshold}")
-    logging.info(f"Upload to bucket S3: {upload_s3}")
-
-
-    # -----------------------
-    # GETTING AUDIO FILES
-    # -----------------------
     try:
+
+    # -----------------------
+    # 2 - GETTING AUDIO FILES
+    # -----------------------
         audio_files = [f for f in os.listdir(path) if f.lower().endswith('.wav')]
-        full_paths = [os.path.join(path, file) for file in audio_files]
+        full_paths = [os.path.join(path, file) for file in audio_files] 
+        
+        logging.info(f"Found {len(audio_files)} audio files: {audio_files}")
     except Exception as e:
         logging.error(f"Errorgetting the audio files: {e}")
 
-    logging.info(f"Found {len(audio_files)} audio files: {audio_files}")
 
-
-
-    # -----------------------
-    # INFERENCE
-    # -----------------------
     try:
+
+    # -----------------------
+    # 3 - MAKE INFERENCE
+    # -----------------------
+        
         inference(
+
             file_list=full_paths,
             model_path=model_path,
-            sample_rate=sample_rate,
-            chunk_size=chunk_size,
+            sample_rate=SAMPLE_RATE,
+            chunk_size=CHUNK_SIZE,
             window_size=window_size,
             threshold=threshold,
             upload_s3=upload_s3,
             logging=logging,
-            output_wav_folder=output_wav_folder,
-            output_predict_folder=output_predict_folder,
-            s3_bucket_name=s3_bucket_name,
+            output_wav_folder=OUTPUT_WAV_FOLDER,
+            output_predict_folder=OUTPUT_PREDICT_FOLDER,
+            s3_bucket_name=S3_BUCKET_NAME,
             cwd=cwd,
-            yamnet_class_map_csv=yamnet_class_map_csv
+            yamnet_class_map_csv=YAMNET_CLASS_MAP_CSV
+        
         )
+        
         logging.info("Inference finished.")
-    
+    # -----------------------
+    # 4 - END
+    # -----------------------
     except Exception as e:
         logging.error(f"Error making inference: {e}")
 

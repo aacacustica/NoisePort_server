@@ -2,8 +2,10 @@
 #  FOLDERS
 # ----------------------------------------
 
-MEDIDAS_FOLDER = "3-Medidas"
-RESULTADOS_FOLDER = "5-Resultados"
+MEDIDAS_FOLDER = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/3-Medidas/"
+RESULTADOS_FOLDER = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/5-Resultados/"
+
+
 
 # ----------------------------------------
 #  SANDISK PATH

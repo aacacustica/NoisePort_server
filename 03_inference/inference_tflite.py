@@ -29,6 +29,8 @@ warnings.filterwarnings("ignore",
 
 
 def inference(path,id_micro, model_path, sample_rate, chunk_size, window_size, threshold, upload_s3, logging, output_wav_folder, output_predict_lt_folder, s3_bucket_name, cwd, yamnet_class_map_csv):
+    
+    
     """
     Perform inference on one or more audio files.
     Args:
@@ -36,6 +38,7 @@ def inference(path,id_micro, model_path, sample_rate, chunk_size, window_size, t
         window_size (float, optional): Window size in seconds. If None, process the entire file at once.
         threshold (float, optional): Threshold for classification.
     """
+    
     logging.info("")
     logging.info("Making inference")
 

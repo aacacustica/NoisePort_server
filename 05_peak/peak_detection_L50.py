@@ -10,10 +10,8 @@ import sys
 sys.path.insert(0, "/home/aac_s3_test/noisePort_server/05_peak")
 
 from logging_config import *
-from utils_05 import find_audiomoth_folders
 from config_peak import *
 from scipy.signal import find_peaks
-from visualization import *
 from tqdm import tqdm
 from config import *
 
@@ -24,20 +22,50 @@ logging.basicConfig(level=logging.INFO,
                     filemode='w')
 
 
+
+def leq(levels):
+    levels = levels[~np.isnan(levels)]
+    l = np.array(levels)
+    return 10 * np.log10(np.mean(np.power(10, l / 10)))
+
+
+def find_acoustics_folder(base_path):
+
+    csv_files = []
+    for point in os.listdir(base_path):
+        if point == 'P5_TEST':
+            for acoustic_folder in os.listdir(os.path.join(base_path,point)):
+                if acoustic_folder == 'acoustic_params':
+                    for day in os.listdir(os.path.join(base_path,point,acoustic_folder)):
+                        
+                        if not os.path.isdir(os.path.join(base_path,point,acoustic_folder,day)):
+                            continue
+                        csv_files_day = [f for f in os.listdir(os.path.join(base_path,point,acoustic_folder,day)) if f.endswith('.csv')]
+                        csv_files = csv_files + [os.path.join(base_path,point,acoustic_folder,day,f) for f in csv_files_day]
+                    
+    
+    return csv_files
+
+
+
+def assign_folder_paths(csv_file):
+
+    title = csv_file.split("/")[-1]
+    point = csv_file.split("/")[-4]
+
+    output_folder = csv_file.replace("3-Medidas/" + point +"/acoustic_params","5-Resultados/" + point +"/SPL/PEAKS")
+    output_folder = output_folder.replace(output_folder.split("/")[-1],"")
+    output_folder = output_folder.replace(output_folder.split("/")[-1],"")
+    
+    return title,point,output_folder
+
+
 def argument_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--path", type=str, required=False, help="Path to the csv file")
     return parser.parse_args()
 
-def assign_folder_paths(csv_file):
 
-    title = csv_file.split("/")[-3]
-    audiomoth_folder = csv_file.replace("5-Resultados", "3-Medidas").replace("SPL", "AUDIOMOTH")
-    audiomoth_folder = "/".join(audiomoth_folder.split("/")[:-1])
-    output_folder = audiomoth_folder.replace("3-Medidas", "5-Resultados").replace("AUDIOMOTH", "SPL")
-    output_folder = os.path.join(output_folder, "Peaks")
-
-    return title,audiomoth_folder,output_folder
 
 def main():
 
@@ -49,13 +77,17 @@ def main():
 
     logger = setup_logging('query_automatize')
     args = argument_parser()
-    base_path = args.path
+
+    if not args.path:
+        base_path = SANDISK_PATH_LINUX
+    else:
+        base_path = args.path
     
     """
                                         temporary debugging pathing
                ->   TODO assign point folder iterations in find_audiomoth_folders function  <-
     """
-    csv_files = list(find_audiomoth_folders(base_path))
+    csv_files = list(find_acoustics_folder(base_path))
 
     for csv_file in tqdm(csv_files, desc='Processing csv files'):
         
@@ -66,8 +98,8 @@ def main():
                 # 1- Getting folder paths
                 #-------------------------------
         
-        title, audiomoth_folder, output_folder = assign_folder_paths(csv_file)
- 
+        title, point, output_folder = assign_folder_paths(csv_file)
+
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
@@ -75,9 +107,8 @@ def main():
                 # 2- Asigning full path to each filename item in filename row
                 #------------------------------- 
         
-        df['filename'] = df['filename'].apply(lambda x: os.path.join(audiomoth_folder, x))
-        df['date'] = pd.to_datetime(df['date'])
-                
+        df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+        #df['Filename'] = df['Filename'].apply(lambda x: os.path.join(acoustic_folder)
         try:
             
                 #-------------------------------
@@ -103,6 +134,7 @@ def main():
                 clip_info = []
                 peaks, properties = find_peaks(above_threshold['LA'], prominence=PROMINENCE, width=WIDTH)
                 df_peaks = above_threshold.iloc[peaks]
+                
                 logging.info(f"Detected {len(df_peaks)} peaks")
             
             
@@ -130,6 +162,7 @@ def main():
                 #-------------------------------
 
                 peak_data = []
+                
                 for start, end in zip(start_points, end_points):
                     peak_LA_values = above_threshold['LA'].iloc[start:end+1].values
                     leq_value = leq(peak_LA_values)

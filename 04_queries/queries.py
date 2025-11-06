@@ -16,7 +16,13 @@ from logging_config import *
 from utils import *
 from config import *
 
+PATH = SANDISK_PATH_LINUX
+ISDIR = os.path.isdir(PATH)
 
+ID_MICRO, LOCATION_RECORD, LOCATION_PLACE, LOCATION_POINT, \
+AUDIO_SAMPLE_RATE, AUDIO_WINDOW_SIZE, AUDIO_CALIBRATION_CONSTANT,\
+STORAGE_S3_BUCKET_NAME, STORAGE_OUTPUT_WAV_FOLDER, \
+STORAGE_OUTPUT_ACOUSTIC_FOLDER = load_config_acoustic('config.yaml')
 
 def initialize_database(db, logger):
     """Ensure that the database and table exist, recreating them from scratch."""
@@ -62,18 +68,15 @@ def initialize_database(db, logger):
 
 
 def load_data_db(db, data_path, logger, table_name=ACOUSTIC_TABLE_NAME):
-    cursor = db.cursor(dictionary=True)
     
-
+    cursor = db.cursor(dictionary=True)
     if table_name == ACOUSTIC_TABLE_NAME: query_load = QUERYS['load_acoustics_db'].format(data_path=data_path,table_name=table_name)
     if table_name == WAV_TABLE_NAME: query_load = QUERYS['load_wavs_db'].format(data_path=data_path,table_name=table_name)
     if table_name == PREDICT_TABLE_NAME: query_load = QUERYS['load_preds_db'].format(data_path=data_path,table_name=table_name)
     if table_name == SONOMETER_TABLE_NAME: query_load = QUERYS['load_sonometers_db'].format(data_path=data_path,table_name=table_name) 
     
     try:
-        # execute the query to load data.
         cursor.execute(query_load)
-        # commit the transaction so changes are saved.
         db.commit()
         logger.info("Data loaded successfully")
     except mysql.connector.Error as err:
@@ -81,13 +84,12 @@ def load_data_db(db, data_path, logger, table_name=ACOUSTIC_TABLE_NAME):
         db.rollback()
     finally:
         cursor.close()
-        # db.close() 
 
 
 def get_columns_for_table(table_name):
+    
     """
     Devuelve la lista de columnas para cada tabla como strings,
-    para usar en LOAD DATA LOCAL INFILE.
     """
     
     if table_name == ACOUSTIC_TABLE_NAME:
@@ -239,8 +241,108 @@ def decimal_to_native(obj):
         return float(obj)
     raise TypeError(f"Type {obj.__class__.__name__} not serializable")
 
+def load_points():
+
+    points = [point for point in os.listdir(PATH)]
+    points = [os.path.join(PATH, point) for point in points]
+    
+    return points
+
+def get_acoust_and_point(logger,point):
+    
+    point_str = point.split("/")[-1]
+    acoust_folder = os.path.join(point, STORAGE_OUTPUT_ACOUSTIC_FOLDER)
+    logger.info(f"Acoustic params folder: {acoust_folder}")
+
+    return point_str,acoust_folder
 
 
+def initialize_process_files(query_acoustic_folder,query_pred_folder,query_wav_folder,query_sonometer_folder,logger):
+
+    processed_folder_acoustic_txt = os.path.join(query_acoustic_folder, "processed_acoustics.txt")
+    processed_folder_predictions_txt = os.path.join(query_pred_folder, "processed_predictions.txt")
+    processed_folder_wav_txt = os.path.join(query_wav_folder, "processed_wavs.txt")
+    processed_folder_sonometer_txt = os.path.join(query_sonometer_folder,"processed_sonometers.txt")
+
+    logger.info(f"Saving the proicessed file txt here --> {processed_folder_acoustic_txt}")
+    processed_acoustics = load_processed_folder(processed_folder_acoustic_txt)
+    processed_predictions = load_processed_folder(processed_folder_predictions_txt)
+    processed_wavs = load_processed_folder(processed_folder_wav_txt)
+
+    return processed_folder_acoustic_txt,processed_folder_predictions_txt,processed_folder_wav_txt,processed_folder_sonometer_txt,processed_acoustics,processed_predictions,processed_wavs
+
+def create_query_folders(point,logger):
+        
+        point_path_results = point.replace("3-Medidas","5-Resultados")
+
+        query_acoustic_folder = os.path.join(point_path_results,'SPL', "acoustic_params_query")
+        query_pred_folder = os.path.join(point_path_results,'AI_MODEL', "predictions_litle_query")
+        query_acoustic_folder = os.path.join(point_path_results,'SPL', "acoustic_params_query")
+        query_wav_folder = os.path.join(point_path_results,'SPL', "wav_files_query")
+        query_sonometer_folder = os.path.join(point_path_results,'SPL',"sonometer_acoustics_query")
+
+        if not os.path.exists(query_acoustic_folder):
+            os.makedirs(query_acoustic_folder)
+            logger.info(f"Created Query folde: {query_acoustic_folder}")
+        else:
+            logger.info(f"Folder query already exists: {query_acoustic_folder}")
+        
+        if not os.path.exists(query_pred_folder):
+            os.makedirs(query_pred_folder)
+            logger.info(f"Created output query_pred_folder: {query_pred_folder}")
+        else:
+            logger.info(f"Folder predictions already exists: {query_pred_folder}")
+        
+        if not os.path.exists(query_wav_folder):
+            os.makedirs(query_wav_folder)
+            logger.info(f"Created output query_wav_folder: {query_wav_folder}")
+        else:
+            logger.info(f"Folder wav_files already exists: {query_wav_folder}")
+
+        if not os.path.exists(query_sonometer_folder):
+            os.makedirs(query_sonometer_folder)
+            logger.info(f"Created output query_sonometer_folder: {query_sonometer_folder}")
+        else:
+            logger.info(f"Folder sonometer_files already exists: {query_sonometer_folder}")
+
+        return query_acoustic_folder, query_pred_folder, query_wav_folder,query_sonometer_folder
+
+def acoustic_processing(folder_days,folder,db,logger, all_info, query_acoustic_folder, processed_acoustics, processed_folder_acoustic_txt):
+    
+    folder_days = get_desired_query_folder(folder_days,folder)                  
+    logger.info("Starting ACOUSTIC FOLDER processing")
+    start_time = time.time()                 
+    process_acoustic_folder(db,logger,folder_days, all_info, query_acoustic_folder, processed_acoustics, processed_folder_acoustic_txt)                 
+    
+    end_time =  round(time.time() - start_time,2)
+    return end_time
+
+def wav_processing(folder_days,folder,db,logger, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt):
+
+    folder_days = get_desired_query_folder(folder_days,folder)                   
+    logger.info("Starting WAV FOLDER processing")
+    start_time = time.time()                   
+    process_wav_folder(db,logger,folder_days, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)                   
+    
+    end_time =  round(time.time() - start_time,2)
+    return end_time
+
+def prediction_processing(folder_days,folder,db,logger, all_info, query_pred_folder, processed_predictions, processed_folder_predictions_txt):
+    
+    folder_days = get_desired_query_folder(folder_days,folder)                 
+    start_time = time.time()
+    process_pred_folder(db,logger,folder_days, all_info, query_pred_folder, processed_predictions, processed_folder_predictions_txt)                 
+    end_time =  round(time.time() - start_time,2)
+    return end_time
+
+def sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed_folder_sonometer_txt):
+    
+    start_time = time.time()
+    sonometer_path = point + f'/{folder}'                   
+    process_sonometer_folder(db,logger,sonometer_path,query_sonometer_folder,processed_folder_sonometer_txt)
+    end_time =  round(time.time() - start_time,2)
+    return end_time
+    
 
 def main():
     # ------------------------------------
@@ -255,112 +357,65 @@ def main():
             password=PASSWORD,
             allow_local_infile=True)
 
-    logger.info("Initializing database!")
+    logger.info("[Queries] Initializing database!")
     
     if DB_INIT_SWITCH: initialize_database(db, logger)
 
-    logger.info("Starting!!")
-    logger.info("")
-    
-    try:
-        
-        logger.info("Getting the element form the yamnl file")
-        id_micro, location_record, location_place, location_point, \
-        audio_sample_rate, audio_window_size, audio_calibration_constant,\
-        storage_s3_bucket_name, storage_output_wav_folder, \
-        storage_output_acoust_folder = load_config_acoustic('config.yaml')
-        logger.info("Config loaded successfully")   
-    
-    except Exception as e:
-        
-        logger.error(f"Error loading config: {e}")
-        
-        return
-
-    
-    path = SANDISK_PATH_LINUX
-        
-    isdir = os.path.isdir(path)
-    
-    if isdir:
-        logger.info(f"Path exists --> {path}")
+    logger.info("[Queries] Starting!!")
+     
+    if ISDIR:
+        logger.info(f"PATH exists --> {PATH}")
     else:
-        logger.warning(f"Path does not exist --> {path}")
-        path = SANDISK_PATH_WINDOWS
-        isdir = os.path.isdir(path)
-        if isdir:
-            logger.info(f"Path exists --> {path}")
-        else:
-            raise ValueError(f'Path ({path}) doesnt exist.')
-
+        raise ValueError(f'PATH ({PATH}) doesnt exist.')
     
-    logger.info("")
-    points = [point for point in os.listdir(path)]
-    points = [os.path.join(path, point) for point in points]
-    logger.info(f"These are the points: {points}")
+    points = load_points()
+    logger.info(f"[Queries] Points to query: {points}")
 
     all_info = []
     for point in tqdm.tqdm(points, desc="Processing points", unit="point"):
-        if "P2_CONTENEDORES" in point:
+        if "P5_TEST" in point:
             try:
                 
-                
-                point_str = point.split("/")[-1]
-                acoust_folder = os.path.join(point, storage_output_acoust_folder)
-                logger.info(f"Acoustic params folder: {acoust_folder}")
-                                
+                # ---------------------------
+                # GET ACOUSTIC FOLDER PATH AND POINT NAME STRING
+                # ---------------------------
+                (
+                    point_str,
+                    acoust_folder
+
+                ) = get_acoust_and_point(logger,point)
+              
                 if os.path.isdir(acoust_folder):
                     logger.info(f"Folder exists: {acoust_folder}")
                 else:
                     logger.warning(f"Folder does not exist: {acoust_folder}")
                     continue
-
-
-                logger.info(f"")
                 
                 # ---------------------------
                 # CREATING QUERY FOLDERS IF THEY DONT EXIST
                 # ---------------------------
-                
-                query_acoustic_folder = os.path.join(point, "acoustic_params_query")
-                query_pred_folder = os.path.join(point, "predictions_litle_query")
-                query_acoustic_folder = os.path.join(point, "acoustic_params_query")
-                query_wav_folder = os.path.join(point, "wav_files_query")
-                query_sonometer_folder = os.path.join(point,"sonometer_acoustics_query")
 
-                if not os.path.exists(query_acoustic_folder):
-                    os.makedirs(query_acoustic_folder)
-                    logger.info(f"Created Query folde: {query_acoustic_folder}")
-                else:
-                    logger.info(f"Folder query already exists: {query_acoustic_folder}")
-              
-                if not os.path.exists(query_pred_folder):
-                    os.makedirs(query_pred_folder)
-                    logger.info(f"Created output query_pred_folder: {query_pred_folder}")
-                else:
-                    logger.info(f"Folder predictions already exists: {query_pred_folder}")
-                
-                if not os.path.exists(query_wav_folder):
-                    os.makedirs(query_wav_folder)
-                    logger.info(f"Created output query_wav_folder: {query_wav_folder}")
-                else:
-                    logger.info(f"Folder wav_files already exists: {query_wav_folder}")
+                (
+                    query_acoustic_folder,
+                    query_pred_folder,
+                    query_wav_folder,
+                    query_sonometer_folder
 
+                ) = create_query_folders(point,logger)
 
                 # ---------------------------
                 # INIZIALATIN PROCESSING FILES
                 # ---------------------------
+        
+                (
+                    processed_folder_acoustic_txt,
+                    processed_folder_predictions_txt,
+                    processed_folder_wav_txt,processed_folder_sonometer_txt,
+                    processed_acoustics,
+                    processed_predictions,
+                    processed_wavs
 
-                
-                processed_folder_acoustic_txt = os.path.join(query_acoustic_folder, "processed_acoustics.txt")
-                processed_folder_predictions_txt = os.path.join(query_pred_folder, "processed_predictions.txt")
-                processed_folder_wav_txt = os.path.join(query_wav_folder, "processed_wavs.txt")
-                processed_folder_sonometer_txt = os.path.join(query_sonometer_folder,"processed_sonometers.txt")
-
-                logger.info(f"Saving the proicessed file txt here --> {processed_folder_acoustic_txt}")
-                processed_acoustics = load_processed_folder(processed_folder_acoustic_txt)
-                processed_predictions = load_processed_folder(processed_folder_predictions_txt)
-                processed_wavs = load_processed_folder(processed_folder_wav_txt)
+                 )  = initialize_process_files(query_acoustic_folder,query_pred_folder,query_wav_folder,query_sonometer_folder,logger)
 
                 logger.info(f"Saving the processed list of predictions files txt here --> {processed_folder_predictions_txt}")
                 logger.info(f"Saving the processed list of acoustics files txt here -->  {processed_folder_acoustic_txt}")
@@ -376,7 +431,7 @@ def main():
             try:
 
                 # ------------------------------------
-                #   Filter the FILES, FUST THE FOLDERS
+                #   Filter the FILES, JUST THE FOLDERS
                 # ------------------------------------
 
                 logger.info("")
@@ -384,8 +439,7 @@ def main():
                 folder_days = [day_folder for day_folder in folder_days if os.path.isdir(os.path.join(acoust_folder, day_folder))]
                 logger.info("Folder days in %s: %s", acoust_folder, folder_days)
                 folder_days = [os.path.join(acoust_folder, day_folder) for day_folder in folder_days]
-
-                wav_folder = point + '/' + storage_output_wav_folder
+            
             except Exception as e:
                 logger.error(f"Error listing folder days: {e}")
                 continue
@@ -395,56 +449,34 @@ def main():
             # PROCESSING
             # ----------------------
             
-            logger.info("")
-            
-            query_pred_folder = point + '/' + 'predictions_litle_query'
-            query_acoustic_folder = point + '/' + 'acoustic_params_query'
-            query_wav_folder = point + '/' + 'wav_files_query'
-            
             whole_start_time = time.time()
-            
             
             for folder in os.listdir(point):
 
                 if folder == 'acoustic_params'  and ACOUSTIC_QUERY_SWITCH:
                     
-                    folder_days = get_desired_query_folder(folder_days,folder)                  
-                    logger.info("Starting ACOUSTIC FOLDER processing")
-                    start_time = time.time()                 
-                    process_acoustic_folder(db,logger,folder_days, all_info, query_acoustic_folder, processed_acoustics, processed_folder_acoustic_txt)                 
-                    
-                    print(" --- %s seconds in execution ---" % round(time.time() - start_time,2))
-                    logger.info("Finished ACOUSTIC FOLDER processing")
+                    logger.info("Starting ACOUSTIC processing")
+                    end_time = acoustic_processing(folder_days,folder,db,logger, all_info, query_acoustic_folder, processed_wavs, processed_folder_acoustic_txt)
+                    print(" --- %s seconds in execution ---" %end_time)                      
                 
                 if folder == 'predictions_litle' and PREDICT_QUERY_SWITCH:
                     
-                    folder_days = get_desired_query_folder(folder_days,folder)                 
-                    logger.info("Starting PREDICTION FOLDER processing")
-                    start_time = time.time()
-                    process_pred_folder(db,logger,folder_days, all_info, query_pred_folder, processed_predictions, processed_folder_predictions_txt)                 
-                    
-                    print(" --- %s seconds in execution ---" % round(time.time() - start_time,2))
-                    logger.info("Finished PREDICTION FOLDER processing")
+                    logger.info("Starting PREDICTIONS processing")
+                    end_time = prediction_processing(folder_days,folder,db,logger, all_info, query_pred_folder, processed_wavs, processed_folder_predictions_txt)
+                    print(" --- %s seconds in execution ---" %end_time)  
                 
                 if folder == 'wav_files' and WAV_QUERY_SWITCH:
                     
-                    folder_days = get_desired_query_folder(folder_days,folder)                   
-                    logger.info("Starting WAV FOLDER processing")
-                    start_time = time.time()                   
-                    process_wav_folder(db,logger,folder_days, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)                   
-                    
-                    print(" --- %s seconds in execution ---" % round(time.time() - start_time,2))
-                    logger.info("Finished WAV FOLDER processing")
+                    logger.info("Starting WAV FILES processing")
+                    end_time = wav_processing(folder_days,folder,db,logger, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)
+                    print(" --- %s seconds in execution ---" %end_time)  
         
                 if folder == 'sonometer_files' and SONOMETER_QUERY_SWITCH:  
                    
                     logger.info("Starting SONOMETER FOLDER processing")
-                    start_time = time.time()
-                    sonometer_path = point + f'/{folder}'                   
-                    process_sonometer_folder(db,logger,sonometer_path,processed_folder_sonometer_txt)
-                    
-                    print(" --- %s seconds in execution ---" % round(time.time() - start_time,2))
-
+                    end_time = sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed_folder_sonometer_txt)
+                    print(" --- %s seconds in execution ---" %end_time)
+            
             print(" --- %s seconds in total execution ---" % round(time.time() - whole_start_time,2))
         
         
@@ -461,6 +493,7 @@ def main():
     logger.info("")
     logger.info("Saving all_info to JSON")
     logger.info("all_info: %s", all_info)
+    json.dump(all_info, sys.stdout, indent=4, default=decimal_to_native)
 
     # ------------------------------------
     #   Adding the folder processed to the all_info
