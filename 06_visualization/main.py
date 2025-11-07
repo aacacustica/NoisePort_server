@@ -176,6 +176,7 @@ def main():
 
 
             logger.info("Entering the process all folder function")
+            
             process_all_folders(
                 input_folder,
                 folders,

@@ -6,12 +6,13 @@ import os
 import argparse
 import logging
 import sys
-
+import time
 sys.path.insert(0, "/home/aac_s3_test/noisePort_server/05_peak")
 
 from logging_config import *
 from config_peak import *
 from scipy.signal import find_peaks
+from collections import defaultdict
 from tqdm import tqdm
 from config import *
 from config_peak import *
@@ -33,44 +34,48 @@ def leq(levels):
 
 
 
-def find_acoustics_folder(base_path):
-    print(base_path)
-    base_path = base_path.replace("3-Medidas", "5-Resultados")
-    print(base_path)
-    # exit()
-    csv_files = []
+
+def get_hourly_folders(base_path):
+    
+    hour_path_acoustics = []
+    hour_path_predictions = []
+    hour_path_peaks = []
+    
+    base_path = base_path.replace("3-Medidas","5-Resultados")
+
     for point in os.listdir(base_path):
         if point == 'P5_TEST':
-            for spl_ai_model in os.listdir(os.path.join(base_path,point)):
-                print(spl_ai_model)
+            
+            spl_folder = os.path.join(base_path,point,'SPL')
+            ai_folder = os.path.join(base_path,point,'AI_MODEL')
+            
+            predictions_params_query = os.path.join(ai_folder,'predictions_litle_query')
+            peaks_params_query = os.path.join(spl_folder,'Peaks','peaks_hourly')
+            acoustic_params_query = os.path.join(spl_folder,'acoustic_params_query')
 
-                if spl_ai_model == 'AI_MODEL':
-                    for predictions_folders in os.listdir(os.path.join(base_path,point,spl_ai_model)):
-                        print(predictions_folders)
-                        if predictions_folders == "predictions_litle_query":
-                            print("gettin the predictions_litle_query")
-                            
-                        
-                #         if not os.path.isdir(os.path.join(base_path,point,acoustic_folder,day)):
-                #             continue
-                #         csv_files_day = [f for f in os.listdir(os.path.join(base_path,point,acoustic_folder,day)) if f.endswith('.csv')]
-                #         csv_files = csv_files + [os.path.join(base_path,point,acoustic_folder,day,f) for f in csv_files_day]
-    
-                elif spl_ai_model == 'AI_MODEL':
-                    print("")
-                
-                else:
-                    print("")
+            if not os.path.exists(peaks_params_query): os.makedirs(peaks_params_query)
 
-    return csv_files
+            for file in os.listdir(acoustic_params_query):
+                if file.endswith('.csv'):
+                    hour_path_acoustics.append(os.path.join(acoustic_params_query,file))        
+            for file in os.listdir(predictions_params_query):
+                if file.endswith('.csv'):
+                    hour_path_predictions.append(os.path.join(predictions_params_query,file))
+            for file in os.listdir(peaks_params_query):
+                if file.endswith('.csv'):
+                    hour_path_peaks.append(os.path.join(peaks_params_query,file))
+
+    return hour_path_acoustics,hour_path_predictions,hour_path_peaks
 
 
 
 def assign_folder_paths(csv_file):
-    title = csv_file.split("/")[-1]
-    point = csv_file.split("/")[-4]
 
-    output_folder = csv_file.replace("3-Medidas/" + point +"/acoustic_params","5-Resultados/" + point +"/SPL/PEAKS")
+    title = csv_file.split("/")[-1]
+    point = csv_file.split("/")[-5]
+
+    output_folder = csv_file.replace("acoustic_params_query","Peaks/peaks_hourly")
+
     output_folder = output_folder.replace(output_folder.split("/")[-1],"")
     output_folder = output_folder.replace(output_folder.split("/")[-1],"")
     
@@ -82,10 +87,72 @@ def argument_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--path", type=str, required=False, help="Path to the csv file")
     return parser.parse_args()
+        
+def merge_acoustics_predictions_and_peaks(acoustics_paths,predictions_paths,peaks_paths,logger):
 
 
-def concatenate_sort_time(csv_files:list):
-    print(csv_files)
+    output_path = peaks_paths[0].replace(f"peaks_hourly/{os.path.basename(peaks_paths[0])}","")
+
+    #1 - Concatenamos los csvs en las carpetas acoustics,predictions y peaks, generamos un dataframe total por archivo en la carpeta
+    dfs_ac_list = []
+    dfs_pred_list = []
+    dfs_peaks_list = []
+
+    for acoustic_path,pred_path,peak_path in zip(acoustics_paths,predictions_paths,peaks_paths):
+            
+            dayhour = os.path.basename(acoustic_path).replace(".csv","")
+
+            df_pk = pd.read_csv(peak_path)
+            df_pr = pd.read_csv(pred_path)
+            df_ac = pd.read_csv(acoustic_path)
+            
+            output_path_acoustics = output_path + f'/hourly_acoustics/'
+            output_path_predictions = output_path + f'/hourly_predictions/'
+            output_path_peaks = output_path + f'/hourly_peaks/'
+            
+            if not os.path.exists(output_path_acoustics): os.makedirs(output_path_acoustics)
+            if not os.path.exists(output_path_predictions): os.makedirs(output_path_predictions)    
+            if not os.path.exists(output_path_peaks): os.makedirs(output_path_peaks)
+
+            df_ac.to_csv(output_path_acoustics + f'[{dayhour}]acoustics_merged.csv')
+            df_pr.to_csv(output_path_predictions + f'[{dayhour}]predictions_merged.csv')
+            df_pk.to_csv(output_path_peaks + f'[{dayhour}]peaks_merged.csv')
+
+            logger.info("Merged individual csv files into single dataframes for acoustics, predictions and peaks")
+
+            #1 -  Comprobamos que la columna timestamp tiene el mismo formato en los 3 dataframes para nombre y contenido
+            for df in [df_ac, df_pr]:        
+                df.rename(columns={col: 'Timestamp' for col in df.columns if col.upper() == 'timestamp'}, inplace=True)
+                df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+
+            #2 - Normalizar peaks
+            df_pk.rename(columns={'start time': 'start_time', 'end time': 'end_time'}, inplace=True)
+            df_pk['start_time'] = pd.to_datetime(df_pk['start_time'])
+            df_pk['end_time'] = pd.to_datetime(df_pk['end_time'])
+            
+            #2 - Hacemos merge de acoustics y predictions ya que ambos tienen 1 registro por segundo y es mergeable a pelo
+            df_merged = pd.merge(df_ac,df_pr,on='Timestamp',how='inner',suffixes=('_acoustic','_prediction'))
+
+            #3 - Agregamos las columnas de peaks segun intervalo de tiempo
+            df_final = df_merged.copy()
+            df_final['is_peak'] = False
+            
+            #4 - Iteramos sobre peaks y agregamos dato en caso de que entre en el rango del pico
+            for _, row in df_pk.iterrows():
+
+                mask = (df_final['Timestamp'] >= row['start_time']) & (df_final['Timestamp'] <= row['end_time'])
+                if mask.any():
+                    df_final.loc[mask, 'is_peak'] = True
+
+                    for col in df_pk.columns:
+                        if col not in['start_time','end_time']:
+                            df_final.loc[mask,col] = row[col]
+            
+            merged_filename = os.path.join(output_path, f"merged_acoustics_predictions_peaks_{os.path.basename(acoustic_path)}")
+            df_final.to_csv(merged_filename, index=False)
+            
+            
+            logger.info(f"Merged acoustics, predictions and peaks saved at {output_path}")
 
 
 
@@ -103,67 +170,76 @@ def main():
         base_path = SANDISK_PATH_LINUX
     else:
         base_path = args.path
-    csv_files = list(find_acoustics_folder(base_path))
-    exit()
-    concatenate_sort_time(csv_files)
+    
+    start_time = time.time()
 
-
-
-
-    for csv_file in tqdm(csv_files, desc='Processing csv files'):
+    hourly_acoustics_folders,hourly_predictions_folders,hourly_peaks_folders = list(get_hourly_folders(base_path))
+    for csv_file in tqdm(hourly_acoustics_folders, desc='Processing csv files'):
+            
         df = pd.read_csv(csv_file)
 
-        #-------------------------------
-        # 1- Getting folder paths
-        #-------------------------------
+            #-------------------------------
+            # 1- Getting folder paths
+            #-------------------------------
+        
         title, point, output_folder = assign_folder_paths(csv_file)
 
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
 
-        #-------------------------------
-        # 2- Asigning full path to each filename item in filename row
-        #------------------------------- 
+            #-------------------------------
+            # 2- Asigning full path to each filename item in filename row
+            #------------------------------- 
+        
         df['Timestamp'] = pd.to_datetime(df['Timestamp'])
-        # df['Filename'] = df['Filename'].apply(lambda x: os.path.join(acoustic_folder)
         try:
+            
             #-------------------------------
             # 3- Rolling median for the LA values with a window of 30 seconds
             #-------------------------------
+            
             df['LA_median'] = df['LA'].rolling(window=WINDOW_SIZE, min_periods=1).quantile(0.5) + ADDING_THRESHOLD
-            # df['LA_median'] = df['LA'].rolling(window=WINDOW_SIZE, min_periods=1).quantile(0.5)
             above_threshold = df[df['LA'] > df['LA_median']]
+        
         except Exception as e:
             logger.error(f"Error rolling median for LA values:{e}")
 
         if not above_threshold.empty:
             try:
+                
                 #-------------------------------
                 # 4- Finding peaks which surpass the LA median above threshold
                 #-------------------------------
+                
                 peaks, properties = find_peaks(above_threshold['LA'], prominence=PROMINENCE, width=WIDTH)
                 df_peaks = above_threshold.iloc[peaks]
                 
                 logging.info(f"Detected {len(df_peaks)} peaks")
+            
             except Exception as e:
                 logger.error(f"Error finding peaks:{e}")
 
 
             try:
+                
                 #-------------------------------
                 # 5- Getting durations
                 #-------------------------------
+                
                 start_points = properties['left_ips'].astype(int)
                 end_points = properties['right_ips'].astype(int)
                 durations = end_points - start_points
+            
             except:
                 logger.error(f"Error calculating durations: {e}")
 
             try:
+                
                 #-------------------------------
                 # 6-  Saving Peaks Dataframe to CSV
                 #-------------------------------
+                
                 peak_data = []
                 for start, end in zip(start_points, end_points):
                     peak_LA_values = above_threshold['LA'].iloc[start:end+1].values
@@ -177,19 +253,32 @@ def main():
                         'LA_values': peak_LA_values.tolist()
                     })
 
-                print("Trying the get not empty dataframe!")
                 peaks_df = pd.DataFrame(peak_data)
-                print(peaks_df)
-                exit()
-                print("SAving the csv final file")
                 output_file_name = os.path.join(output_folder, f"peaks_detection_{title}.csv") 
                 peaks_df.to_csv((output_file_name), index=False)
                 logging.info(f"Peaks saved at {output_file_name}")
+            
             except Exception as e:
                 logger.error(f"Error saving peak csv: {e}")
-
         else:
             logging.error("No peaks detected")
+
+    try:
+                
+                #-------------------------------
+                # 7-  Concat: acoustics + preds + peaks 
+                #-------------------------------
+        _,_,hourly_peaks_folders = get_hourly_folders(base_path)
+        merge_acoustics_predictions_and_peaks(hourly_acoustics_folders,hourly_predictions_folders,hourly_peaks_folders,logger)
+        print("Total time taken: {:.2f} seconds".format(time.time() - start_time))
+    except Exception as e:
+        logger.error(f"Error concatenating acoustics predictions and peaks: {e}")
+
+
+
+
+
+
 
 
 if __name__ == "__main__":

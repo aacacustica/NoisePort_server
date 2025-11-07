@@ -9,6 +9,7 @@ import csv
 import resampy
 import soundfile as sf
 import tensorflow as tf
+import pandas as pd
 
 from . import params as yamnet_params
 from . import yamnet as yamnet_model
@@ -17,7 +18,7 @@ import warnings
 
 from utils import *
 from logging_config import setup_logging
-
+from collections import defaultdict
 
 warnings.filterwarnings("ignore", 
                         message="FNV hashing is not implemented in Numba",
@@ -42,6 +43,31 @@ warnings.filterwarnings("ignore",
 ) = load_config_inference('config.yaml', os.getcwd())
 
 
+def concatenate_prediction_csvs_to_daily(prediction_folder,logging):
+
+    hour_folders = os.listdir(prediction_folder)
+    folders_by_day = defaultdict(list)
+    
+    for hour_folder in hour_folders:
+        hour_name = os.path.basename(hour_folder)
+        day = hour_name.split("_")[0]
+        folders_by_day[day].append(hour_folder)
+        
+        for day, folders in folders_by_day.items():
+            all_minutes = []
+            
+            for folder in folders:
+                for csv_file in os.listdir(folder):
+                    if csv_file.endswith('.csv'):
+                        file_path = os.path.join(folder, csv_file)
+                        df = pd.read_csv(file_path)
+                        all_minutes.append(df)
+            
+            if all_minutes:
+                df_day = pd.concat(all_minutes, axis=0, ignore_index=True)
+                output_file = os.path.join(prediction_folder, f"{day}_concatenated.csv")
+                df_day.to_csv(output_file, index=False)
+    
 
 
 def inference(file_list, model_path, sample_rate, chunk_size, window_size, threshold, upload_s3, logging, output_wav_folder, output_predict_folder, s3_bucket_name, cwd, yamnet_class_map_csv):
@@ -193,6 +219,21 @@ def inference(file_list, model_path, sample_rate, chunk_size, window_size, thres
         else:
             logging.warning("The final CVS final will not be update to the bucket S3")
 
+        # -------------
+        # CONCATENATE DAILY CSVS
+        # ---------------
+
+        try:
+
+            concatenate_prediction_csvs_to_daily(
+                prediction_folder,
+                yamnet_classes,
+                start_timestamp,
+                logging
+            )
+
+        except Exception as e:
+            logging.error(f"Error concatenating prediction CSVs into DAILY format: {e}")
 
 def load_args_config(model_path,window_size,threshold,upload_s3,home_dir,path):
 
