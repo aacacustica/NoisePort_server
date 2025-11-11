@@ -1,14 +1,11 @@
 import argparse
 import os
-# from logging_config import setup_logging
-# from config_vi import *
-# from processing import *
 import re
 from .logging_config import setup_logging
-from .config_vi import *
+# from config_vi import *
+from . import config_vi 
 from .processing import *
 from .utils_vi import *
-# sys.path.insert(0, "/home/aac_s3_test/noisePort_server/06_visualization")
 
 
 
@@ -40,27 +37,15 @@ def arg_parser():
 
 
 
-def get_taxonomy(args, urban_taxonomy_map, port_taxonomy_map):
-    return port_taxonomy_map if args.port else urban_taxonomy_map
-
-
-
 def collect_folders(input_folder,label_source_type, logger):
-    folders, coefficients, date_time, threshold = [], {}, {}, {}
+    folders = []
 
     if label_source_type == "raspberry":
         logger.info("Searching for RASPBERRY")
         for root, dirs, _ in os.walk(input_folder):
-            if ACOUSTIC_PARAMS_FOLDER in dirs:
-                path = os.path.join(root, ACOUSTIC_PARAMS_FOLDER)
-                folder_name = path.split("\\")[-2]
-                coeff = float(input(f"Correction coefficient for {folder_name}: "))
-                new_date = new_time = t_date = t_time = None
-
+            if config_vi.MERGED_FOLDER in dirs:
+                path = os.path.join(root, config_vi.MERGED_FOLDER)
                 folders.append(path)
-                coefficients[path] = coeff
-                date_time[path] = (new_date, new_time)
-                threshold[path] = (t_date, t_time)
 
 
     if label_source_type == "audiomoth":
@@ -68,14 +53,7 @@ def collect_folders(input_folder,label_source_type, logger):
         for root, dirs, _ in os.walk(input_folder):
             if "AUDIOMOTH" in dirs:
                 path = os.path.join(root, "AUDIOMOTH")
-                folder_name = path.split("\\")[-2]
-                coeff = float(input(f"Correction coefficient for {folder_name}: "))
-                new_date = new_time = t_date = t_time = None
-
                 folders.append(path)
-                coefficients[path] = coeff
-                date_time[path] = (new_date, new_time)
-                threshold[path] = (t_date, t_time)
 
 
     if label_source_type == "sonometer":
@@ -83,16 +61,9 @@ def collect_folders(input_folder,label_source_type, logger):
         for root, dirs, _ in os.walk(input_folder):
             if "SONOMETER" in dirs:
                 path = os.path.join(root, "SONOMETER")
-                folder_name = path.split("\\")[-2]
-                coeff = float(input(f"Correction coefficient for {folder_name}: "))
-                new_date = new_time = t_date = t_time = None
-
                 folders.append(path)
-                coefficients[path] = coeff
-                date_time[path] = (new_date, new_time)
-                threshold[path] = (t_date, t_time)
 
-    return folders, coefficients, date_time, threshold
+    return folders
 
 
 
@@ -112,14 +83,23 @@ def resolve_oca_type(oca_type):
 
 
 def main():
+    """
+    execution
+        python3 -m 06_alarms_processing.main -f "\192.168.205.120\Contenedores\5-Resultados\P5_TEST" --raspbery --port
+    """
     try:
         logger = setup_logging()
         args = arg_parser()
+        logger.info(f"Starting alarm processing!!")
+        yamnet_csv = yamnet_class_map_csv()
+        urban_taxonomy_map, port_taxonomy_map = taxonomy_json()
+        taxonomy,taxonomy = args.urban,args.port
 
-        taxonomy = get_taxonomy(args, *taxonomy_json())
         oca_limits = resolve_oca_type(args.limit_oca)
         yamnet_csv = yamnet_class_map_csv()
         input_folder = args.path_general
+
+        
 
         source_types = {
             "AUDIOMOTH": args.audiomoth,
@@ -134,10 +114,9 @@ def main():
                 continue
             label_source_type =label.lower()
             logger.info(f"Processing {label_source_type} data")
-            # exit()
 
             ############################
-            folders, coeffs, date_map, thresh_map = collect_folders(input_folder, label_source_type,logger)
+            folders = collect_folders(input_folder, label_source_type,logger)
 
             logger.info(f"Using percentiles {args.percentiles}")
             logger.info(f"Aggregation period {args.agg_period}")
@@ -160,8 +139,7 @@ def main():
                 thresh_map,
                 oca_limits,
                 args.limit_oca,
-                logger
-            )
+                logger)
 
         logger.info("Finished all processing.")
 

@@ -4,7 +4,7 @@ import matplotlib.dates as mdates
 import seaborn as sns
 from .utils_vi import *
 import os
-from .config_vi import *
+from . import config_vi
 import plotly.express as px
 import matplotlib.colors as mcolors
 from matplotlib.patches import Patch

@@ -2,16 +2,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 plt.style.use("bmh")
-from .visualization import *
-from .reading import *
-from .utils_vi import *
-from .config_vi import *
 from tqdm import tqdm
 import glob
 import json
 from scipy.signal import find_peaks
 import ast
 
+from .visualization import *
+from .reading import *
+from .utils_vi import *
+from config_vi import *
 
 
 

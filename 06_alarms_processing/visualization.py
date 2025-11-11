@@ -1,10 +1,9 @@
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import seaborn as sns
-from utils_vi import *
-import os
-from config_vi import *
+
 import plotly.express as px
 import matplotlib.colors as mcolors
 from matplotlib.patches import Patch
@@ -12,6 +11,8 @@ from matplotlib.colors import ListedColormap
 from scipy.stats import gaussian_kde
 import ast
 
+from .utils_vi import *
+from config_vi import *
 
 
 plt.rc('font', size=MEDIUM_SIZE)          # controls default text sizes
@@ -21,6 +22,14 @@ plt.rc('xtick', labelsize=MEDIUM_SIZE)    # fontsize of the tick labels
 plt.rc('ytick', labelsize=MEDIUM_SIZE)    # fontsize of the tick labels
 plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+# plt.rc('font',size=config_vi.MEDIUM_SIZE)
+# plt.rc('axes',titlesize=config_vi.MEDIUM_SIZE)
+# plt.rc('axes',labelsize=config_vi.MEDIUM_SIZE)
+# plt.rc('xtick',labelsize=config_vi.MEDIUM_SIZE)
+# plt.rc('ytick',labelsize=config_vi.MEDIUM_SIZE)
+# plt.rc('legend',fontsize=config_vi.MEDIUM_SIZE)
+# plt.rc('figure',titlesize=config_vi.BIGGER_SIZE)
 
 
 
