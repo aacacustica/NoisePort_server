@@ -36,7 +36,6 @@ def leq(levels):
 
 
 def get_hourly_folders(base_path):
-    
     hour_path_acoustics = []
     hour_path_predictions = []
     hour_path_peaks = []
@@ -64,12 +63,11 @@ def get_hourly_folders(base_path):
             for file in os.listdir(peaks_params_query):
                 if file.endswith('.csv'):
                     hour_path_peaks.append(os.path.join(peaks_params_query,file))
-
+                    
     return hour_path_acoustics,hour_path_predictions,hour_path_peaks
 
-import pandas as pd
 
-import pandas as pd
+
 
 def merge_peaks(df_pk: pd.DataFrame, df_final: pd.DataFrame) -> pd.DataFrame:
     # Ordenar por tiempo

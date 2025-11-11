@@ -101,6 +101,7 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
             
             csv_file_path = os.path.join(csv_path,csv_file)
             fname = Path(csv_file).name  
+            
             if 'Time History' in fname:
                 df_time = pd.read_csv(csv_file_path,header = 0)
                 csv_time_history_path = csv_file_path
