@@ -67,6 +67,36 @@ def get_hourly_folders(base_path):
 
     return hour_path_acoustics,hour_path_predictions,hour_path_peaks
 
+import pandas as pd
+
+import pandas as pd
+
+def merge_peaks(df_pk: pd.DataFrame, df_final: pd.DataFrame) -> pd.DataFrame:
+    # Ordenar por tiempo
+    df_final = df_final.sort_values("Timestamp").reset_index(drop=True)
+    df_pk = df_pk.sort_values("start_time").reset_index(drop=True)
+
+    # Crear IntervalIndex
+    intervals = pd.IntervalIndex.from_arrays(
+        df_pk["start_time"], df_pk["end_time"], closed="both"
+    )
+
+    # Inicializar DataFrame con NaNs para los picos
+    df_picos_matched = pd.DataFrame(pd.NA, index=df_final.index, columns=df_pk.columns)
+
+    # Iterar sobre cada timestamp y asignar pico correspondiente
+    for i, ts in enumerate(df_final["Timestamp"]):
+        matches = df_pk[intervals.contains(ts)]
+        if not matches.empty:
+            # Tomamos solo la primera coincidencia
+            df_picos_matched.iloc[i] = matches.iloc[0]
+            df_final.at[i,'is_peak'] = True
+
+    # Concatenar resultados con prefijo
+    df_final = pd.concat([df_final, df_picos_matched.add_prefix("peak_")], axis=1)
+
+    return df_final
+
 
 
 def assign_folder_paths(csv_file):
@@ -93,7 +123,6 @@ def merge_acoustics_predictions_and_peaks(acoustics_paths,predictions_paths,peak
 
     output_path = peaks_paths[0].replace(f"peaks_hourly/{os.path.basename(peaks_paths[0])}","")
 
-    #1 - Concatenamos los csvs en las carpetas acoustics,predictions y peaks, generamos un dataframe total por archivo en la carpeta
     dfs_ac_list = []
     dfs_pred_list = []
     dfs_peaks_list = []
@@ -120,10 +149,10 @@ def merge_acoustics_predictions_and_peaks(acoustics_paths,predictions_paths,peak
 
             logger.info("Merged individual csv files into single dataframes for acoustics, predictions and peaks")
 
-            #1 -  Comprobamos que la columna timestamp tiene el mismo formato en los 3 dataframes para nombre y contenido
-            for df in [df_ac, df_pr]:        
-                df.rename(columns={col: 'Timestamp' for col in df.columns if col.upper() == 'timestamp'}, inplace=True)
-                df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+            #1 -  Comprobamos que la columna timestamp tiene el mismo formato en los 2 dataframes que la contienen para nombre y contenido
+            
+            df_ac['Timestamp'] = pd.to_datetime(df_ac['Timestamp'])
+            df_pr['Timestamp'] = pd.to_datetime(df_pr['Timestamp'])
 
             #2 - Normalizar peaks
             df_pk.rename(columns={'start time': 'start_time', 'end time': 'end_time'}, inplace=True)
@@ -138,18 +167,11 @@ def merge_acoustics_predictions_and_peaks(acoustics_paths,predictions_paths,peak
             df_final['is_peak'] = False
             
             #4 - Iteramos sobre peaks y agregamos dato en caso de que entre en el rango del pico
-            for _, row in df_pk.iterrows():
 
-                mask = (df_final['Timestamp'] >= row['start_time']) & (df_final['Timestamp'] <= row['end_time'])
-                if mask.any():
-                    df_final.loc[mask, 'is_peak'] = True
+            df_merged = merge_peaks(df_pk,df_final)
 
-                    for col in df_pk.columns:
-                        if col not in['start_time','end_time']:
-                            df_final.loc[mask,col] = row[col]
-            
             merged_filename = os.path.join(output_path, f"merged_acoustics_predictions_peaks_{os.path.basename(acoustic_path)}")
-            df_final.to_csv(merged_filename, index=False)
+            df_merged.to_csv(merged_filename, index=False)
             
             
             logger.info(f"Merged acoustics, predictions and peaks saved at {output_path}")
@@ -161,6 +183,10 @@ def main():
     # python .\peak_detection_L50.py -p "\\192.168.205.117\AAC_Server\PUERTOS\NOISEPORT\20231211_SANTUR"
     #---------------------------------------------------------------------------------------------------
 
+    """
+                                                #TODO 
+            --> implement processed filr writing in the processed_peaks txt in peaks folder, as we do for the acoustics, preds, sonometer and wavs <---
+    """
     logger = setup_logging('peak_detection')
     args = argument_parser()
     logging.info(f"Inizializing")

@@ -222,7 +222,7 @@ def inference(file_list, model_path, sample_rate, chunk_size, window_size, thres
         # -------------
         # CONCATENATE DAILY CSVS
         # ---------------
-
+        """
         try:
 
             concatenate_prediction_csvs_to_daily(
@@ -234,7 +234,7 @@ def inference(file_list, model_path, sample_rate, chunk_size, window_size, thres
 
         except Exception as e:
             logging.error(f"Error concatenating prediction CSVs into DAILY format: {e}")
-
+        """
 def load_args_config(model_path,window_size,threshold,upload_s3,home_dir,path):
 
         if path: path = path       

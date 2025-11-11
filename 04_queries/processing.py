@@ -100,19 +100,17 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
         for csv_file in os.listdir(csv_path):
             
             csv_file_path = os.path.join(csv_path,csv_file)
-            
             fname = Path(csv_file).name  
-            if fname.endswith(('_Summary.csv', '_Resumen.csv')):
-                df_summary = pd.read_csv(csv_file_path, encoding="ISO-8859-1")
-            elif fname.endswith(('_Measurement History.csv', '_Historia de mediciones.csv')):
-                df_measurement = pd.read_csv(csv_file_path, header=0)
-                csv_measurement_path = csv_file_path
-                df_final = pd.DataFrame(columns = base_cols + THIRD_OCTAVES + tail_cols)
-
-            elif fname.endswith(('_Time History.csv', '_Historia del tiempo.csv')):
-                df_time = pd.read_csv(csv_file_path, header=0)
+            if 'Time History' in fname:
+                df_time = pd.read_csv(csv_file_path,header = 0)
                 csv_time_history_path = csv_file_path
-                df_final = pd.DataFrame(columns = base_cols + THIRD_OCTAVES_TIME_HISTORY + tail_cols)
+            
+            if 'Summary' in fname:
+                df_summary = pd.read_csv(csv_file_path,header = 0,encoding = 'cp1252')
+                csv_summary_path = csv_file_path
+            
+        
+        df_final = pd.DataFrame(columns = base_cols + THIRD_OCTAVES + tail_cols)
 
     except Exception as e:
         logger.error(f'[CSV Sonometer] Error checking for available sheets in CSV: {e}')
@@ -123,98 +121,33 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
         # ------------------------------------
         # 4-    Reading hourly rows in CSV data sheet
         # ------------------------------------
+            
+        row_indexs = np.arange(start=1,stop=df_time.shape[0],step = 3600)
+        csv_length = df_time.shape[0]
         
-        if not df_measurement.empty:
-            
-            row_indexs = np.arange(start=1,stop=df_measurement.shape[0],step = 60)
-            csv_length = df_measurement.shape[0]
-            
-            df_measurement = pd.read_csv(csv_measurement_path,header = 0,skiprows = lambda x: x not in np.append(row_indexs,[0]))
-            
-            
-
-            try:
-
-                df_final[THIRD_OCTAVES] = df_measurement[THIRD_OCTAVES]
-                df_final[THIRD_OCTAVES] = df_final[THIRD_OCTAVES].astype(str).replace(',','.',regex=True)
-                df_final = df_final.iloc[1:]
-                df_final[THIRD_OCTAVES].apply(pd.to_numeric)
-            
-            except KeyError as e:
-                
-                df_final[THIRD_OCTAVES_TIME_HISTORY] = df_measurement[THIRD_OCTAVES_TIME_HISTORY]
-                df_final[THIRD_OCTAVES_TIME_HISTORY] = df_final[THIRD_OCTAVES_TIME_HISTORY].astype(str).replace(',','.',regex=True)
-                df_final = df_final.iloc[1:]
-                df_final[THIRD_OCTAVES_TIME_HISTORY].apply(pd.to_numeric)
-            
-            df_final['LAeq'] = df_measurement['LAeq']
-            df_final['LCeq'] = df_measurement[' LCeq']
-            
-            df_final = df_final.dropna(subset=['LAeq'])
-            df_final['LAeq'] = df_final['LAeq'].astype(str).str.replace(',','.')
-            
-            df_final['LAeq'].apply(pd.to_numeric)
-            df_final['LAmax'] = df_final['LAeq'].max()
-            df_final['LAmin'] = df_final['LAeq'].min()
-            df_final['LAmax'].fillna(df_final['LAmax'],inplace=True)
-            df_final['LAmin'].fillna(df_final['LAmin'],inplace=True)
-            
-            first_row = pd.read_csv(csv_time_history_path,header = None,skiprows=1,nrows=1)
-            last_row = df_time.tail(1)
+        df_time = pd.read_csv(csv_time_history_path,header = 0,skiprows = lambda x: x not in np.append(row_indexs,[0]))
         
-            initial_date = handle_not_finished_minute(pd.to_datetime(f'{first_row.iloc[0,2]}' +' '+ f'{first_row.iloc[0,3]}'))
-            final_date = pd.to_datetime(f'{last_row.iloc[0,2]}' +' '+ f'{last_row.iloc[0,3]}')
-            """
-            df_final['LAeq'] = df_measurement['LAeq']
-            df_final['LCeq'] = df_measurement[' LCeq']
-            df_final['LAmax'] = df_final['LAeq'].max()
-            df_final['LAmin'] = df_final['LAeq'].min()
-            df_final['LAmax'].fillna(df_final['LAmax'],inplace=True)
-            df_final['LAmin'].fillna(df_final['LAmin'],inplace=True)
-
-            first_row = pd.read_csv(csv_measurement_path,header = None,skiprows=1,nrows=1)
-            last_row = pd.read_csv(csv_measurement_path,header = None,skiprows = csv_length ,nrows = 1)
+        df_final[THIRD_OCTAVES] = df_time[THIRD_OCTAVES]
+       
+        df_final = df_final.iloc[1:]
+        df_final[THIRD_OCTAVES].apply(pd.to_numeric)
+    
+        df_final['LAeq'] = df_time['LAeq']
         
-            initial_date = handle_not_finished_minute(pd.to_datetime(f'{first_row.iloc[0,1]}' +' '+ f'{first_row.iloc[0,2]}'))
-            final_date = pd.to_datetime(f'{last_row.iloc[0,1]}' +' '+ f'{last_row.iloc[0,2]}')
-            """
-        else:
-            
-            row_indexs = np.arange(start=1,stop=df_time.shape[0],step = 60)
-            csv_length = df_time.shape[0]
-            
-            df_time = pd.read_csv(csv_time_history_path,header = 0,skiprows = lambda x: x not in np.append(row_indexs,[0]))
-            
-            try:
-
-                df_final[THIRD_OCTAVES] = df_time[THIRD_OCTAVES]
-                df_final[THIRD_OCTAVES] = df_final[THIRD_OCTAVES].astype(str).replace(',','.',regex=True)
-                df_final = df_final.iloc[1:]
-                df_final[THIRD_OCTAVES].apply(pd.to_numeric)
-            
-            except KeyError as e:
-                
-                df_final[THIRD_OCTAVES_TIME_HISTORY] = df_time[THIRD_OCTAVES_TIME_HISTORY]
-                df_final[THIRD_OCTAVES_TIME_HISTORY] = df_final[THIRD_OCTAVES_TIME_HISTORY].astype(str).replace(',','.',regex=True)
-                df_final = df_final.iloc[1:]
-                df_final[THIRD_OCTAVES_TIME_HISTORY].apply(pd.to_numeric)
+        df_final = df_final.dropna(subset=['LAeq'])
+        df_final['LAeq'] = df_final['LAeq'].astype(str).str.replace(',','.')
         
-            df_final['LAeq'] = df_time['LAeq']
-            
-            df_final = df_final.dropna(subset=['LAeq'])
-            df_final['LAeq'] = df_final['LAeq'].astype(str).str.replace(',','.')
-            
-            df_final['LAeq'].apply(pd.to_numeric)
-            df_final['LAmax'] = df_final['LAeq'].max()
-            df_final['LAmin'] = df_final['LAeq'].min()
-            df_final['LAmax'].fillna(df_final['LAmax'],inplace=True)
-            df_final['LAmin'].fillna(df_final['LAmin'],inplace=True)
-            
-            first_row = pd.read_csv(csv_time_history_path,header = None,skiprows=1,nrows=1)
-            last_row = df_time.tail(1)
+        df_final['LAeq'].apply(pd.to_numeric)
+        df_final['LAmax'] = df_final['LAeq'].max()
+        df_final['LAmin'] = df_final['LAeq'].min()
+        df_final['LAmax'].fillna(df_final['LAmax'],inplace=True)
+        df_final['LAmin'].fillna(df_final['LAmin'],inplace=True)
         
-            initial_date = handle_not_finished_minute(pd.to_datetime(f'{first_row.iloc[0,2]}' +' '+ f'{first_row.iloc[0,3]}'))
-            final_date = pd.to_datetime(f'{last_row.iloc[0,2]}' +' '+ f'{last_row.iloc[0,3]}')
+        first_row = pd.read_csv(csv_time_history_path,header = None,skiprows=1,nrows=1)
+        last_row = df_time.tail(1)
+    
+        initial_date = handle_not_finished_minute(pd.to_datetime(f'{first_row.iloc[0,2]}' +' '+ f'{first_row.iloc[0,3]}'))
+        final_date = pd.to_datetime(f'{last_row.iloc[0,2]}' +' '+ f'{last_row.iloc[0,3]}')
     
     except Exception as e:
         logger.error(f'[CSV Sonometer] Error reading hourly rows in CSV data sheet: {e}')
@@ -248,21 +181,8 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
     try:
 
         # ------------------------------------
-        # 6-    Saving per day CSV files from whole DF, and whole DF
+        # 6-    Saving  whole DF
         # ------------------------------------
-        """
-        days = get_days_in_df(df_final)
-        output_folder_days = output_folder + f'/daily_{point}'
-        output_folder_whole = output_folder 
-        os.makedirs(output_folder_whole, exist_ok=True)
-        os.makedirs(output_folder_days, exist_ok=True)
-
-        for day in days:
-
-                day_df = df_final.loc[pd.to_datetime(df_final['Timestamp']).dt.day == int(day)].copy()
-                filename = os.path.join(output_folder_days, f"day{day}_{point}_Processed_{count}.csv") 
-                day_df.to_csv(filename, index=False)
-        """
 
     
         file_name = output_folder + f"/{point}_Processed.csv"
@@ -974,7 +894,6 @@ def process_sonometer_folder(db,logger,files_folder,query_sonometer_folder,proce
         output_folder = query_sonometer_folder
         
         for point in tqdm.tqdm(os.listdir(files_folder), desc="[Sonometers] Processing Points"):
-            if point == 'Boluda':
                 point_folder = os.path.join(files_folder,point)
                 file_count = 0
                 

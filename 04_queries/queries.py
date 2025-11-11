@@ -312,7 +312,7 @@ def acoustic_processing(folder_days,folder,db,logger, all_info, query_acoustic_f
     folder_days = get_desired_query_folder(folder_days,folder)                  
     logger.info("Starting ACOUSTIC FOLDER processing")
     start_time = time.time()                 
-    process_acoustic_folder(db,logger,folder_days, all_info, query_acoustic_folder, processed_acoustics, processed_folder_acoustic_txt)                 
+    #process_acoustic_folder(db,logger,folder_days, all_info, query_acoustic_folder, processed_acoustics, processed_folder_acoustic_txt)                 
     
     end_time =  round(time.time() - start_time,2)
     return end_time
@@ -322,7 +322,7 @@ def wav_processing(folder_days,folder,db,logger, all_info, query_wav_folder, pro
     folder_days = get_desired_query_folder(folder_days,folder)                   
     logger.info("Starting WAV FOLDER processing")
     start_time = time.time()                   
-    process_wav_folder(db,logger,folder_days, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)                   
+    #process_wav_folder(db,logger,folder_days, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)                   
     
     end_time =  round(time.time() - start_time,2)
     return end_time
@@ -330,15 +330,17 @@ def wav_processing(folder_days,folder,db,logger, all_info, query_wav_folder, pro
 def prediction_processing(folder_days,folder,db,logger, all_info, query_pred_folder, processed_predictions, processed_folder_predictions_txt):
     
     folder_days = get_desired_query_folder(folder_days,folder)                 
+    logger.info("Starting PREDICTION FOLDER processing")
     start_time = time.time()
-    process_pred_folder(db,logger,folder_days, all_info, query_pred_folder, processed_predictions, processed_folder_predictions_txt)                 
+    #process_pred_folder(db,logger,folder_days, all_info, query_pred_folder, processed_predictions, processed_folder_predictions_txt)                 
     end_time =  round(time.time() - start_time,2)
     return end_time
 
 def sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed_folder_sonometer_txt):
     
+    sonometer_path = point + f'/{folder}'                    
+    logger.info("Starting PREDICTION FOLDER processing")
     start_time = time.time()
-    sonometer_path = point + f'/{folder}'                   
     process_sonometer_folder(db,logger,sonometer_path,query_sonometer_folder,processed_folder_sonometer_txt)
     end_time =  round(time.time() - start_time,2)
     return end_time
@@ -452,7 +454,7 @@ def main():
             whole_start_time = time.time()
             
             for folder in os.listdir(point):
-
+                
                 if folder == 'acoustic_params'  and ACOUSTIC_QUERY_SWITCH:
                     
                     logger.info("Starting ACOUSTIC processing")
