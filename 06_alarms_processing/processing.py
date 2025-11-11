@@ -15,7 +15,7 @@ from config_vi import *
 
 
 
-def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, taxonomy, yamnet_csv, sufix_string, folder_coefficients, folder_date_time, folder_threshold, oca_limits, oca_type, logger):
+def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, taxonomy, yamnet_csv, sufix_string, oca_limits, oca_type, logger):
     print()
     stable_version = get_stable_version(logger)
     home_dir = os.path.expanduser('~')
@@ -27,72 +27,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
         logger.info(f"Suffix string: {sufix_string}")
 
 
-        #####################################
-        # SETTING UP THE FOLDER PATHS
-        #####################################
-        try:
-            reg_folder = os.path.join(input_folder, folder) # \\192.168.205.117\AAC_Server\INDUSTRIA\23132-IRUÑA_OCA_CANTERA\5-Resultados\FAA205-P1_CAMPAÑA1\SPL
-            folder = folder.split("\\")[:-1]
-            folder = os.path.join('\\\\', *folder)
-            actual_folder_name = folder.split("\\")[-1]
-            logger.info(f"Processing folder: {actual_folder_name}")
-            logger.info(f"Entering folder: {folder}")
-
-
-            spl_string = "SPL"
-            graphics_string = f"Graphics_{sufix_string}"
-            result_dir_name = "5-Resultados"
-
-
-            # 5-Resultados directory
-            resultados_dir = reg_folder.split("\\")[:-3]
-            resultados_dir = os.path.join('\\\\', *resultados_dir, result_dir_name)
-            logger.info(f"Resultados directory: {resultados_dir}")
-            if not os.path.exists(resultados_dir):
-                os.makedirs(resultados_dir)
-                logger.info(f"Created output folder: {resultados_dir}")
-            
-
-
-            # CREATING THE FOLDER OUTPUT DIR --> /5-RESULTAODS/P1/SPL/GRAPHICS_SUFFIX/
-            folder_output_dir = os.path.join(resultados_dir, folder, spl_string, graphics_string)
-            logger.info(f"folder_output_dir: {folder_output_dir}")
-            if '3-Medidas' in folder_output_dir:
-                folder_output_dir = folder_output_dir.replace('3-Medidas', '5-Resultados')
-            if not os.path.exists(folder_output_dir):
-                os.makedirs(folder_output_dir)
-                logger.info(f"Created output folder: {folder_output_dir}")
-            
-
-            # CREATIONG THE FOLDER OUTPUT DIR FOR WEEK 
-            folder_output_dir_week = os.path.join(folder_output_dir, f"Graphics_week")
-            logger.info(f"folder_output_dir_week: {folder_output_dir_week}")
-            if not os.path.exists(folder_output_dir_week):
-                os.makedirs(folder_output_dir_week)
-                logger.info(f"Created output folder: {folder_output_dir_week}")
-
-
-
-            # PREDICTION FOLDERS
-            # CREATING THE PREDICTION FOLDER --> /5-RESULTAODS/P1/AI_MODEL/Predictions/
-            ai_prediction_folder = os.path.join(folder.replace('3-Medidas', '5-Resultados'), "AI_MODEL", "Predictions")
-            os.makedirs(ai_prediction_folder, exist_ok=True)
-            logger.info(f"Created AI prediction folder: {ai_prediction_folder}")
-            
-            
-            # CREATING THE PREDICTION VISUALIZATION FOLDER--> /5-RESULTAODS/P1/AI_MODEL/Visualizations/
-            ia_visualization_folder = ai_prediction_folder.replace("Predictions", "Visualizations")
-            os.makedirs(ia_visualization_folder, exist_ok=True)
-            logger.info(f"Created AI visualization folder: {ia_visualization_folder}")
-            
-
-        except Exception as e:
-            logger.error(f"An error occurred while setting up the folder paths: {e}")
-            continue
-        ########################################################
-
-
-
         #############################
         ## GETTING THE DATAFRAME ###
         #############################
@@ -100,6 +34,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info("")
             logger.info(f"Processing folder {folder}") 
             logger.info(f"Getting the data from the dataframes")
+            exit()
             
             
             if sufix_string == "SONOMETRO":
@@ -117,24 +52,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     logger.warning(f"df is None")
                     continue
             
-            # taking just 1 day, which are the first 86400 rows
-            # df = df.iloc[:86400] # 1 day of data, 24 hours * 60 minutes * 60 seconds = 86400 seconds
-            # df = df.iloc[:43200] # 1/2 day of data
-
-
-            #############################
-            ### GETTING PREDICTION DF ###
-            #############################
-            logger.info("")
-            logger.info(f"Getting the prediction data from the dataframes")
-            reg_folder_prediction = reg_folder.replace(ACOUSTIC_PARAMS_FOLDER, PREDICTION_LITTLE_FOLDER)
-            logger.info(f"Prediction folder: {reg_folder_prediction}")
-            
-            
-            df_prediction, slm_type, slm_dict = process_folder(reg_folder_prediction, folder_date_time, folder_threshold, logger, PREDICTION_LITTLE_FOLDER)
-            if df_prediction is None:
-                logger.warning(f"df prediction is None")
-                continue
             ###################################################################
 
 
@@ -162,24 +79,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 else:
                     logger.warning(f"df is None")
                     continue
-                    
-
-                # the same for the prediction file
-                if df_prediction is not None:
-                    logger.info("")
-                    logger.info(f"FOR PREDICTION FILE: Adding datetime columns, sorting by datetime and setting datetime as index")
-                    
-                    df_prediction = add_datetime_columns(df_prediction, logger, date_col='datetime')
-                    df_prediction = df_prediction.sort_values('datetime')
-                    df_prediction.set_index('datetime', inplace=True, drop=False)
-                    pred_start_date = df_prediction.index[0]
-                    pred_end_date = df_prediction.index[-1]
-
-                    logger.info(f"Start date {pred_start_date} and end date {pred_end_date}")
-                    logger.info(f"df was sorted by datetime and datetime was set as index")
-                else:
-                    logger.warning(f"df_prediction is None")
-            
             except Exception as e:
                 logger.error(f"An error occurred while adding datetime columns: {e}")
 
@@ -191,26 +90,16 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     df = df.loc[start_date + pd.Timedelta(REMOVE_START_TIME, unit='seconds'):end_date - pd.Timedelta(REMOVE_END_TIME, unit='seconds')]
                     logger.info(f"SPL df was trimmed, {REMOVE_START_TIME} secs from the beggining and {REMOVE_END_TIME} secs from the end")
                 
-                if df_prediction is not None:
-                    df_prediction = df_prediction.loc[pred_start_date + pd.Timedelta(REMOVE_START_TIME, unit='seconds'):pred_end_date - pd.Timedelta(REMOVE_END_TIME, unit='seconds')]
-                    logger.info(f"Prediction df was trimmed, {REMOVE_START_TIME} secs from the beggining and {REMOVE_END_TIME} secs from the end")
-
 
                 # add indicators column
                 if df is not None:
                     logger.info(f"Adding indicators column")
                     df['indicador_str'] = df.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
-                if df_prediction is not None:
-                    df_prediction['indicador_str'] = df_prediction.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
-
                 
                 # add nights column
                 if df is not None:
                     logger.info(f"Adding nights column")
                     df['night_str'] = df.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
-                if df_prediction is not None:
-                    df_prediction['night_str'] = df_prediction.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
-
             except Exception as e:
                 logger.error(f"An error occurred while adding indicators and nights columns: {e}")
 
@@ -232,51 +121,20 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     df = df.dropna()
                     logger.info(f"Removing nan values from the dataframe")
 
-                # removing nan values
-                if df_prediction is not None:
-                    df_prediction = df_prediction.dropna()
-                    logger.info(f"Removing nan values")
-
             except Exception as e:
                 logger.error(f"An error occurred while adding oca column: {e}")
                 
 
 
             try:
-                #####################################################
-                ########## APPLYING DB CORRECTION TO THE DATA #########
-                #####################################################
-                logger.info("")
-                tuple_folder_coeff = []
-                logger.info(f"Applying db correction")
-                for key, value in folder_coefficients.items():
-                    key = key.split("\\")[:-1]
-                    folder_name = key[-1]
-
-                    # save tupples folder name, coefficient value
-                    folder_name_coeff_value = (folder_name, value)
-                    tuple_folder_coeff.append(folder_name_coeff_value)
-                    key = os.path.join('\\\\', *key)
-
-                    # assign the value to the folder
-                    if folder == key:
-                        df = apply_db_correction(df, value, sufix_string, logger)
-                        logger.info(f"Apply {value} correction coefficient to the folder {folder}")
-            
-            except Exception as e:
-                logger.error(f"An error occurred while processing folder {folder}: {e}")
-                
-
-            try:
                 logger.info("")    
                 logger.info(f"Creating slm_dict")    
-                folder = folder.split("\\")[-1]
+                folder = folder.split("/")[-1]
                 
                 # add slm_dict column LAEQ_COLUMN_COEFF: with the value of LA_corrected
                 slm_dict["LAEQ_COLUMN_COEFF"] = 'LA_corrected'
                 slm_dict["LAMAX_COLUMN_COEFF"] = 'LAmax_corrected'
                 slm_dict["LAMIN_COLUMN_COEFF"] = 'LAmin_corrected'
-                #### NEW ONES ####
                 slm_dict["LC-LA_COLUMN_COEFF"] = 'LCeq-LAeq_corrected'
                 # slm_dict["L90_COLUMN_COEFF"] = '90percentile'
 
@@ -285,9 +143,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 info_dict = {
                     "PERIODO_AGREGACION": PERIODO_AGREGACION,
                     "PERCENTILES": PERCENTILES,
-                    "folder_coeff": tuple_folder_coeff,
                     "stable_version": stable_version,
-                    "slm_type": slm_type,
                     "oca_limits": oca_limits,
                     "oca_type": oca_type,
                 }
@@ -301,19 +157,23 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 continue
 
             
-            try:
-                logger.info("")
-                logger.info(f"Adding the ships on dock to the general dataframe")
+            # try:
+                ######################
+                # this is working
+                # logger.info("")
+                # logger.info(f"Adding the ships on dock to the general dataframe")
 
 
-                logger.info(f"Ship dock 1h")
-                ship_dock_1h_path = os.path.join(home_dir, RELATIVE_PATH_SHIPS_1H)
-                #check if the file exists
-                if not os.path.exists(ship_dock_1h_path):
-                    logger.error(f"File {ship_dock_1h_path} does not exist. Please check the path.")
-                else:
-                    logger.info(f"File {ship_dock_1h_path} exist!")
-                df_ship_dock_1h = pd.read_csv(ship_dock_1h_path, parse_dates=['date_time'])
+                # logger.info(f"Ship dock 1h")
+                # ship_dock_1h_path = os.path.join(home_dir, RELATIVE_PATH_SHIPS_1H)
+                # #check if the file exists
+                # if not os.path.exists(ship_dock_1h_path):
+                #     logger.error(f"File {ship_dock_1h_path} does not exist. Please check the path.")
+                # else:
+                #     logger.info(f"File {ship_dock_1h_path} exist!")
+                # df_ship_dock_1h = pd.read_csv(ship_dock_1h_path, parse_dates=['date_time'])
+                # this is working. up to here
+                ######################
                 
 
 
@@ -363,9 +223,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 #     logger.info(f"Saved ships on dock 1s dataframe to {df_ship_1s_csv_path}")
                     # if the values inside the nships is 1 or more, then 1, else 0
                     # df_alarms_1h['ships_alarm'] = df_alarms_1h['ships_alarm'].apply(lambda x: 1 if x > 0 else 0)
-            except Exception as e:
-                logger.error(f"An error occurred while adding the ships on dock to the alarms dataframe: {e}")
-                continue
+            # except Exception as e:
+            #     logger.error(f"An error occurred while adding the ships on dock to the alarms dataframe: {e}")
+            #     continue
 
 
 
@@ -411,80 +271,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
 
-
-
-            try:
-                ##################################
-                ##################################
-                ##################################
-                # PEAK + ROLLING ANALYSIS
-                ##################################
-                ##################################
-                ##################################
-                logger.info("")
-                logger.info(f"Applying find_peaks function to the whole dataframe")
-                df_peaks_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_peaks_filtered.csv")
-                
-                # if os.path.exists(df_peaks_csv_path):
-                #     logger.info(f"File {df_peaks_csv_path} already exists, skipping peaks analysis")
-                #     df_peaks = pd.read_csv(df_peaks_csv_path)
-                #     logger.info(f"Loaded peaks dataframe from {df_peaks_csv_path}")
-                
-                # else:
-
-
-                peaks, properties=find_peaks(df['LA_corrected'], prominence=PROMINENCE, width=WIDTH)
-                df_peaks = df.iloc[peaks].copy()
-
-                logger.info("")
-                logger.info(f"Rolling the data with a window of {WINDOW_SIZE} seconds")
-                # rolling median for the LA values with a window of 30 seconds
-                df_peaks['LA_cor_median'] = df_peaks['LA_corrected'].rolling(window=WINDOW_SIZE, min_periods=1).quantile(0.5) + ADDING_THRESHOLD
-                df_peaks['Peak'] = 1
-
-                #above threshold
-                logger.info(f"Calculating peaks above threshold")
-                df_peaks = df_peaks[df_peaks['LA_corrected'] > df_peaks['LA_cor_median']]
-                logger.info(f"There are {len(df_peaks)} peaks in the dataframe after filtering")
-                # 
-
-                df_peaks.to_csv(df_peaks_csv_path, index=False)
-                logger.info(f"Saved peaks filtered dataframe to {df_peaks_csv_path}, with a lenght of {len(df_peaks)}")
-
-                #Timestamp to datetime
-                df_peaks['Timestamp'] = pd.to_datetime(df_peaks['Timestamp'])
-            except Exception as e:
-                logger.error(f"An error occurred while trimming the dataframe {e}")
-                continue
-
-
-            
-            try:
-                logger.info("")
-                
-                print(df_peaks)
-
-                #merging
-                logger.info("Merging the peaks dataframe with the acoustic dataframe")
-                df_all = df.merge(
-                    df_peaks[['Peak']],
-                    left_index=True,
-                    right_index=True,
-                    how='left'
-                )
-                logger.info("Merge successful for the peaks and acoustic dataframes")
-                print(df_all)
-                print(df_all["Peak"].value_counts())
-                print(df_all["Peak"].unique())
-                exit()
-
-
-            except Exception as e:
-                logger.error(f"An error occurred while merging the peak df and the acoustic dataframe {e}")
-                continue
-
-            
-
             ################################################################
             ################################################################
             try:
@@ -499,11 +285,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 folder_output_dir_for_alarms = os.path.dirname(folder_output_dir)
                 folder_output_dir_1h = os.path.join(folder_output_dir_for_alarms, 'Graphics_ALARMS')
                 os.makedirs(folder_output_dir_1h, exist_ok=True)
-
-                logger.info(f"Making the folder for week analysis for 1 hour data")
-                folder_output_dir_1h_week = os.path.join(folder_output_dir_1h, 'Graphics_week')
-                os.makedirs(folder_output_dir_1h_week, exist_ok=True)
-
 
                 # check if the file exists
                 df_1h_csv_path = os.path.join(folder_output_dir_1h, f"{actual_folder_name}_1h.csv")
@@ -540,10 +321,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 #removeing datetime column and rename datetime_y to datetime
                 # df.drop(columns=['datetime'], inplace=True, errors='ignore')
                 # df.rename(columns={'datetime_y': 'datetime'}, inplace=True, errors='ignore')
-                # print(df_1h)
-                # print(df_1h.columns)
-                # print(df)
-                # print(df.columns)
                 df_1h.to_csv(df_1h_csv_path, index=False)
                 logger.info(f"Saved 1 hour dataframe to {df_1h_csv_path}")
 
@@ -551,47 +328,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.error(f"An error occurred while transforming 1 second data to 1 hour data: {e}")
                 continue
 
-
-
-            ###################################
-            ###################################
-            ###################################
-            # MERGING SECTION
-            ####################################
-            logger.info("")
-            logger.info(f"MERGING SECTION")
-            
-
-            try:
-                    ############# MERGING PEAKS WITH ACOUSTIC PREDICTION DATAFRAME ##################
-                acoustic_pred_peak_csv_path = os.path.join(ai_prediction_folder, f"{actual_folder_name}_acoustic_pred_peak_test.csv")
-                # if os.path.exists(acoustic_pred_peak_csv_path):
-                #     logger.info(f"[2] File {acoustic_pred_peak_csv_path} already exists, skipping merge")
-                #     df_all = pd.read_csv(acoustic_pred_peak_csv_path)
-
-                # else:
-                logger.info("")
-                logger.info("[2] Merging the peaks dataframe with the acoustic dataframe")
-                df_all = df_1h.merge(
-                    df_peaks[['Peak']],
-                    left_index=True,
-                    right_index=True,
-                    how='left'
-                )
-                logger.info("Merge successful for the peaks and acoustic dataframes")
-
-                logger.info(f"Saving the merged dataframe to the prediction folder")
-                df_all.to_csv(acoustic_pred_peak_csv_path, index=False)
-                logger.info(f"Saved merged dataframe to {acoustic_pred_peak_csv_path}")
-
-            except Exception as e:
-                logger.error(f"An error occurred while merging the ACOUSTIC PREDICT PEAKS dataframE: {e}")
-
-            print(df_all)
-            print(df_all["Peak"].value_counts())
-            print(df_all["Peak"].unique())
-            exit()
-            
 
 
 
@@ -605,22 +341,11 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.info(f"[1.1] Plotting night evolution for folder {folder}")
                 plot_night_evolution(df, folder_output_dir, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder, indicador_noche="Ln")
             
-            if PLOT_NIGHT_EVOLUTION_WEEK:
-                logger.info(f"[1.2] Plotting night WEEK evolution for folder {folder}")
-                plot_night_evolution_week(df, folder_output_dir_week, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder, indicador_noche="Ln")
-
-
 
             # Plotting night evolution 15 min
             if PLOT_NIGHT_EVOLUTION_15_MIN:
                 logger.info(f"[2.1] Plotting night evolution 15 min for folder {folder}")
                 plot_night_evolution_15_min(df, folder_output_dir, logger, name_extension="15_min", laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder, indicador_noche="Ln")
-
-            # Plotting night evolution 15 min
-            if PLOT_NIGHT_EVOLUTION_15_MIN_WEEK:
-                logger.info(f"[2.2] Plotting night WEEK evolution 15 min for folder {folder}")
-                plot_night_evolution_15_min_week(df, folder_output_dir_week, logger, name_extension="15_min", laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder, indicador_noche="Ln")
-
 
 
 
@@ -630,11 +355,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             if PLOT_PREDIC_LAEQ_MEAN:
                 logger.info(f"[3.1] Plotting PLOT_PREDIC_LAEQ_MEAN for folder {folder}")
                 plot_predic_laeq_mean(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
-
-            if PLOT_PREDIC_LAEQ_MEAN_WEEK:
-                logger.info(f"[3.2] Plotting PLOT_PREDIC_LAEQ_MEAN WEEK for folder {folder}")
-                plot_predic_laeq_mean_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
-
 
             # TODO
             # if PLOT_PREDIC_LAEQ_15_MIN_PERIOD:
@@ -668,7 +388,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
             if PLOT_PREDICTION_MAP:
-                logger.info(f"[7.1] Plotting PLOT_PREDICTION_MAP WEEK for folder {folder}")
+                logger.info(f"[7.1] Plotting PLOT_PREDICTION_MAP for folder {folder}")
                 df_all_yamnet_1h = plot_prediction_map_new(df_all_yamnet, df_ship_dock, ia_visualization_folder, logger, plotname=folder)
                 print(df_all_yamnet_1h)
                 print(df_all_yamnet_1h.columns)
@@ -676,12 +396,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 # exit()
 
             
-            if PLOT_PREDICTION_MAP_WEEK:
-                logger.info(f"[7.2] Plotting PLOT_PREDICTION_MAP WEEK for folder {folder}")
-                plot_prediction_map_new_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
-
-
-
             # TODO
             # # Plotting tree map
             # if PLOT_TREE_MAP:
@@ -697,79 +411,34 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 make_time_plot(df, folder_output_dir, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder, percentiles=PERCENTILES)
 
 
-            # Plotting time plot
-            if PLOT_MAKE_TIME_PLOT_WEEK:
-                logger.info(f"[9.2] Plotting time WEEK plot for folder {folder}")
-                make_time_plot_week(df, folder_output_dir_week, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder, percentiles=PERCENTILES)
-
-
             # Plotting heatmap evolution hour
             if PLOT_HEATMAP_EVOLUTION_HOUR:
                 logger.info(f"[10.1] Plotting heatmap for folder {folder}")
                 plot_heatmap_evolution_hour(df, folder_output_dir, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname=folder)
 
 
-            # Plotting heatmap evolution hour
-            if PLOT_HEATMAP_EVOLUTION_HOUR_WEEK:
-                logger.info(f"[10.2] Plotting heatmap WEEK for folder {folder}")
-                plot_heatmap_evolution_hour_week(df, folder_output_dir_week, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname=folder)
-            
-            
             # Plotting heatmap evolution 15 min
             if PLOT_HEATMAP_EVOLUTION_15_MIN:
                 logger.info(f"[11] Plotting heatmap 15 min for folder {folder}")
                 plot_heatmap_evolution_15_min(df, folder_output_dir, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname=folder)
 
             
-            # Plotting heatmap evolution 15 min
-            if PLOT_HEATMAP_EVOLUTION_15_MIN_WEEK:
-                logger.info(f"[11.2] Plotting heatmap 15 min WEEK for folder {folder}")
-                plot_heatmap_evolution_15_min_week(df, folder_output_dir_week, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname=folder)
-            
-
             # Plotting individual heatmap
             if PLOT_INDICADORES_HEATMAP:
                 logger.info(f"[12] Plotting indicadores heatmap for folder {folder}")
                 plot_indicadores_heatmap(df, folder_output_dir, logger, plotname=folder, ind_column=slm_dict["LAEQ_COLUMN_COEFF"])
 
             
-            # Plotting individual heatmap
-            if PLOT_INDICADORES_HEATMAP_WEEK:
-                logger.info(f"[12.2] Plotting indicadores heatmap WEEK for folder {folder}")
-                plot_indicadores_heatmap_week(df, folder_output_dir_week, logger, plotname=folder, ind_column=slm_dict["LAEQ_COLUMN_COEFF"])
-
-
             # Plotting day evolution
             if PLOT_DAY_EVOLUTION:
                 logger.info(f"[13] Plotting day evolution for folder {folder}")
                 plot_day_evolution(df, folder_output_dir, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder)
 
 
-            if PLOT_DAY_EVOLUTION_WEEK:
-                logger.info(f"[13.2] Plotting day evolution WEEK for folder {folder}")
-                plot_day_evolution_week(df, folder_output_dir_week, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder)
-            
-
             # Plotting period evolution
             if PLOT_PERIOD_EVOLUTION:
                 logger.info(f"[14] Plotting period evolution (1) Ld (2) Le for folder {folder}")
                 plot_period_evolution(df, folder_output_dir, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder)
-
-
-            # Plotting period evolution
-            if PLOT_PERIOD_EVOLUTION_WEEK:
-                logger.info(f"[14.2] Plotting period evolution (1) Ld (2) Le WEEK for folder {folder}")
-                plot_period_evolution_week(df, folder_output_dir_week, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder)
-            
-
-            # TODO
-            # I dont know why I commented this out
-            # if PLOT_SPECTROGRAM_1_3:
-            #     logger.info(f"[15] Plotting spectrogram for folder {folder}")
-            #     # plt_spectrogram(df_oct, folder_output_dir, logger, plotname=folder)
-            #     plt_spectrogram(df, folder_output_dir, sufix_string, logger, plotname=folder)
-
-
 
 
             #############################
@@ -783,52 +452,28 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 df_alarms_1h = oca_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder)
                 print(df_alarms_1h)
 
-            if OCA_ALARM_WEEK:
-                logger.info(f"[1.2] Plotting OCA alarm WEEK for folder {folder}")
-                oca_alarm_week(df_1h, folder_output_dir_1h_week, logger, plotname=folder)
-            
-            
 
             if LMAX_ALARM:
                 logger.info(f"[2.1] Plotting LMAX alarm for folder {folder}")
                 df_alarms_1h=lmax_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold=95) # OCA +10
                 print(df_alarms_1h)
 
-            if LMAX_ALARM_WEEK:
-                logger.info(f"[2.2] Plotting LMAX alarm WEEK for folder {folder}")
-                lmax_alarm_week(df_1h, folder_output_dir_1h_week, logger, plotname=folder, threshold=95)
-
-            
 
             if LC_LA_ALARM:
                 logger.info(f"[3.1] Plotting LC-LA alarm for folder {folder}")
                 df_alarms_1h=LC_LA_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_norma=10, threshold_dB=3)
                 print(df_alarms_1h)
 
-            if LC_LA_ALARM_WEEK:
-                logger.info(f"[3.2] Plotting LC-LA alarm WEEK for folder {folder}")
-                LC_LA_alarm_week(df_1h, folder_output_dir_1h_week, logger, plotname=folder, threshold_norma=10, threshold_dB=3)
-
-
 
             if L90_ALARM:
                 logger.info(f"[4.1] Plotting L90 alarm for folder {folder}")
                 l90_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_dB=5)
-
-            if L90_ALARM_WEEK:
-                logger.info(f"[4.2] Plotting L90 alarm WEEK for folder {folder}")
-                l90_alarm_week(df_1h, folder_output_dir_1h_week, logger, plotname=folder, threshold_dB=5)
-
 
 
             if L90_ALARM_DYNAMIC:
                 logger.info(f"[5.1] Plotting L90 alarm dynamic for folder {folder}")
                 df_alarms_1h=l90_alarm_dynamic(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_dB=5)
                 print(df_alarms_1h)
-
-            if L90_ALARM_DYNAMIC_WEEK:
-                logger.info(f"[5.2] Plotting L90 alarm dynamic WEEK for folder {folder}")
-                l90_alarm_dynamic_week(df_1h, folder_output_dir_1h_week, logger, plotname=folder, threshold_dB=5)
 
 
 
@@ -838,23 +483,12 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 print(df_alarms_1h)
                 # exit()
 
-            if FREQUENCY_COMPOSITION_WEEK:
-                logger.info(f"[6.2] Plotting frequency composition WEEK for folder {folder}")            
-                frequency_composition_week(df, folder_output_dir_1h_week, logger, plotname=folder, threshold_comp=5)
-
-
 
             if TONAL_FREQUENCY:
                 logger.info(f"[7.1] Plotting tonal frequency for folder {folder}")
                 df_alarms_1h = tonal_frequency(df, df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
                 print(df_alarms_1h)
             
-            if TONAL_FREQUENCY_WEEK:
-                logger.info(f"[7.2] Plotting tonal frequency WEEK for folder {folder}")
-                tonal_frequency_week(df, folder_output_dir_1h_week, logger, plotname=folder)
-
-
-
 
 
             ################################################################
@@ -868,31 +502,15 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.info(f"[8.1] Plotting peak heatmap for folder {folder}")
                 df_alarms_1h=plot_peak_distribution_heatmap(df_peaks, df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
 
-            if PLOT_PEAK_DISTRIBUTION_HEATMAP_WEEK:
-                logger.info(f"[8.2] Plotting peak heatmap WEEK for folder {folder}")
-                plot_peak_distribution_heatmap_week(df_peaks, folder_output_dir_1h_week, logger, plotname=folder)
-
-
 
             if PLOT_PEAK_DISTRIBUTION:
                 logger.info(f"[9.1] Plotting peak distribution for folder {folder}")
                 plot_peak_distribution(df_peaks, folder_output_dir_1h, logger, plotname=folder)
 
-            if PLOT_PEAK_DISTRIBUTION_WEEK:
-                logger.info(f"[9.2] Plotting peak distribution WEEK for folder {folder}")
-                plot_peak_distribution_week(df_peaks, folder_output_dir_1h_week, logger, plotname=folder)
-
-
 
             if PLOT_PEAK_DENSITY_DISTRIBUTION:
                 logger.info(f"[10.1] Plotting density distribution for folder {folder}")
                 plot_density_distribution_peaks(df_peaks, folder_output_dir_1h, logger, plotname=folder)
-
-            if PLOT_PEAK_DENSITY_DISTRIBUTION_WEEK:
-                logger.info(f"[10.2] Plotting density distribution WEEK for folder {folder}")
-                plot_density_distribution_peaks_week(df_peaks, folder_output_dir_1h_week, logger, plotname=folder)
-
-
 
 
             # #####################################################
@@ -902,32 +520,16 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.info(f"[11.1] Plotting PLOT_PREDIC_LAEQ for folder {folder}")
                 plot_predic_peak_laeq_mean(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
 
-            if PLOT_PEAK_PREDIC_LAEQ_MEAN_WEEK:
-                logger.info(f"[11.2] Plotting PLOT_PREDIC_LAEQ WEEK for folder {folder}")
-                plot_predic_peak_laeq_mean_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
-
-            
-
 
             if PLOT_PEAK_BOX_PLOT_PREDICTION:
                 logger.info(f"[12] Plotting box plot prediction for folder {folder}")
                 plot_box_plot_prediction(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
-
-            if PLOT_PEAK_BOX_PLOT_PREDICTION_WEEK:
-                logger.info(f"[12.2] Plotting box plot prediction WEEK for folder {folder}")
-                plot_box_plot_prediction_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
-
 
 
 
             if PLOT_PEAK_HEATMAT_PREDICTION:
                 logger.info(f"[13] Plotting heatmap prediction for folder {folder}")
                 plot_heat_map_prediction(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
-
-            if PLOT_PEAK_HEATMAT_PREDICTION_WEEK:
-                logger.info(f"[13.2] Plotting heatmap prediction WEEK for folder {folder}")
-                plot_heat_map_prediction_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
-
 
 
 

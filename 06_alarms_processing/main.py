@@ -134,9 +134,6 @@ def main():
                 taxonomy,
                 yamnet_csv,
                 label_source_type,
-                coeffs,
-                date_map,
-                thresh_map,
                 oca_limits,
                 args.limit_oca,
                 logger)
