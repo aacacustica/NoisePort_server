@@ -115,10 +115,10 @@ def argument_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--path", type=str, required=False, help="Path to the csv file")
     return parser.parse_args()
-        
+
+
+
 def merge_acoustics_predictions_and_peaks(acoustics_paths,predictions_paths,peaks_paths,logger):
-
-
     output_path = peaks_paths[0].replace(f"peaks_hourly/{os.path.basename(peaks_paths[0])}","")
 
     dfs_ac_list = []

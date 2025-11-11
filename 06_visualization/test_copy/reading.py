@@ -1,7 +1,7 @@
 from datetime import datetime
 import os
 import pandas as pd
-from .utils_vi import *
+from utils_vi import *
 from tqdm import tqdm
 from io import StringIO
 

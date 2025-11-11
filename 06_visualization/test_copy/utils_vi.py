@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, time
 import subprocess
 import os
-from .config_vi import *
+from config_vi import *
 
 
 def sum_dBs(dB_values):

@@ -2,16 +2,119 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 plt.style.use("bmh")
-from .visualization import *
-from .reading import *
-from .utils_vi import *
-from .config_vi import *
+from visualization import *
+from reading import *
+from utils_vi import *
+from config_vi import *
 from tqdm import tqdm
 import glob
 import json
 from scipy.signal import find_peaks
 import ast
 
+
+
+def load_data(file_path, logger, new_date=None, new_time=None, new_threshold_date=None, new_threshold_time=None, selected_folder=None):
+    logger.info("")
+    slm_type_function_mapping = {
+        'tenerife_TCT': (get_data_tenerife_TCT, tenerife_tct_dict),
+        "audiomoth": (get_data_audiomoth, audiopost_dict),
+        # "SV307": (get_data_SV307, sv307_dict),
+        "SV307": (get_data_SV307_new, sv307_dict),
+        "814": (get_data_814, larson814_dict),
+        "824": (get_data_824, larson824_dict),
+        "lx_ES": (get_data_lx_ES, larsonlx_dict),
+        "lx_EN": (get_data_lx_EN, larsonlx_dict),
+        "cesva": (get_data_cesva, cesva_dict),
+        "sono-bilbo": (get_data_bilbo, sonometer_bilbo_dict),
+        "bruel&kjaer": (get_data_bruel_kjaer, bruel_kjaer_dict),
+    } # SLM stands for Sound Level Meter
+    # load the data for each SLM type until one works |  for each slm_type, (func, slm_dict) in slm_type_function_mapping.items(): means that for each key and value in the dictionary, the key is slm_type and the value is a tuple with the function and the dictionary | the function is the function to load the data and the dictionary is the dictionary with the column names for the SLM type
+
+
+    for slm_type, (func, slm_dict) in slm_type_function_mapping.items():
+        try:
+            logger.info(f"Loading file {file_path} for SLM type {slm_type}")
+
+            # this is the actual invocation of the function
+            df = func(file_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time, selected_folder=selected_folder)
+            
+
+            logger.info("")
+            logger.info(f"Data loaded for SLM type {slm_type}")
+            return df, slm_type, slm_dict
+        
+
+
+        except Exception as e:
+            clean_message = str(e).replace('\n', ' ')
+            logger.warning(f"Failed to load data for SLM type {slm_type}: {clean_message}. Trying next SLM type")
+            continue
+    
+    raise ValueError("SLM type not found or file could not be loaded")
+
+
+
+def process_folder(folder_path, folder_date_time, folder_threshold, logger, selected_folder):
+    logger.info("")
+
+    # folder contains a CESVA folder
+    cesva_path = os.path.join(folder_path, 'CESVA')
+    if os.path.isdir(cesva_path):
+        # load the data from the CESVA folder
+        subfolders = [f for f in os.listdir(cesva_path) if os.path.isdir(os.path.join(cesva_path, f))]
+        new_date, new_time = folder_date_time.get(folder_path, (None, None))
+        new_threshold_date, new_threshold_time  = folder_threshold.get(folder_path, (None, None))
+        
+        # CESVA folder contains subfolders
+        for subfolder in subfolders:
+            #load the data from the first subfolder
+            subfolder_path = os.path.join(cesva_path, subfolder)
+            
+            # subfolder contains measurement files
+            files = [os.path.join(subfolder_path, f) for f in os.listdir(subfolder_path) if f.endswith(('.csv', '.xlsx', '.CSV', 'XLSX'))]
+            if files:
+                # logger.info(f"Files found: {files}")
+                return load_data(files[0], logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time)
+            else:
+                logger.warning(f"No measurement files found in {subfolder_path}")
+
+
+    else:
+        new_date, new_time = folder_date_time.get(folder_path, (None, None))
+        new_threshold_date, new_threshold_time  = folder_threshold.get(folder_path, (None, None))
+
+        files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith(('.csv', '.xlsx', '.CSV'))]
+        len_files = len(files)
+        logger.info(f"Files found: {len_files} at {folder_path}")
+        logger.info(f"Processing folder: {folder_path}")
+
+
+
+        if len_files > 1:
+            logger.info("Processing more than one file, so concatenating them")
+            first_file = files[0]
+            return load_data(first_file, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time,selected_folder=selected_folder)
+        
+        elif len_files == 1:
+            logger.info("Processing only one file, so loading it directly")
+            # this is the case where there is only one file
+            return load_data(files[0], logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time,selected_folder=selected_folder)
+        
+
+        if not files:
+            logger.info(f"No measurement files found in {folder_path}")
+            try:
+                logger.info(f"Trying to load data")
+                # load_data regular files
+                return load_data(folder_path, logger, new_date=new_date, new_time=new_time, new_threshold_date=new_threshold_date, new_threshold_time=new_threshold_time, selected_folder=selected_folder)
+            except Exception as e:
+                logger.error(f"Error loading data: {e}")
+            # if no files found, return None
+            logger.error(f"No measurement files found in {folder_path}")
+            return None, None, None
+        
+    return None, None, None 
 
 
 

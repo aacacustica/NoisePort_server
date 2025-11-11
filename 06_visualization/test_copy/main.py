@@ -1,21 +1,18 @@
 import argparse
 import os
-# from logging_config import setup_logging
-# from config_vi import *
-# from processing import *
+from logging_config import setup_logging
+from config_vi import *
+import config_vi
+from processing import *
 import re
-from .logging_config import setup_logging
-from .config_vi import *
-from .processing import *
-from .utils_vi import *
-# sys.path.insert(0, "/home/aac_s3_test/noisePort_server/06_visualization")
-
 
 
 def arg_parser():
     parser = argparse.ArgumentParser(description='Plotting AudioMoth data')
     parser.add_argument('-f', '--path_general', type=str, required=True, 
                         help='Path to sonometers folder')
+    parser.add_argument('-o', '--output-dir', type=str, required=False, 
+                        help='Output directory, if not provided, the output directory is the same as the input directory')
     
     parser.add_argument('-a', '--agg_period', type=int, required=False, default=900, 
                         help='Aggregation period in seconds')
@@ -36,6 +33,10 @@ def arg_parser():
                         help='Urban taxonomy')
     parser.add_argument('--port', action='store_true', 
                         help='Port taxonomy')
+    
+    # ask the user to change the date/time
+    parser.add_argument('--change-date', action='store_true',
+                        help='Change the date and the time of the csv file')
     return parser.parse_args()
 
 
@@ -45,7 +46,27 @@ def get_taxonomy(args, urban_taxonomy_map, port_taxonomy_map):
 
 
 
-def collect_folders(input_folder,label_source_type, logger):
+def ask_date_time_changes():
+    def ask(prompt, pattern):
+        ans = input(prompt).lower()
+        while ans not in ['y', 'n']:
+            ans = input(prompt).lower()
+        if ans == 'y':
+            val = input("Enter value: ")
+            while not re.match(pattern, val):
+                val = input("Enter value: ")
+            return val
+        return None
+
+    return (
+        ask("Change date? (y/n): ", r"\d{4}-\d{2}-\d{2}"),
+        ask("Change time? (y/n): ", r"([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]"),
+        ask("Set threshold date? (y/n): ", r"\d{4}-\d{2}-\d{2}"),
+        ask("Set threshold time? (y/n): ", r"([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]")
+    )
+
+
+def collect_folders(input_folder, change_time_flag,label_source_type, logger):
     folders, coefficients, date_time, threshold = [], {}, {}, {}
 
     if label_source_type == "raspberry":
@@ -56,6 +77,9 @@ def collect_folders(input_folder,label_source_type, logger):
                 folder_name = path.split("\\")[-2]
                 coeff = float(input(f"Correction coefficient for {folder_name}: "))
                 new_date = new_time = t_date = t_time = None
+
+                if change_time_flag:
+                    new_date, new_time, t_date, t_time = ask_date_time_changes()
 
                 folders.append(path)
                 coefficients[path] = coeff
@@ -72,6 +96,9 @@ def collect_folders(input_folder,label_source_type, logger):
                 coeff = float(input(f"Correction coefficient for {folder_name}: "))
                 new_date = new_time = t_date = t_time = None
 
+                if change_time_flag:
+                    new_date, new_time, t_date, t_time = ask_date_time_changes()
+
                 folders.append(path)
                 coefficients[path] = coeff
                 date_time[path] = (new_date, new_time)
@@ -86,6 +113,9 @@ def collect_folders(input_folder,label_source_type, logger):
                 folder_name = path.split("\\")[-2]
                 coeff = float(input(f"Correction coefficient for {folder_name}: "))
                 new_date = new_time = t_date = t_time = None
+
+                if change_time_flag:
+                    new_date, new_time, t_date, t_time = ask_date_time_changes()
 
                 folders.append(path)
                 coefficients[path] = coeff
@@ -137,7 +167,7 @@ def main():
             # exit()
 
             ############################
-            folders, coeffs, date_map, thresh_map = collect_folders(input_folder, label_source_type,logger)
+            folders, coeffs, date_map, thresh_map = collect_folders(input_folder, args.change_date, label_source_type,logger)
 
             logger.info(f"Using percentiles {args.percentiles}")
             logger.info(f"Aggregation period {args.agg_period}")
