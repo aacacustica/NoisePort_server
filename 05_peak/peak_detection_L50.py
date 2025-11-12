@@ -32,25 +32,21 @@ def leq(levels):
     return 10 * np.log10(np.mean(np.power(10, l / 10)))
 
 
-
-
-
-def get_hourly_folders(base_path):
+def get_hourly_folders():
+    
     hour_path_acoustics = []
     hour_path_predictions = []
     hour_path_peaks = []
     
-    base_path = base_path.replace("3-Medidas","5-Resultados")
-
-    for point in os.listdir(base_path):
+    for point in os.listdir(RESULTADOS_FOLDER):
         if point == 'P5_TEST':
             
-            spl_folder = os.path.join(base_path,point,'SPL')
-            ai_folder = os.path.join(base_path,point,'AI_MODEL')
+            spl_folder = os.path.join(RESULTADOS_FOLDER,point,'SPL')
+            ai_folder = os.path.join(RESULTADOS_FOLDER,point,'AI_MODEL')
             
-            predictions_params_query = os.path.join(ai_folder,'predictions_litle_query')
-            peaks_params_query = os.path.join(spl_folder,'Peaks','peaks_hourly')
-            acoustic_params_query = os.path.join(spl_folder,'acoustic_params_query')
+            predictions_params_query = os.path.join(ai_folder,PREDICTIONS_QUERY)
+            peaks_params_query = os.path.join(spl_folder,PEAKS_QUERY)
+            acoustic_params_query = os.path.join(spl_folder,ACOUSTICS_QUERY)
 
             if not os.path.exists(peaks_params_query): os.makedirs(peaks_params_query)
 
@@ -100,9 +96,9 @@ def merge_peaks(df_pk: pd.DataFrame, df_final: pd.DataFrame) -> pd.DataFrame:
 def assign_folder_paths(csv_file):
 
     title = csv_file.split("/")[-1]
-    point = csv_file.split("/")[-5]
+    point = csv_file.split("/")[-4]
 
-    output_folder = csv_file.replace("acoustic_params_query","Peaks/peaks_hourly")
+    output_folder = csv_file.replace(ACOUSTICS_QUERY,PEAKS_QUERY)
 
     output_folder = output_folder.replace(output_folder.split("/")[-1],"")
     output_folder = output_folder.replace(output_folder.split("/")[-1],"")
@@ -118,32 +114,20 @@ def argument_parser():
 
 
 
-def merge_acoustics_predictions_and_peaks(acoustics_paths,predictions_paths,peaks_paths,logger):
-    output_path = peaks_paths[0].replace(f"peaks_hourly/{os.path.basename(peaks_paths[0])}","")
+def merge_acoustics_predictions_and_peaks(point,acoustics_paths,predictions_paths,peaks_paths,logger):
+    
+    base_path = RESULTADOS_FOLDER
+    point_path = os.path.join(base_path,point)
 
-    dfs_ac_list = []
-    dfs_pred_list = []
-    dfs_peaks_list = []
+    spl_path = os.path.join(point_path,'SPL')
+    output_path = os.path.join(spl_path,MERGED_QUERY)
+
 
     for acoustic_path,pred_path,peak_path in zip(acoustics_paths,predictions_paths,peaks_paths):
             
-            dayhour = os.path.basename(acoustic_path).replace(".csv","")
-
             df_pk = pd.read_csv(peak_path)
             df_pr = pd.read_csv(pred_path)
             df_ac = pd.read_csv(acoustic_path)
-            
-            output_path_acoustics = output_path + f'/hourly_acoustics/'
-            output_path_predictions = output_path + f'/hourly_predictions/'
-            output_path_peaks = output_path + f'/hourly_peaks/'
-            
-            if not os.path.exists(output_path_acoustics): os.makedirs(output_path_acoustics)
-            if not os.path.exists(output_path_predictions): os.makedirs(output_path_predictions)    
-            if not os.path.exists(output_path_peaks): os.makedirs(output_path_peaks)
-
-            df_ac.to_csv(output_path_acoustics + f'[{dayhour}]acoustics_merged.csv')
-            df_pr.to_csv(output_path_predictions + f'[{dayhour}]predictions_merged.csv')
-            df_pk.to_csv(output_path_peaks + f'[{dayhour}]peaks_merged.csv')
 
             logger.info("Merged individual csv files into single dataframes for acoustics, predictions and peaks")
 
@@ -169,6 +153,7 @@ def merge_acoustics_predictions_and_peaks(acoustics_paths,predictions_paths,peak
             df_merged = merge_peaks(df_pk,df_final)
 
             merged_filename = os.path.join(output_path, f"merged_acoustics_predictions_peaks_{os.path.basename(acoustic_path)}")
+            if not os.path.exists(output_path): os.makedirs(output_path)
             df_merged.to_csv(merged_filename, index=False)
             
             
@@ -197,7 +182,7 @@ def main():
     
     start_time = time.time()
 
-    hourly_acoustics_folders,hourly_predictions_folders,hourly_peaks_folders = list(get_hourly_folders(base_path))
+    hourly_acoustics_folders,hourly_predictions_folders,_ = list(get_hourly_folders())
     for csv_file in tqdm(hourly_acoustics_folders, desc='Processing csv files'):
             
         df = pd.read_csv(csv_file)
@@ -265,6 +250,7 @@ def main():
                 #-------------------------------
                 
                 peak_data = []
+                
                 for start, end in zip(start_points, end_points):
                     peak_LA_values = above_threshold['LA'].iloc[start:end+1].values
                     leq_value = leq(peak_LA_values)
@@ -292,9 +278,15 @@ def main():
                 #-------------------------------
                 # 7-  Concat: acoustics + preds + peaks 
                 #-------------------------------
-        _,_,hourly_peaks_folders = get_hourly_folders(base_path)
-        merge_acoustics_predictions_and_peaks(hourly_acoustics_folders,hourly_predictions_folders,hourly_peaks_folders,logger)
-        print("Total time taken: {:.2f} seconds".format(time.time() - start_time))
+        
+
+        hourly_acoustics_folders,hourly_predictions_folders,hourly_peaks_folders = list(get_hourly_folders())
+        merge_acoustics_predictions_and_peaks(point,hourly_acoustics_folders,hourly_predictions_folders,hourly_peaks_folders,logger)
+        
+        
+        print("----------------------------------------------------------\n")
+        print("-------------Total time taken: {:.2f} seconds-------------".format(time.time() - start_time))
+        print("----------------------------------------------------------\n")
     except Exception as e:
         logger.error(f"Error concatenating acoustics predictions and peaks: {e}")
 
