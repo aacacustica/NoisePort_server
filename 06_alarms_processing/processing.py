@@ -203,18 +203,18 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 if df is not None:
                     logger.info(f"Adding nights column")
                     df['night_str'] = df.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
-            except Exception as e:
-                logger.error(f"An error occurred while adding indicators and nights columns: {e}")
 
 
-            try:
                 # add oca column
                 logger.info(f"Adding oca column")
                 logger.info(f"OCA Limits --> {oca_limits}")
                 if df is not None:
                     df['oca'] = df['hour'].apply(lambda h: db_limit(h, **oca_limits))
+
             except Exception as e:
-                logger.error(f"An error occurred while adding oca column: {e}")
+                logger.error(f"An error occurred while adding indicators and nights columns and oca column: {e}")
+
+
                 
 
             try:
@@ -235,10 +235,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.error(f"An error occurred while processing predictions in folder {folder}: {e}")
 
 
-            print(df)
-            print(df.columns)
-            exit()
-
 
             ################################################################
             ################################################################
@@ -247,39 +243,35 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 # TRANSFORMING 1 SECOND DATA TO 1 HOUR DATA
                 ##################################################################
                 logger.info("")
-                logger.info(f"Transforming 1 second data to 1 hour data")
-                
                 logger.info(f"MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA")
                 # remove the last part of the folder_output_dir
-                folder_output_dir_for_alarms = os.path.dirname(folder_output_dir)
-                folder_output_dir_1h = os.path.join(folder_output_dir_for_alarms, 'Graphics_ALARMS')
+                folder_output_dir_for_alarms = folder.replace('SPL', 'Graphics_ALARMS')
+                folder_output_dir_1h = os.path.dirname(folder_output_dir_for_alarms)
                 os.makedirs(folder_output_dir_1h, exist_ok=True)
 
-
-
-
-                # check if the file exists
-                df_1h_csv_path = os.path.join(folder_output_dir_1h, f"{actual_folder_name}_1h.csv")
-
-
-
-                df_1h = transform_1h_pred(df, logger, agg_period=3600)
-                df_1h = df_1h.round(2)
-                logger.info(f"Transformed 1 second data to 1 hour data")
-                print(df_1h)
-                exit()
-
+                ia_visualization_folder = os.path.join(folder_output_dir_1h, 'AI_ALARMS')
+                os.makedirs(ia_visualization_folder, exist_ok=True)
 
 
                 logger.info("")
-                logger.info("")
-                logger.info(f"TRANSFORMATION SECTION")
-                logger.info(f"Adding oca column")
-                logger.info(f"OCA Limits --> {oca_limits}")
-                # set index (which is datetime) as column
-                df_1h.reset_index(inplace=True)
-                
-                df_1h = transformation(df_1h, logger, oca_limits)
+                logger.info(f"Transforming 1 second data to 1 hour data")
+                df_1h = df.resample("2h").apply(agg_hour)
+                df_1h = df_1h.reset_index()
+                df_1h = df_1h.round(1)
+
+
+                try:
+                    logger.info(f"Adding oca column")
+                    df_1h["hour"] = df_1h["datetime"].dt.hour
+                    df_1h["weekday"] = df_1h["datetime"].dt.weekday
+                    logger.info("Adding indicators / night / oca to 2H dataframe")
+
+                    df_1h["indicador_str"] = df_1h["hour"].apply(evaluation_period_str)
+                    df_1h["night_str"] = df_1h.apply(lambda x: add_night_column(x["hour"], x["weekday"]), axis=1)
+                    df_1h["oca"] = df_1h["hour"].apply(lambda h: db_limit(h, **oca_limits))
+                except Exception as e:
+                    logger.error(f"An error occurred while adding indicators and nights columns and oca column: {e}")
+
 
                 #####
                 #ssave
@@ -291,7 +283,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 continue
 
 
-
+            exit()
 
             ###################################
             ###################################

@@ -583,6 +583,68 @@ def transformation(df, logger, oca_limits):
     return df
 
 
+def leq_safe(series):
+    vals = series.dropna().values
+    if len(vals) == 0:
+        return pd.NA
+    return leq(vals)
+
+
+def agg_hour(group):
+    result = {}
+
+
+
+    if "id_micro" in group:
+        result["id_micro"] = group["id_micro"].iloc[0]
+
+
+    leq_cols = [
+        "LA", "LC", "LZ", "LAmax", "LAmin",
+        "12.6Hz", "15.8Hz", "20.0Hz", "25.1Hz", "31.6Hz", "39.8Hz",
+        "50.1Hz", "63.1Hz", "79.4Hz", "100.0Hz", "125.9Hz", "158.5Hz",
+        "199.5Hz", "251.2Hz", "316.2Hz", "398.1Hz", "501.2Hz", "631.0Hz",
+        "794.3Hz", "1000.0Hz", "1258.9Hz", "1584.9Hz", "1995.3Hz",
+        "2511.9Hz", "3162.3Hz", "3981.1Hz", "5011.9Hz", "6309.6Hz",
+        "7943.3Hz", "10000.0Hz", "12589.3Hz", "15848.9Hz",
+        "peak_leq",
+    ]
+    # Leq
+    for col in leq_cols:
+        if col in group:
+            result[col] = leq_safe(group[col])
+
+
+    # average
+    if "LC-LA" in group:
+        result["LC-LA_mean"] = group["LC-LA"].mean()
+
+
+    # n peaks per hour
+    if "is_peak" in group:
+        result["n_peaks"] = group["is_peak"].fillna(0).astype(bool).sum()
+
+
+    # clase mas repetida
+    if "NoisePort_Level_1" in group:
+        cats = group["NoisePort_Level_1"].dropna()
+        if not cats.empty:
+            mode_cats = cats.mode()
+            result["NoisePort_Level_1_mode"] = mode_cats.iloc[0]
+        else:
+            result["NoisePort_Level_1_mode"] = pd.NA
+
+    if "Prediction_1" in group:
+        cats = group["Prediction_1"].dropna()
+        if not cats.empty:
+            mode_cats = cats.mode()
+            result["Prediction_1_mode"] = mode_cats.iloc[0]
+        else:
+            result["Prediction_1_mode"] = pd.NA
+
+    return pd.Series(result)
+
+
 
 
 def list_git_tags():
