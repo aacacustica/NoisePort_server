@@ -89,17 +89,7 @@ def load_data_db(db, data_path, logger, table_name=ACOUSTIC_TABLE_NAME):
     finally:
         cursor.close()
 
-def extract_minute_from_filename(fname):
-    """
-    Extrae el minuto (dos dígitos) del nombre de fichero con patrón YYYYMMDD_HHMMSS.
-    Devuelve string 'MM' o None si no puede extraerlo.
-    """
-    m = FILENAME_TS_RE.search(fname)
-    if not m:
-        return None
-    ts_part = m.group(1)           # 'YYYYMMDD_HHMMSS'
-    hhmmss = ts_part.split('_')[1] # 'HHMMSS'
-    return hhmmss[2:4]             # 'MM'
+
 
 def get_columns_for_table(table_name):
     
@@ -358,35 +348,90 @@ def sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed
     sonometer_path = point + f'/{folder}'                    
     logger.info("Starting PREDICTION FOLDER processing")
     start_time = time.time()
-    process_sonometer_folder(db,logger,sonometer_path,query_sonometer_folder,processed_folder_sonometer_txt)
+    process_sonometer_folder(db,logger,query_sonometer_folder,processed_folder_sonometer_txt)
     end_time =  round(time.time() - start_time,2)
     return end_time
-    
 
-def get_extra_seconds_row(csv_path,logger):
+def safe_read_timestamp(csv_path, nrows=1):
+    """
+    Lee las primeras nrows filas y devuelve una Serie de Timestamps (datetime64[ns, UTC]).
+    Si el CSV está vacío o no tiene columna 'Timestamp', devuelve None.
+    """
+    try:
+        df = pd.read_csv(csv_path, nrows=nrows)
+    except Exception as e:
+        logger.error(f"Error leyendo {csv_path}: {e}")
+        return None
+
+    if df.empty or 'Timestamp' not in df.columns:
+        logger.warning(f"{csv_path} vacío o sin columna 'Timestamp'.")
+        return None
+
+    try:
+        ts = pd.to_datetime(df['Timestamp'], utc=True, errors='coerce')
+        if ts.isna().all():
+            logger.warning(f"{csv_path} contiene Timestamps no parseables.")
+            return None
+        return ts
+    except Exception as e:
+        logger.error(f"Error parseando Timestamp en {csv_path}: {e}")
+        return None
+
+
+def get_csv_reference_time(csv_path):
+    """
+    Devuelve el timestamp (datetime) del primer registro válido del CSV.
+    Si falla devuelve None.
+    """
+    ts = safe_read_timestamp(csv_path, nrows=10)
+    if ts is None:
+        return None
+    # encontrar primer no-nulo
+    first_valid = ts.dropna().iloc[0]
+    return pd.to_datetime(first_valid, utc=True)
+
+
+def detect_minute_jump(prev_path, curr_path, threshold_seconds=70):
+    """
+    Detecta si hay un salto entre el primer timestamp de prev_path y el primer timestamp de curr_path.
+    threshold_seconds por defecto 70 (permite tolerancia a pequeños desfases).
+    prev_path y curr_path deberían ser rutas completas a archivos.
+    """
+    tprev = get_csv_reference_time(prev_path)
+    tcurr = get_csv_reference_time(curr_path)
+    if tprev is None or tcurr is None:
+        return False
+    diff = (tcurr - tprev).total_seconds()
+    return diff > threshold_seconds
+
+
+def get_extra_seconds_row(csv_path, logger):
     """
     Devuelve (count_extra_seconds, indexs_extra_rows).
-    Detecta filas cuyo minuto difiere del minuto representado en el nombre del fichero.
+    Ahora determina el 'minuto del archivo' a partir del PRIMER timestamp del archivo (contenido).
+    Marca como 'extra' las filas cuyo .dt.minute difiera del minuto real (del primer registro).
     """
     csv_name = os.path.basename(csv_path)
-    csv_minute = extract_minute_from_filename(csv_name)
-    if csv_minute is None:
-        logger.warning(f"No se pudo extraer minuto del nombre {csv_name}. Se asumirá que no hay extras.")
+    try:
+        df = pd.read_csv(csv_path)
+    except Exception as e:
+        logger.error(f"Error leyendo {csv_path}: {e}")
         return 0, []
 
-    df = pd.read_csv(csv_path)
-    indexs_extra_rows = []
-    for index, row in df.iterrows():
-        try:
-            minute = pd.to_datetime(row['Timestamp']).strftime('%M')
-        except Exception as e:
-            logger.error(f"Error parsing Timestamp en {csv_path} fila {index}: {e}")
-            continue
-        if str(minute) != csv_minute:
-            indexs_extra_rows.append(index)
+    if df.empty or 'Timestamp' not in df.columns:
+        return 0, []
 
+    df['Timestamp'] = pd.to_datetime(df['Timestamp'], utc=True, errors='coerce')
+    if df['Timestamp'].isna().all():
+        return 0, []
+
+    # minuto oficial del fichero (primer timestamp válido)
+    first_valid_idx = df['Timestamp'].first_valid_index()
+    csv_minute = df.at[first_valid_idx, 'Timestamp'].minute
+
+    # indices donde el minuto difiere
+    indexs_extra_rows = df[df['Timestamp'].dt.minute != csv_minute].index.tolist()
     return len(indexs_extra_rows), indexs_extra_rows
-
 
 
 def append_extra_seconds(previous_csv_path, current_csv_path, row_indexs, days_folder, day):
@@ -394,6 +439,7 @@ def append_extra_seconds(previous_csv_path, current_csv_path, row_indexs, days_f
     Mueve filas de previous -> current (ya en /fixed_<day>/).
     days_folder: path hasta measurement_folder (ej: /.../acoustic_params)
     day: day_folder (ej: '20250401_12')
+    Ambos previous_csv_path y current_csv_path deben existir en el disco (copiados a fixed_).
     """
     if not row_indexs:
         return
@@ -407,11 +453,10 @@ def append_extra_seconds(previous_csv_path, current_csv_path, row_indexs, days_f
     df_previous = pd.read_csv(previous_csv_path)
     df_current = pd.read_csv(current_csv_path)
 
-    # Extraer por posición (loc usa labels; aquí usamos iloc si row_indexs son posiciones)
+    # Extraer por posiciones/labels
     try:
         df_previous_rows_to_move = df_previous.loc[row_indexs].copy()
     except Exception:
-        # fallback por posiciones
         df_previous_rows_to_move = df_previous.iloc[row_indexs].copy()
 
     # Eliminar esas filas del previo
@@ -419,40 +464,48 @@ def append_extra_seconds(previous_csv_path, current_csv_path, row_indexs, days_f
 
     # Adjuntar al current y ordenar
     df_current = pd.concat([df_current, df_previous_rows_to_move], ignore_index=True)
-    df_current['Timestamp'] = pd.to_datetime(df_current['Timestamp'], utc=True)
+    df_current['Timestamp'] = pd.to_datetime(df_current['Timestamp'], utc=True, errors='coerce')
     df_current = df_current.sort_values('Timestamp').reset_index(drop=True)
     df_current.to_csv(os.path.join(output_path, name_current), index=False)
 
     # Guardar previo recortado
-    df_previous['Timestamp'] = pd.to_datetime(df_previous['Timestamp'], utc=True)
+    df_previous['Timestamp'] = pd.to_datetime(df_previous['Timestamp'], utc=True, errors='coerce')
     df_previous = df_previous.sort_values('Timestamp').reset_index(drop=True)
     df_previous.to_csv(os.path.join(output_path, name_previous), index=False)
-    
 
-    
 
 def last_day_round_with_extra(last_hour_path, logger):
     """
-    Recorta el archivo CSV en la primera fila que pertenece a la hora siguiente.
-    Es decir: solo recorta las filas cuyo Timestamp se haya desbordado de la hora correspondiente.
+    Recorta el archivo CSV en la primera fila que pertenece a la HORA SIGUIENTE a la hora que
+    indica el PRIMER timestamp del fichero (no usa el nombre del fichero).
+    Devuelve las filas que pertenecen a la hora siguiente (extra_rows). Actualiza el fichero original.
     """
-    csv_name = os.path.basename(last_hour_path)
-    ts_part = FILENAME_TS_RE.search(csv_name)
-    if not ts_part:
+    try:
+        df = pd.read_csv(last_hour_path)
+    except Exception as e:
+        logger.error(f"Error leyendo {last_hour_path}: {e}")
         return pd.DataFrame()
 
-    file_hour = pd.to_datetime(ts_part.group(1), format='%Y%m%d_%H%M%S')
-    df = pd.read_csv(last_hour_path)
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'], utc=True)
+    if df.empty or 'Timestamp' not in df.columns:
+        return pd.DataFrame()
 
-    # Filas que están en la hora siguiente
-    overflow_mask = df['Timestamp'].dt.hour != file_hour.hour
+    df['Timestamp'] = pd.to_datetime(df['Timestamp'], utc=True, errors='coerce')
+    if df['Timestamp'].isna().all():
+        return pd.DataFrame()
+
+    # hora oficial del fichero tomada del primer timestamp válido
+    first_valid_idx = df['Timestamp'].first_valid_index()
+    file_hour = df.at[first_valid_idx, 'Timestamp'].hour
+
+    # Filas que están en una hora distinta a la del primer timestamp (overflow)
+    overflow_mask = df['Timestamp'].dt.hour != file_hour
     extra_rows = df[overflow_mask].copy()
     df_remaining = df[~overflow_mask].copy()
 
-    # Guardamos el recorte actualizado
+    # Guardamos el recorte actualizado (sobreescribimos el fichero original)
     df_remaining.to_csv(last_hour_path, index=False)
     return extra_rows
+
 
 def get_next_day_hour_folder(curr_folder):
     """
@@ -469,6 +522,7 @@ def get_next_day_hour_folder(curr_folder):
         return f"{day}_{next_hour:02d}"
     return None
 
+
 def append_leftover_rows(leftover_df, next_fixed_folder_path, logger):
     """
     Prepend leftover_df al primer CSV de next_fixed_folder_path (ordenado por nombre),
@@ -482,7 +536,7 @@ def append_leftover_rows(leftover_df, next_fixed_folder_path, logger):
         logger.info(f"No hay filas sobrantes para añadir a {next_fixed_folder_path}")
         return
 
-    # Determinar la hora del folder siguiente
+    # Determinar la hora del folder siguiente; el folder debe tener formato fixed_YYYYMMDD_HH
     next_hour_str = os.path.basename(next_fixed_folder_path).split('_')[-1]
     try:
         next_hour = int(next_hour_str)
@@ -490,10 +544,8 @@ def append_leftover_rows(leftover_df, next_fixed_folder_path, logger):
         logger.warning(f"No se pudo determinar la hora del folder {next_fixed_folder_path}; se añaden todas las filas")
         next_hour = None
 
-    leftover_df['Timestamp'] = pd.to_datetime(leftover_df['Timestamp'], utc=True)
-
+    leftover_df['Timestamp'] = pd.to_datetime(leftover_df['Timestamp'], utc=True, errors='coerce')
     if next_hour is not None:
-        # Filtrar solo las filas cuyo Timestamp pertenece a la hora del folder siguiente
         correct_rows = leftover_df[leftover_df['Timestamp'].dt.hour == next_hour].copy()
         if correct_rows.empty:
             logger.info(f"Ninguna fila sobrante pertenece a la hora {next_hour} en {next_fixed_folder_path}; se descartan.")
@@ -515,13 +567,12 @@ def append_leftover_rows(leftover_df, next_fixed_folder_path, logger):
     first_csv = files_next[0]
     first_csv_path = os.path.join(next_fixed_folder_path, first_csv)
     df_next = pd.read_csv(first_csv_path)
-    df_next['Timestamp'] = pd.to_datetime(df_next['Timestamp'], utc=True)
+    df_next['Timestamp'] = pd.to_datetime(df_next['Timestamp'], utc=True, errors='coerce')
 
     df_merged = pd.concat([correct_rows, df_next], ignore_index=True)
     df_merged = df_merged.sort_values('Timestamp').reset_index(drop=True)
     df_merged.to_csv(first_csv_path, index=False)
     logger.info(f"Sobrantes añadidos a {first_csv_path}: {len(correct_rows)} filas filtradas por hora {next_hour}")
-
 
 
 def main():
@@ -655,6 +706,10 @@ def main():
             #               
             # --------------------------------------------------
 
+            """
+            point: path base que contiene carpetas tipo 'acoustic_params' y 'predictions_litle'
+            Recorre y crea carpetas fixed_YYYYMMDD_HH y ajusta segundos/minutos sobrantes.
+            """
             leftover_seconds = {}
 
             for measurement_folder in sorted(os.listdir(point)):
@@ -666,7 +721,7 @@ def main():
                     continue
 
                 # procesamos los day_folders en orden cronológico
-                for day_folder in tqdm.tqdm(sorted(os.listdir(measurement_path)),desc = f'Fixing time slops {measurement_folder}'):
+                for day_folder in tqdm.tqdm(sorted(os.listdir(measurement_path)), desc=f'Fixing time slops {measurement_folder}'):
                     if 'fixed' in day_folder or day_folder.endswith('.txt'):
                         continue
 
@@ -677,7 +732,8 @@ def main():
                     files_day = [f for f in os.listdir(day_path) if f.lower().endswith('.csv')]
                     if measurement_folder == 'predictions_litle':
                         files_day = [f for f in files_day if f.endswith('w_1.0.csv')]
-
+                    else:
+                        files_day = [f for f in os.listdir(day_path) if f.lower().endswith('.csv')]
                     files_day = sorted(files_day)
                     if not files_day:
                         logger.info(f"No hay CSVs en {day_path}; siguiente")
@@ -686,31 +742,67 @@ def main():
                     fixed_folder_path = os.path.join(measurement_path, f'fixed_{day_folder}')
                     os.makedirs(fixed_folder_path, exist_ok=True)
 
-                    # Procesar pares consecutivos
-                    for previous, current in zip(files_day, files_day[1:]):
-                        prev_orig = os.path.join(day_path, previous)
-                        curr_orig = os.path.join(day_path, current)
+                    # Copia inicial de todos (si quieres copiar sólo según el flujo original, puedes cambiar)
+                    for f in files_day:
+                        src = os.path.join(day_path, f)
+                        dest = os.path.join(fixed_folder_path, f)
+                        if not os.path.exists(dest) and os.path.exists(src):
+                            shutil.copy(src, dest)
 
+                    # Procesar pares consecutivos usando rutas completas en fixed_
+                    fixed_files_day = sorted([f for f in os.listdir(fixed_folder_path) if f.lower().endswith('.csv')])
+
+                    for previous, current in zip(fixed_files_day, fixed_files_day[1:]):
                         prev_dest = os.path.join(fixed_folder_path, previous)
                         curr_dest = os.path.join(fixed_folder_path, current)
 
-                        # Copiar si no existen aún en fixed_
-                        if not os.path.exists(prev_dest):
-                            shutil.copy(prev_orig, prev_dest)
-                        if not os.path.exists(curr_dest):
-                            shutil.copy(curr_orig, curr_dest)
+                        # Detectar salto real por contenido
+                        if detect_minute_jump(prev_dest, curr_dest):
+                            logger.warning(f"Detected minute jump between {previous} and {current}")
+                            # obtener leftover del previo
+                            try:
+                                df_prev = pd.read_csv(prev_dest)
+                            except Exception as e:
+                                logger.error(f"Error leyendo {prev_dest}: {e}")
+                                continue
+                            if 'Timestamp' not in df_prev.columns or df_prev.empty:
+                                continue
+                            df_prev['Timestamp'] = pd.to_datetime(df_prev['Timestamp'], utc=True, errors='coerce')
+                            if df_prev['Timestamp'].isna().all():
+                                continue
+
+                            # minuto faltante = minuto del primer registro del previo
+                            first_valid_idx = df_prev['Timestamp'].first_valid_index()
+                            missing_minute = df_prev.at[first_valid_idx, 'Timestamp'].minute
+
+                            # Filtrar filas del minuto faltante (del archivo previo)
+                            leftover_rows = df_prev[df_prev['Timestamp'].dt.minute == missing_minute]
+
+                            if not leftover_rows.empty:
+                                key = (day_folder, measurement_folder)
+                                leftover_sorted = leftover_rows.sort_values('Timestamp').reset_index(drop=True)
+
+                                # Acumular como leftover
+                                if key in leftover_seconds:
+                                    leftover_seconds[key] = pd.concat(
+                                        [leftover_seconds[key], leftover_sorted],
+                                        ignore_index=True
+                                    ).sort_values('Timestamp').reset_index(drop=True)
+                                else:
+                                    leftover_seconds[key] = leftover_sorted
+
+                                logger.info(f"Added {len(leftover_sorted)} leftover rows from {previous} (minute jump detected)")
 
                         # Detectar y mover segundos extra entre prev_dest -> curr_dest
-                        _, index_rows = get_extra_seconds_row(prev_dest,logger)
+                        _, index_rows = get_extra_seconds_row(prev_dest, logger)
                         if index_rows:
                             append_extra_seconds(prev_dest, curr_dest, index_rows, measurement_path, day_folder)
 
                     # Último archivo de la carpeta: recortarlo y guardar sobrantes
                     last_csv_name = files_day[-1]
                     last_csv_path = os.path.join(fixed_folder_path, last_csv_name)
-                    # Si el archivo no existe todavía en fixed (por ejemplo carpeta creada y no copiados), copiarlo
+                    # Si un original no fue copiado por alguna razón, asegurar su existencia
                     if not os.path.exists(last_csv_path):
-                        # Copiamos desde la carpeta original si existe
                         orig_last = os.path.join(day_path, last_csv_name)
                         if os.path.exists(orig_last):
                             shutil.copy(orig_last, last_csv_path)
@@ -718,11 +810,10 @@ def main():
                             logger.warning(f"Último CSV {orig_last} no encontrado; saltando last_day_round para {day_folder}")
                             continue
 
-                    extra_rows = last_day_round_with_extra(last_csv_path,logger)
+                    extra_rows = last_day_round_with_extra(last_csv_path, logger)
                     if not extra_rows.empty:
                         key = (day_folder, measurement_folder)
                         if key in leftover_seconds:
-                            # concatenar si ya hay sobrantes guardados
                             leftover_seconds[key] = pd.concat([leftover_seconds[key], extra_rows], ignore_index=True).sort_values('Timestamp').reset_index(drop=True)
                         else:
                             leftover_seconds[key] = extra_rows
@@ -741,7 +832,8 @@ def main():
                 else:
                     # Si la carpeta siguiente aún no existe, la creamos y escribimos un CSV con los sobrantes
                     os.makedirs(next_fixed_path, exist_ok=True)
-                    # Generar un nombre seguro para el CSV
+                    # Generar un nombre seguro para el CSV (usar timestamp del primer registro)
+                    extra_df['Timestamp'] = pd.to_datetime(extra_df['Timestamp'], utc=True, errors='coerce')
                     timestamp_tag = extra_df.iloc[0]['Timestamp'].strftime('%Y%m%d_%H%M%S')
                     new_fname = f'prepended_{timestamp_tag}.csv'
                     new_path = os.path.join(next_fixed_path, new_fname)
@@ -772,13 +864,15 @@ def main():
                 if folder == 'wav_files' and WAV_QUERY_SWITCH:
                     
                     logger.info("Starting WAV FILES processing")
-                    end_time = wav_processing(folder_days_wavs,folder,db,logger, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)
+                    end_time = 0 
+                    #wav_processing(folder_days_wavs,folder,db,logger, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)
                     print(" --- %s seconds in execution ---" %end_time)  
         
                 if folder == 'sonometer_files' and SONOMETER_QUERY_SWITCH:  
                    
                     logger.info("Starting SONOMETER FOLDER processing")
-                    end_time = sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed_folder_sonometer_txt)
+                    end_time =0
+                    #sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed_folder_sonometer_txt)
                     print(" --- %s seconds in execution ---" %end_time)
             
             print(" --- %s seconds in total execution ---" % round(time.time() - whole_start_time,2))
