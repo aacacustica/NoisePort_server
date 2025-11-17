@@ -86,12 +86,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
                     if "Prediction_1" in df.columns:
-                        df = df.merge(
-                            yamnet_df,
-                            how="left",
-                            left_on="Prediction_1",
-                            right_on="display_name",
-                        )
+                        df = df.merge(yamnet_df,how="left",left_on="Prediction_1",right_on="display_name",)
                     else:
                         logger.warning("Prediction_1 column not found in df; cannot merge YAMNet taxonomy")
 
@@ -105,6 +100,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                         df = df.drop(columns=cols_to_drop)
  
 
+                    if "LC" in df.columns and "LA" in df.columns:
+                        df["LC-LA"] = df["LC"] - df["LA"]
+
                     # [2] desired order
                     base_cols = [
                         "id_micro",
@@ -112,15 +110,15 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                         "datetime",
                         "Timestamp",
                         "Unixtimestamp",
-                        "LA", "LC", "LZ", "LAmax", "LAmin",
+                        "LA", "LC", "LZ", "LAmax", "LAmin", "LC-LA",
                     ]
+
 
                     # [3] 1/3 octave bands
                     band_cols = [c for c in df.columns if c.endswith("Hz")]
 
                     # [4 ] prediction columns
-                    pred_cols = [c for c in df.columns
-                                if c.startswith("Prediction_") or c.startswith("Prob_")]
+                    pred_cols = [c for c in df.columns if c.startswith("Prediction_") or c.startswith("Prob_")]
 
                     taxonomy_cols = []
                     if "NoisePort_Level_1" in df.columns:
@@ -138,9 +136,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     peak_cols = [c for c in peak_cols if c in df.columns]
 
                     # 6] rerange
-                    ordered_cols = [
-                        c for c in base_cols + band_cols + pred_cols+taxonomy_cols + peak_cols if c in df.columns
-                    ]
+                    ordered_cols = [c for c in base_cols + band_cols + pred_cols+taxonomy_cols + peak_cols if c in df.columns]
 
                     df = df[ordered_cols]
                     df = df.sort_values("datetime").reset_index(drop=True)
@@ -259,18 +255,14 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 folder_output_dir_1h = os.path.join(folder_output_dir_for_alarms, 'Graphics_ALARMS')
                 os.makedirs(folder_output_dir_1h, exist_ok=True)
 
+
+
+
                 # check if the file exists
                 df_1h_csv_path = os.path.join(folder_output_dir_1h, f"{actual_folder_name}_1h.csv")
-                # if os.path.exists(df_1h_csv_path):
-                #     logger.info(f"File {df_1h_csv_path} already exists, skipping transformation")
-                #     df_1h = pd.read_csv(df_1h_csv_path)
-                #     logger.info(f"Loaded 1 hour dataframe from {df_1h_csv_path}")
-                #     # continue
-                
-                # else:
-                # df_1h = transform_1h(df, slm_dict, logger, agg_period=3600)
 
-                # print(len(df_1h))
+
+
                 df_1h = transform_1h_pred(df, logger, agg_period=3600)
                 df_1h = df_1h.round(2)
                 logger.info(f"Transformed 1 second data to 1 hour data")
@@ -291,9 +283,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
                 #####
                 #ssave
-                #removeing datetime column and rename datetime_y to datetime
-                # df.drop(columns=['datetime'], inplace=True, errors='ignore')
-                # df.rename(columns={'datetime_y': 'datetime'}, inplace=True, errors='ignore')
                 df_1h.to_csv(df_1h_csv_path, index=False)
                 logger.info(f"Saved 1 hour dataframe to {df_1h_csv_path}")
 
@@ -306,112 +295,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
             ###################################
             ###################################
-            logger.info("")
-            logger.info(f"PLOTTING SECTION")
-
-            # Plotting night evolution
-            if PLOT_NIGHT_EVOLUTION:
-                logger.info(f"[1.1] Plotting night evolution for folder {folder}")
-                plot_night_evolution(df, folder_output_dir, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder, indicador_noche="Ln")
-            
-
-            # Plotting night evolution 15 min
-            if PLOT_NIGHT_EVOLUTION_15_MIN:
-                logger.info(f"[2.1] Plotting night evolution 15 min for folder {folder}")
-                plot_night_evolution_15_min(df, folder_output_dir, logger, name_extension="15_min", laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder, indicador_noche="Ln")
-
-
-
-
-            ############################ PREDICTION PLOTTING SECTION ####################################################################################
-            # Plotting LEq power average with predictions
-            if PLOT_PREDIC_LAEQ_MEAN:
-                logger.info(f"[3.1] Plotting PLOT_PREDIC_LAEQ_MEAN for folder {folder}")
-                plot_predic_laeq_mean(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
-
-            # TODO
-            # if PLOT_PREDIC_LAEQ_15_MIN_PERIOD:
-            #     logger.info(f"[4.1] Plotting PLOT_PREDIC_LAEQ_15_MIN_PERIOD for folder {folder}")
-            #     plot_predic_laeq_15_min_period(df, yamnet_csv, taxonomy, ia_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
-
-            if PLOT_PREDIC_LAEQ_MEAN_4H:
-                logger.info(f"[4.1] Plotting PLOT_PREDIC_LAEQ_MEAN_4H for folder {folder}")
-                plot_predic_laeq_mean_4h(df_all_yamnet, df_ship_dock, taxonomy, ia_visualization_folder, logger, plotname=folder)    
-                exit()
-            
-            if PLOT_PREDIC_LAEQ_DAY:
-                logger.info(f"[4.1] Plotting PLOT_PREDIC_LAEQ_MEAN_4H for folder {folder}")
-                plot_predic_laeq_mean_day(df_all_yamnet, df_ship_dock, taxonomy, ia_visualization_folder, logger, plotname=folder)
-                exit()
-
-
-            # TODO
-            # if PLOT_PREDIC_LAEQ_15_MIN_4H:
-            #     logger.info(f"[5] Plotting PLOT_PREDIC_LAEQ_4H for folder {folder}")
-            #     plot_predic_laeq_15_min_4h(df, yamnet_csv,taxonomy, df_prediction, ia_visualization_folder, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder)
-
-
-            # TODO
-            # # Plotting stack bar with predictions class
-            # if PLOT_PREDICTION_STACK_BAR:
-            #     logger.info(f"[6] Plotting PLOT_PREDICTION_STACK_BAR for folder {folder}")
-            #     plot_prediction_stack_bar(df_prediction, yamnet_csv, taxonomy, ia_visualization_folder, logger, plotname=folder)
-            
-
-
-
-            if PLOT_PREDICTION_MAP:
-                logger.info(f"[7.1] Plotting PLOT_PREDICTION_MAP for folder {folder}")
-                df_all_yamnet_1h = plot_prediction_map_new(df_all_yamnet, df_ship_dock, ia_visualization_folder, logger, plotname=folder)
-                print(df_all_yamnet_1h)
-                print(df_all_yamnet_1h.columns)
-                # print(df_all_yamnet_1h['NoisePort_Level_1'].value_counts())
-                # exit()
-
-            
-            ##############################################################################################################################################
-
- 
-            
-            # Plotting time plot
-            if PLOT_MAKE_TIME_PLOT:
-                logger.info(f"[9.1] Plotting time plot for folder {folder}")
-                make_time_plot(df, folder_output_dir, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder, percentiles=PERCENTILES)
-
-
-            # Plotting heatmap evolution hour
-            if PLOT_HEATMAP_EVOLUTION_HOUR:
-                logger.info(f"[10.1] Plotting heatmap for folder {folder}")
-                plot_heatmap_evolution_hour(df, folder_output_dir, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname=folder)
-
-
-            # Plotting heatmap evolution 15 min
-            if PLOT_HEATMAP_EVOLUTION_15_MIN:
-                logger.info(f"[11] Plotting heatmap 15 min for folder {folder}")
-                plot_heatmap_evolution_15_min(df, folder_output_dir, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname=folder)
-
-            
-            # Plotting individual heatmap
-            if PLOT_INDICADORES_HEATMAP:
-                logger.info(f"[12] Plotting indicadores heatmap for folder {folder}")
-                plot_indicadores_heatmap(df, folder_output_dir, logger, plotname=folder, ind_column=slm_dict["LAEQ_COLUMN_COEFF"])
-
-            
-            # Plotting day evolution
-            if PLOT_DAY_EVOLUTION:
-                logger.info(f"[13] Plotting day evolution for folder {folder}")
-                plot_day_evolution(df, folder_output_dir, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder)
-
-
-            # Plotting period evolution
-            if PLOT_PERIOD_EVOLUTION:
-                logger.info(f"[14] Plotting period evolution (1) Ld (2) Le for folder {folder}")
-                plot_period_evolution(df, folder_output_dir, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder)
-
-
-            #############################
-            ######### PLOTING ALARMS
-            ################################
             logger.info("")
             logger.info(f"PLOTTING ALARMS!!!")
 
