@@ -64,6 +64,70 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     df=pd.read_csv(csv_path_abs)
                     print(df.columns)
 
+                    # ─────────────
+                    # CLEAN / TIDY
+                    # ─────────────
+                    # [0] datetimecolumn
+                    df["datetime"] = pd.to_datetime(df["Timestamp"])
+                    df["datetime"] = df["datetime"].dt.tz_localize(None)
+
+                    # [1] rename
+                    if "Filename_acoustic" in df.columns:
+                        df = df.rename(columns={"Filename_acoustic": "Filename"})
+
+                    # drop other filenames columns
+                    cols_to_drop = []
+                    for col in ["Filename_prediction", "peak_filename"]:
+                        if col in df.columns:
+                            cols_to_drop.append(col)
+                    if cols_to_drop:
+                        df = df.drop(columns=cols_to_drop)
+
+                    # [2] desired order
+                    base_cols = [
+                        "id_micro",
+                        "Filename",
+                        "datetime",
+                        "Timestamp",
+                        "Unixtimestamp",
+                        "LA", "LC", "LZ", "LAmax", "LAmin",
+                    ]
+
+                    # [3] 1/3 octave bands
+                    band_cols = [c for c in df.columns if c.endswith("Hz")]
+
+                    # [4 ] prediction columns
+                    pred_cols = [c for c in df.columns
+                                if c.startswith("Prediction_") or c.startswith("Prob_")]
+
+                    # [5] peak columns
+                    peak_cols = [
+                        "is_peak",
+                        "peak_start_time",
+                        "peak_end_time",
+                        "peak_duration",
+                        "peak_leq",
+                        "peak_LA_values",
+                    ]
+                    peak_cols = [c for c in peak_cols if c in df.columns]
+
+                    # 6] rerange
+                    ordered_cols = [
+                        c for c in base_cols + band_cols + pred_cols + peak_cols
+                        if c in df.columns
+                    ]
+
+                    df = df[ordered_cols]
+                    df = df.sort_values("datetime").reset_index(drop=True)
+                    print(df)
+
+                    #save
+                    base, ext = os.path.splitext(csv_path_abs)
+                    corrected_path = base + "_corrected" + ext
+                    df.to_csv(corrected_path, index=False)
+                    logger.info(f"Saved corrected CSV to: {corrected_path}")
+
+
             elif sufix_string == "SONOMETRO":
                 logger.info(f"Processing SONOMETRO data")
                 pass
@@ -80,7 +144,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.info(f"Time zone was set to Tenerife")
 
 
-            exit()
             try:
                 if df is not None:
                     logger.info("")
@@ -100,7 +163,8 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             except Exception as e:
                 logger.error(f"An error occurred while adding datetime columns: {e}")
 
-
+            print(df)
+            exit()
             try:
                 logger.info("")
                 if df is not None:
