@@ -3774,514 +3774,648 @@ def tonal_frequency(
 ##################################################################
 ##################################################################
 # PEAK ANALYSIS
-def plot_peak_distribution_heatmap(df_peaks: pd.DataFrame,df_alarms_1h: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
-    try:
-        sns.set_style("whitegrid")
-        df_peaks = df_peaks.copy()
+# def plot_peak_distribution_heatmap(df_peaks: pd.DataFrame,df_alarms_1h: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
+#     try:
+#         sns.set_style("whitegrid")
+#         df_peaks = df_peaks.copy()
 
 
-        ##############################
-        ##############################
-        ##############################
-        df_peaks["Timestamp"] = pd.to_datetime(df_peaks["Timestamp"], errors="coerce")
-        df_peaks["datetime_hour"] = df_peaks["Timestamp"].dt.floor("h")
-        df_peak_counts = df_peaks.groupby("datetime_hour").size().reset_index(name="peak_count")
-        df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"]).dt.floor("h")
+#         ##############################
+#         ##############################
+#         ##############################
+#         df_peaks["Timestamp"] = pd.to_datetime(df_peaks["Timestamp"], errors="coerce")
+#         df_peaks["datetime_hour"] = df_peaks["Timestamp"].dt.floor("h")
+#         df_peak_counts = df_peaks.groupby("datetime_hour").size().reset_index(name="peak_count")
+#         df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"]).dt.floor("h")
 
-        #creating the LAeq_peak column in df_alarms_1h. 
-        # group the peaks by hour and make the leq fucntion average with the LA_corrected column
+#         #creating the LAeq_peak column in df_alarms_1h. 
+#         # group the peaks by hour and make the leq fucntion average with the LA_corrected column
 
-        df_la_eq_peak = df_peaks.groupby("datetime_hour")["LA_corrected"].apply(leq).reset_index()
-        df_la_eq_peak.rename(columns={"datetime_hour": "date_time", "LA_corrected": "LAeq_peak"}, inplace=True)
-        df_alarms_1h = df_alarms_1h.merge(df_la_eq_peak, on="date_time", how="left")
-        # exit()
-
-
-        df_alarms_1h = df_alarms_1h.merge(
-            df_peak_counts,
-            left_on="date_time",
-            right_on="datetime_hour",
-            how="left"
-        )
-
-        df_alarms_1h.drop(columns=["datetime_hour"], inplace=True)
-        ##############################
-        ##############################
-        ##############################
-        print(df_alarms_1h)
+#         df_la_eq_peak = df_peaks.groupby("datetime_hour")["LA_corrected"].apply(leq).reset_index()
+#         df_la_eq_peak.rename(columns={"datetime_hour": "date_time", "LA_corrected": "LAeq_peak"}, inplace=True)
+#         df_alarms_1h = df_alarms_1h.merge(df_la_eq_peak, on="date_time", how="left")
+#         # exit()
 
 
-        df_peaks['Día'] = df_peaks['day_name'].replace(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'])
-        df_peaks['date_day'] = df_peaks['date'].astype(str) + ' ' + df_peaks['Día']
+#         df_alarms_1h = df_alarms_1h.merge(
+#             df_peak_counts,
+#             left_on="date_time",
+#             right_on="datetime_hour",
+#             how="left"
+#         )
 
-        df_peaks['full_date'] = pd.to_datetime(df_peaks['Timestamp']).dt.strftime('%Y-%m-%d') + \
-                                 '\n' + pd.to_datetime(df_peaks['Timestamp']).dt.day_name()
+#         df_alarms_1h.drop(columns=["datetime_hour"], inplace=True)
+#         ##############################
+#         ##############################
+#         ##############################
+#         print(df_alarms_1h)
+
+
+#         df_peaks['Día'] = df_peaks['day_name'].replace(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'])
+#         df_peaks['date_day'] = df_peaks['date'].astype(str) + ' ' + df_peaks['Día']
+
+#         df_peaks['full_date'] = pd.to_datetime(df_peaks['Timestamp']).dt.strftime('%Y-%m-%d') + \
+#                                  '\n' + pd.to_datetime(df_peaks['Timestamp']).dt.day_name()
         
     
-        pivot_table = df_peaks.pivot_table(
-            index=['date_day'],
-            columns=['hour'], 
-            aggfunc='size',
-            )
+#         pivot_table = df_peaks.pivot_table(
+#             index=['date_day'],
+#             columns=['hour'], 
+#             aggfunc='size',
+#             )
 
-        pivot_table.replace(0, np.nan, inplace=True)
+#         pivot_table.replace(0, np.nan, inplace=True)
+
+#         plt.figure(figsize=(20, 10))
+#         sns.heatmap(pivot_table, annot=True, fmt=".0f", cmap=cmap_dict)
+
+#         plt.xlabel('Hora', fontsize=BIGGEST_SIZE)
+#         plt.ylabel('Día', fontsize=BIGGEST_SIZE)
+#         plt.title(f'{plotname} Heatmap de Ocurrencias de Picos por Hora y Día', fontsize=BIGGEST_SIZE)
+
+#         plt.yticks(np.arange(len(pivot_table.index)) + 0.5, pivot_table.index, rotation=0, fontsize=BIGGEST_SIZE)
+#         plt.xticks(np.arange(0.5, len(pivot_table.columns), 1), range(24), fontsize=BIGGEST_SIZE) 
+        
+#         plt.tight_layout()
+#         plt.grid(False)
+
+#         #save the plot
+#         plt.savefig(f"{folder_output_dir}/{plotname}_peak_distribution_heatmap.png", dpi=150)
+#         logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_distribution_heatmap.png")
+        
+
+
+#         ########################################
+#         ########################################
+#         # plot the same informaiton but in 4h intervals
+#         ########################################
+#         ########################################
+#         # create 4 hour blocks
+#         df_peaks['4HourBlock'] = (df_peaks['Timestamp'].dt.hour // 4) * 4
+
+#         pivot_table_4h = df_peaks.pivot_table(
+#             index='date_day',        
+#             columns='4HourBlock',   
+#             aggfunc='size'
+#         )
+        
+#         pivot_table_4h.replace(0, np.nan, inplace=True)
+
+#         plt.figure(figsize=(20, 10))
+#         sns.heatmap(pivot_table_4h, annot=True, fmt=".0f", cmap=cmap_dict)
+
+#         plt.xlabel('Hora', fontsize=BIGGEST_SIZE)
+#         plt.ylabel('Día', fontsize=BIGGEST_SIZE)
+#         plt.title(f'{plotname} Heatmap de Ocurrencias de Picos por Hora y Día (4h)', fontsize=BIGGEST_SIZE)
+#         plt.yticks(np.arange(len(pivot_table_4h.index)) + 0.5, pivot_table_4h.index, rotation=0, fontsize=BIGGEST_SIZE)
+#         plt.xticks(np.arange(0.5, len(pivot_table_4h.columns), 1), range(0, 24, 4))
+
+#         plt.tight_layout()
+#         plt.grid(False)
+
+#         #save the plot
+#         plt.savefig(f"{folder_output_dir}/{plotname}_peak_distribution_heatmap_4h.png", dpi=150)
+#         logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_distribution_heatmap_4h.png")
+
+
+#         return df_alarms_1h
+
+#     except Exception as e:
+#         logger.error(f"Error in plot_peak_distribution_heatmap: {e}")
+
+
+
+def plot_peak_distribution_heatmap(
+    df_alarms_1h: pd.DataFrame,
+    folder_output_dir: str,
+    logger,
+    plotname: str,
+):
+    """
+    Plot heatmaps of peak counts per day/hour using the *already aggregated*
+    df_alarms_1h dataframe.
+
+    Expects in df_alarms_1h:
+        - 'datetime' column (per-hour / per-2h timestamps)
+        - 'n_peaks' column with number of peaks in that interval
+    """
+
+    try:
+        sns.set_style("whitegrid")
+
+        df = df_alarms_1h.copy()
+
+        # Ensure datetime
+        if "datetime" not in df.columns:
+            logger.error("plot_peak_distribution_heatmap: 'datetime' column not found in df_alarms_1h")
+            return df_alarms_1h
+
+        df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
+        df = df.dropna(subset=["datetime"])
+
+        # Ensure n_peaks
+        if "n_peaks" not in df.columns:
+            logger.error("plot_peak_distribution_heatmap: 'n_peaks' column not found in df_alarms_1h")
+            return df_alarms_1h
+
+        # Basic date/hour info
+        df["date"] = df["datetime"].dt.date
+        df["hour"] = df["datetime"].dt.hour
+        df["weekday"] = df["datetime"].dt.weekday  # 0=Monday, 6=Sunday
+
+        # Map weekday to Spanish names
+        weekday_map = {
+            0: "Lunes",
+            1: "Martes",
+            2: "Miércoles",
+            3: "Jueves",
+            4: "Viernes",
+            5: "Sábado",
+            6: "Domingo",
+        }
+        df["Día"] = df["weekday"].map(weekday_map)
+
+        # e.g. "2025-04-01 Lunes"
+        df["date_day"] = df["date"].astype(str) + " " + df["Día"]
+
+        # ─────────────────────────────────────
+        # 1) Heatmap (hour vs date, using n_peaks)
+        # ─────────────────────────────────────
+        pivot_table = df.pivot_table(
+            index="date_day",
+            columns="hour",
+            values="n_peaks",
+            aggfunc="sum",
+        )
+
+        # replace zeros with NaN so they appear blank
+        pivot_table = pivot_table.replace(0, np.nan)
 
         plt.figure(figsize=(20, 10))
         sns.heatmap(pivot_table, annot=True, fmt=".0f", cmap=cmap_dict)
 
-        plt.xlabel('Hora', fontsize=BIGGEST_SIZE)
-        plt.ylabel('Día', fontsize=BIGGEST_SIZE)
-        plt.title(f'{plotname} Heatmap de Ocurrencias de Picos por Hora y Día', fontsize=BIGGEST_SIZE)
+        plt.xlabel("Hora", fontsize=BIGGEST_SIZE)
+        plt.ylabel("Día", fontsize=BIGGEST_SIZE)
+        plt.title(f"{plotname} | Heatmap de picos por hora y día", fontsize=BIGGEST_SIZE)
 
-        plt.yticks(np.arange(len(pivot_table.index)) + 0.5, pivot_table.index, rotation=0, fontsize=BIGGEST_SIZE)
-        plt.xticks(np.arange(0.5, len(pivot_table.columns), 1), range(24), fontsize=BIGGEST_SIZE) 
-        
+        # nicer ticks: show 0–23 on x-axis
+        plt.yticks(
+            np.arange(len(pivot_table.index)) + 0.5,
+            pivot_table.index,
+            rotation=0,
+            fontsize=BIGGEST_SIZE,
+        )
+        plt.xticks(
+            np.arange(0.5, len(pivot_table.columns), 1),
+            pivot_table.columns,
+            fontsize=BIGGEST_SIZE,
+        )
+
         plt.tight_layout()
         plt.grid(False)
 
-        #save the plot
-        plt.savefig(f"{folder_output_dir}/{plotname}_peak_distribution_heatmap.png", dpi=150)
-        logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_distribution_heatmap.png")
-        
+        out_path = f"{folder_output_dir}/{plotname}_peak_distribution_heatmap.png"
+        plt.savefig(out_path, dpi=150)
+        logger.info(f"Saved plot at {out_path}")
 
+        # ─────────────────────────────────────
+        # 2) Same info but in 4h blocks
+        # ─────────────────────────────────────
+        df["4HourBlock"] = (df["hour"] // 4) * 4  # 0,4,8,...,20
 
-        ########################################
-        ########################################
-        # plot the same informaiton but in 4h intervals
-        ########################################
-        ########################################
-        # create 4 hour blocks
-        df_peaks['4HourBlock'] = (df_peaks['Timestamp'].dt.hour // 4) * 4
-
-        pivot_table_4h = df_peaks.pivot_table(
-            index='date_day',        
-            columns='4HourBlock',   
-            aggfunc='size'
+        pivot_table_4h = df.pivot_table(
+            index="date_day",
+            columns="4HourBlock",
+            values="n_peaks",
+            aggfunc="sum",
         )
-        
-        pivot_table_4h.replace(0, np.nan, inplace=True)
+
+        pivot_table_4h = pivot_table_4h.replace(0, np.nan)
 
         plt.figure(figsize=(20, 10))
         sns.heatmap(pivot_table_4h, annot=True, fmt=".0f", cmap=cmap_dict)
 
-        plt.xlabel('Hora', fontsize=BIGGEST_SIZE)
-        plt.ylabel('Día', fontsize=BIGGEST_SIZE)
-        plt.title(f'{plotname} Heatmap de Ocurrencias de Picos por Hora y Día (4h)', fontsize=BIGGEST_SIZE)
-        plt.yticks(np.arange(len(pivot_table_4h.index)) + 0.5, pivot_table_4h.index, rotation=0, fontsize=BIGGEST_SIZE)
-        plt.xticks(np.arange(0.5, len(pivot_table_4h.columns), 1), range(0, 24, 4))
+        plt.xlabel("Hora", fontsize=BIGGEST_SIZE)
+        plt.ylabel("Día", fontsize=BIGGEST_SIZE)
+        plt.title(
+            f"{plotname} | Heatmap de picos por día en bloques de 4h",
+            fontsize=BIGGEST_SIZE,
+        )
+
+        plt.yticks(
+            np.arange(len(pivot_table_4h.index)) + 0.5,
+            pivot_table_4h.index,
+            rotation=0,
+            fontsize=BIGGEST_SIZE,
+        )
+        plt.xticks(
+            np.arange(0.5, len(pivot_table_4h.columns), 1),
+            pivot_table_4h.columns,
+            fontsize=BIGGEST_SIZE,
+        )
 
         plt.tight_layout()
         plt.grid(False)
 
-        #save the plot
-        plt.savefig(f"{folder_output_dir}/{plotname}_peak_distribution_heatmap_4h.png", dpi=150)
-        logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_distribution_heatmap_4h.png")
+        out_path_4h = f"{folder_output_dir}/{plotname}_peak_distribution_heatmap_4h.png"
+        plt.savefig(out_path_4h, dpi=150)
+        logger.info(f"Saved plot at {out_path_4h}")
 
-
+        # df_alarms_1h is not modified logically, but we return it for consistency
         return df_alarms_1h
 
     except Exception as e:
         logger.error(f"Error in plot_peak_distribution_heatmap: {e}")
+        return df_alarms_1h
 
 
 
 
-def plot_peak_distribution_heatmap_week(df_peaks: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
-    try:
-        sns.set_style("whitegrid")
-        df_peaks = df_peaks.copy()
-
-        df_peaks['Día'] = df_peaks['day_name'].replace(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'])
-        df_peaks['date_day'] = df_peaks['date'].astype(str) + ' ' + df_peaks['Día']
-
-        df_peaks['full_date'] = pd.to_datetime(df_peaks['Timestamp']).dt.strftime('%Y-%m-%d') + \
-                                 '\n' + pd.to_datetime(df_peaks['Timestamp']).dt.day_name()
-        
-
-        # make the week column
-        # df['week'] = df['date'].dt.to_period('W').dt.start_time
-        df_peaks['week'] = pd.to_datetime(df_peaks['date']).dt.to_period('W').dt.start_time
-        weeks = df_peaks['week'].unique()
-
-        for week_start in weeks:
-            df_week = df_peaks[df_peaks['week'] == week_start].copy()
-            if df_week.empty:
-                continue
-            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
-            os.makedirs(week_folder, exist_ok=True)
-
-            ########################################
-            ########################################
-            # hourly heatmap
-            ########################################
-            ########################################
-            pivot_table = df_week.pivot_table(
-                index='date_day',
-                columns='hour',
-                aggfunc='size'
-            ).replace(0, np.nan)
-
-            plt.figure(figsize=(20, 10))
-            sns.heatmap(pivot_table, annot=True, fmt=".0f", cmap=cmap_dict)
-
-            plt.xlabel('Hora', fontsize=BIGGEST_SIZE)
-            plt.ylabel('Día', fontsize=BIGGEST_SIZE)
-            plt.title(f'{plotname} | Picos por Hora y Día | Semana {week_start.strftime("%Y-%m-%d")}', fontsize=BIGGEST_SIZE)
-
-            plt.yticks(np.arange(len(pivot_table.index)) + 0.5, pivot_table.index, rotation=0, fontsize=BIGGEST_SIZE)
-            plt.xticks(np.arange(0.5, len(pivot_table.columns), 1), range(24), fontsize=BIGGEST_SIZE)
-
-            plt.tight_layout()
-            plt.grid(False)
-
-            filename_hour = os.path.join(week_folder, f"{plotname}_heatmap_hour.png")
-            plt.savefig(filename_hour, dpi=150)
-            plt.close()
-            logger.info(f"Saved hourly heatmap: {filename_hour}")
-            
-
-
-            ########################################
-            ########################################
-            # plot the same informaiton but in 4h intervals
-            ########################################
-            ########################################
-            # create 4 hour blocks
-            df_week['4HourBlock'] = (df_week['Timestamp'].dt.hour // 4) * 4
-
-            pivot_table_4h = df_week.pivot_table(
-                index='date_day',
-                columns='4HourBlock',
-                aggfunc='size'
-            ).replace(0, np.nan)
-
-            plt.figure(figsize=(20, 10))
-            sns.heatmap(pivot_table_4h, annot=True, fmt=".0f", cmap=cmap_dict)
-
-            plt.xlabel('Hora', fontsize=BIGGEST_SIZE)
-            plt.ylabel('Día', fontsize=BIGGEST_SIZE)
-            plt.title(f'{plotname} | Picos por Bloque de 4h | Semana {week_start.strftime("%Y-%m-%d")}', fontsize=BIGGEST_SIZE)
-
-            plt.yticks(np.arange(len(pivot_table_4h.index)) + 0.5, pivot_table_4h.index, rotation=0, fontsize=BIGGEST_SIZE)
-            plt.xticks(np.arange(0.5, len(pivot_table_4h.columns), 1), range(0, 24, 4), fontsize=BIGGEST_SIZE)
-
-            plt.tight_layout()
-            plt.grid(False)
-
-            filename_4h = os.path.join(week_folder, f"{plotname}_heatmap_4h.png")
-            plt.savefig(filename_4h, dpi=150)
-            plt.close()
-            logger.info(f"Saved 4h block heatmap: {filename_4h}")
-
-    except Exception as e:
-        logger.error(f"Error in plot_peak_distribution_heatmap: {e}")
 
 
 
 
 ##################################################################
-def plot_peak_distribution(df_merged: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
+#PLOT_PEAK_DISTRIBUTION_HEATMAP
+# def plot_peak_distribution(df_merged: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
+#     try:
+#         sns.set_style("whitegrid")
+
+#         df_merged = df_merged.copy()
+#         df_merged.sort_values('Timestamp', inplace=True)
+
+#         plt.figure(figsize=(25, 9))
+#         plt.plot(
+#             df_merged['Timestamp'], 
+#             df_merged['LA_corrected'], 
+#             marker='o', 
+#             linestyle='-', 
+#             color='red'
+#         )
+
+        
+#         plt.xlabel('Tiempo', fontsize=BIGGEST_SIZE)
+#         plt.ylabel('LAeq', fontsize=BIGGEST_SIZE)
+#         plt.title(f'{plotname} Valores LAeq a lo largo del tiempo', fontsize=BIGGEST_SIZE)
+
+#         plt.xticks(rotation=90, fontsize=BIGGEST_SIZE)
+#         plt.xlim(df_merged['Timestamp'].iloc[0], df_merged['Timestamp'].iloc[-1])
+        
+#         plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+#         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
+#         plt.tight_layout()
+#         plt.grid(True)
+
+
+#         # #save the plot
+#         plt.savefig(f"{folder_output_dir}/{plotname}_peak_distribution.png", dpi=150)
+#         logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_distribution.png")
+
+
+
+#         ########################################
+#         ########################################
+#         # plot the same informaiton but with shadow area for night time
+#         ########################################
+#         ########################################
+#         min_date = df_merged['Timestamp'].dt.date.min()
+#         max_date = df_merged['Timestamp'].dt.date.max()
+
+#         plt.figure(figsize=(25, 9))
+#         plt.plot(df_merged['Timestamp'], df_merged['LA_corrected'], marker='o', linestyle='-', color='red')
+        
+        
+#         # highlighting night periods
+#         for single_date in pd.date_range(min_date, max_date):
+#             start_night = pd.Timestamp.combine(single_date, pd.Timestamp('20:00:00').time())
+#             end_night = pd.Timestamp.combine(single_date + pd.Timedelta(days=1), pd.Timestamp('07:00:00').time())
+#             plt.fill_betweenx(y=[df_merged['LA_corrected'].min(), df_merged['LA_corrected'].max()], 
+#                             x1=start_night, x2=end_night, color='grey', alpha=0.3)
+
+
+#         plt.title(f'{plotname} Valores LAeq a lo largo del tiempo con Distribución Nocturna', fontsize=BIGGEST_SIZE)
+#         plt.xlabel('Tiempo', fontsize=BIGGEST_SIZE)
+#         plt.ylabel('LAeq (dB)', fontsize=BIGGEST_SIZE)
+
+#         plt.grid(True)
+#         plt.xticks(rotation=90)
+
+#         plt.xlim(df_merged['Timestamp'].iloc[0], df_merged['Timestamp'].iloc[-1])
+#         plt.ylim(df_merged['LA_corrected'].min(), df_merged['LA_corrected'].max())
+        
+        
+#         plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+#         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
+#         plt.tight_layout()
+
+
+#         # save the plot
+#         plt.savefig(f"{folder_output_dir}/{plotname}_peak_distribution_night.png", dpi=150)
+#         logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_distribution_night.png")
+
+
+#     except Exception as e:
+#         logger.error(f"Error in plot_peak_distribution: {e}")
+#         raise 
+
+
+def plot_peak_distribution(
+    df_alarms_1h: pd.DataFrame,
+    folder_output_dir: str,
+    logger,
+    plotname: str,
+):
+    """
+    Plot time evolution of peak LEQ using the aggregated df_alarms_1h.
+
+    Expects in df_alarms_1h:
+        - 'datetime' column (datetime64)
+        - 'peak_leq' column (dB), may contain NaNs when no peaks
+    """
     try:
         sns.set_style("whitegrid")
 
-        df_merged = df_merged.copy()
-        df_merged.sort_values('Timestamp', inplace=True)
+        df = df_alarms_1h.copy()
 
+        # ---- check columns ----
+        if "datetime" not in df.columns:
+            logger.error("plot_peak_distribution: 'datetime' column not found in df_alarms_1h")
+            return
+
+        if "peak_leq" not in df.columns:
+            logger.error("plot_peak_distribution: 'peak_leq' column not found in df_alarms_1h")
+            return
+
+        # ensure datetime and sort
+        df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
+        df = df.dropna(subset=["datetime"])
+        df = df.sort_values("datetime")
+
+        # only rows where we actually have peaks
+        df_peaks = df.dropna(subset=["peak_leq"])
+        if df_peaks.empty:
+            logger.warning("plot_peak_distribution: no non-NaN 'peak_leq' values to plot")
+            return
+
+        # ==============================
+        # 1) Simple time series of peak_leq
+        # ==============================
         plt.figure(figsize=(25, 9))
         plt.plot(
-            df_merged['Timestamp'], 
-            df_merged['LA_corrected'], 
-            marker='o', 
-            linestyle='-', 
-            color='red'
+            df_peaks["datetime"],
+            df_peaks["peak_leq"],
+            marker="o",
+            linestyle="-",
+            color="red",
         )
 
-        
-        plt.xlabel('Tiempo', fontsize=BIGGEST_SIZE)
-        plt.ylabel('LAeq', fontsize=BIGGEST_SIZE)
-        plt.title(f'{plotname} Valores LAeq a lo largo del tiempo', fontsize=BIGGEST_SIZE)
+        plt.xlabel("Tiempo", fontsize=BIGGEST_SIZE)
+        plt.ylabel("LAeq pico (dB)", fontsize=BIGGEST_SIZE)
+        plt.title(f"{plotname} | LAeq de picos a lo largo del tiempo", fontsize=BIGGEST_SIZE)
 
         plt.xticks(rotation=90, fontsize=BIGGEST_SIZE)
-        plt.xlim(df_merged['Timestamp'].iloc[0], df_merged['Timestamp'].iloc[-1])
-        
+        plt.xlim(df_peaks["datetime"].iloc[0], df_peaks["datetime"].iloc[-1])
+
         plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
         plt.tight_layout()
         plt.grid(True)
 
+        out_path = f"{folder_output_dir}/{plotname}_peak_distribution.png"
+        plt.savefig(out_path, dpi=150)
+        logger.info(f"Saved plot at {out_path}")
 
-        # #save the plot
-        plt.savefig(f"{folder_output_dir}/{plotname}_peak_distribution.png", dpi=150)
-        logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_distribution.png")
+        # ==============================
+        # 2) Same, with night shading (20:00–07:00)
+        # ==============================
+        min_date = df["datetime"].dt.date.min()
+        max_date = df["datetime"].dt.date.max()
 
-
-
-        ########################################
-        ########################################
-        # plot the same informaiton but with shadow area for night time
-        ########################################
-        ########################################
-        min_date = df_merged['Timestamp'].dt.date.min()
-        max_date = df_merged['Timestamp'].dt.date.max()
+        y_min = df_peaks["peak_leq"].min()
+        y_max = df_peaks["peak_leq"].max()
 
         plt.figure(figsize=(25, 9))
-        plt.plot(df_merged['Timestamp'], df_merged['LA_corrected'], marker='o', linestyle='-', color='red')
-        
-        
-        # highlighting night periods
+        plt.plot(
+            df_peaks["datetime"],
+            df_peaks["peak_leq"],
+            marker="o",
+            linestyle="-",
+            color="red",
+        )
+
+        # highlight night periods per day
         for single_date in pd.date_range(min_date, max_date):
-            start_night = pd.Timestamp.combine(single_date, pd.Timestamp('20:00:00').time())
-            end_night = pd.Timestamp.combine(single_date + pd.Timedelta(days=1), pd.Timestamp('07:00:00').time())
-            plt.fill_betweenx(y=[df_merged['LA_corrected'].min(), df_merged['LA_corrected'].max()], 
-                            x1=start_night, x2=end_night, color='grey', alpha=0.3)
+            start_night = pd.Timestamp.combine(single_date, pd.Timestamp("20:00:00").time())
+            end_night = pd.Timestamp.combine(
+                single_date + pd.Timedelta(days=1),
+                pd.Timestamp("07:00:00").time(),
+            )
+            plt.fill_betweenx(
+                y=[y_min, y_max],
+                x1=start_night,
+                x2=end_night,
+                color="grey",
+                alpha=0.3,
+            )
 
-
-        plt.title(f'{plotname} Valores LAeq a lo largo del tiempo con Distribución Nocturna', fontsize=BIGGEST_SIZE)
-        plt.xlabel('Tiempo', fontsize=BIGGEST_SIZE)
-        plt.ylabel('LAeq (dB)', fontsize=BIGGEST_SIZE)
+        plt.title(
+            f"{plotname} | LAeq de picos con sombreado nocturno",
+            fontsize=BIGGEST_SIZE,
+        )
+        plt.xlabel("Tiempo", fontsize=BIGGEST_SIZE)
+        plt.ylabel("LAeq pico (dB)", fontsize=BIGGEST_SIZE)
 
         plt.grid(True)
         plt.xticks(rotation=90)
 
-        plt.xlim(df_merged['Timestamp'].iloc[0], df_merged['Timestamp'].iloc[-1])
-        plt.ylim(df_merged['LA_corrected'].min(), df_merged['LA_corrected'].max())
-        
-        
+        plt.xlim(df_peaks["datetime"].iloc[0], df_peaks["datetime"].iloc[-1])
+        plt.ylim(y_min, y_max)
+
         plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
         plt.tight_layout()
 
-
-        # save the plot
-        plt.savefig(f"{folder_output_dir}/{plotname}_peak_distribution_night.png", dpi=150)
-        logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_distribution_night.png")
-
+        out_path_night = f"{folder_output_dir}/{plotname}_peak_distribution_night.png"
+        plt.savefig(out_path_night, dpi=150)
+        logger.info(f"Saved plot at {out_path_night}")
 
     except Exception as e:
         logger.error(f"Error in plot_peak_distribution: {e}")
-        raise 
+        raise
 
 
-
-
-def plot_peak_distribution_week(df_peaks: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
-    try:
-        sns.set_style("whitegrid")
-
-        df_peaks = df_peaks.copy()
-        # df_peaks['week'] = df_peaks['Timestamp'].dt.to_period('W').start_time
-        df_peaks['week'] = pd.to_datetime(df_peaks['date']).dt.to_period('W').dt.start_time
-        df_peaks.sort_values('Timestamp', inplace=True)
-
-        weeks = df_peaks['week'].unique()
-
-        for week_start in weeks:
-            df_week = df_peaks[df_peaks['week'] == week_start].copy()
-            if df_week.empty:
-                continue
-
-            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
-            os.makedirs(week_folder, exist_ok=True)
-
-            plt.figure(figsize=(25, 9))
-            plt.plot(df_week['Timestamp'], df_week['LA_corrected'], marker='o', linestyle='-', color='red')
-            plt.xlabel('Tiempo', fontsize=BIGGEST_SIZE)
-            plt.ylabel('LAeq', fontsize=BIGGEST_SIZE)
-            plt.title(f'{plotname} LAeq | Semana {week_start.strftime("%Y-%m-%d")}', fontsize=BIGGEST_SIZE)
-
-            plt.xticks(rotation=90, fontsize=BIGGEST_SIZE)
-            plt.xlim(df_week['Timestamp'].iloc[0], df_week['Timestamp'].iloc[-1])
-
-            plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
-            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
-            plt.tight_layout()
-            plt.grid(True)
-
-            basic_plot_path = os.path.join(week_folder, f"{plotname}_peak_distribution.png")
-            plt.savefig(basic_plot_path, dpi=150)
-            plt.close()
-            logger.info(f"Saved plot at {basic_plot_path}")
-
-
-
-            ########################################
-            ########################################
-            # plot the same informaiton but with shadow area for night time
-            ########################################
-            ########################################
-            min_date = df_week['Timestamp'].dt.date.min()
-            max_date = df_week['Timestamp'].dt.date.max()
-
-            plt.figure(figsize=(25, 9))
-            plt.plot(df_week['Timestamp'], df_week['LA_corrected'], marker='o', linestyle='-', color='red')
-
-            for single_date in pd.date_range(min_date, max_date):
-                start_night = pd.Timestamp.combine(single_date, pd.Timestamp('20:00:00').time())
-                end_night = pd.Timestamp.combine(single_date + pd.Timedelta(days=1), pd.Timestamp('07:00:00').time())
-                plt.fill_betweenx(
-                    y=[df_week['LA_corrected'].min(), df_week['LA_corrected'].max()],
-                    x1=start_night,
-                    x2=end_night,
-                    color='grey',
-                    alpha=0.3
-                )
-
-            plt.title(f'{plotname} LAeq con Nocturnidad | Semana {week_start.strftime("%Y-%m-%d")}', fontsize=BIGGEST_SIZE)
-            plt.xlabel('Tiempo', fontsize=BIGGEST_SIZE)
-            plt.ylabel('LAeq (dB)', fontsize=BIGGEST_SIZE)
-            plt.grid(True)
-            plt.xticks(rotation=90)
-
-            plt.xlim(df_week['Timestamp'].iloc[0], df_week['Timestamp'].iloc[-1])
-            plt.ylim(df_week['LA_corrected'].min(), df_week['LA_corrected'].max())
-
-            plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
-            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
-            plt.tight_layout()
-
-            night_plot_path = os.path.join(week_folder, f"{plotname}_peak_distribution_night.png")
-            plt.savefig(night_plot_path, dpi=150)
-            plt.close()
-            logger.info(f"Saved plot at {night_plot_path}")
-
-
-    except Exception as e:
-        logger.error(f"Error in plot_peak_distribution: {e}")
-        raise 
 
 
 
 ###################################################################
-def plot_density_distribution_peaks(df_merged: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
+#PLOT_PEAK_DENSITY_DISTRIBUTION
+# def plot_density_distribution_peaks(df_merged: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
+#     try:
+#         sns.set_style("whitegrid")
+#         df_merged = df_merged.copy()
+
+#         hourly_peaks = df_merged.groupby('hour').size()
+
+#         plt.figure(figsize=(12, 6))
+#         hourly_peaks.plot(kind='bar')
+
+#         plt.xlabel('Hora del Día', fontsize=BIGGEST_SIZE)
+#         plt.ylabel('Número de Picos', fontsize=BIGGEST_SIZE)
+#         plt.title('Distribución de Picos por Hora', fontsize=BIGGEST_SIZE)
+#         # rotate the x-axis labels
+#         plt.xticks(rotation=0, fontsize=BIGGEST_SIZE)
+        
+#         plt.grid(True)
+#         plt.tight_layout()
+
+#         # save plot
+#         plt.savefig(f"{folder_output_dir}/{plotname}_peak_distribution_hourly.png", dpi=150)
+#         logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_distribution_hourly.png")
+
+
+
+#         ########################################
+#         ########################################
+#         # plot the same informaiton but with kernel density estimation
+#         ########################################
+#         ########################################
+#         time_of_day = df_merged['Timestamp'].dt.hour + df_merged['Timestamp'].dt.minute/60
+
+#         density = gaussian_kde(time_of_day)
+#         xs = np.linspace(0,24,100)
+#         density.covariance_factor = lambda : .25
+#         density._compute_covariance()
+
+#         plt.figure(figsize=(12, 6))
+#         plt.plot(xs, density(xs))
+        
+#         plt.title(f'{plotname} Distribución de Densidad de Picos por Hora', fontsize=BIGGEST_SIZE)
+#         plt.xlabel('Hora del Día', fontsize=BIGGEST_SIZE)
+#         plt.ylabel('Densidad', fontsize=BIGGEST_SIZE)
+
+#         # plt.xticks(range(25))
+#         plt.xlim(0, 24)
+#         plt.grid(True)
+
+#         plt.tight_layout()
+
+#         # save plot
+#         plt.savefig(f"{folder_output_dir}/{plotname}_peak_density_distribution_hourly.png", dpi=150)
+#         logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_density_distribution_hourly.png")
+
+#     except Exception as e:
+#         logger.error(f"Error in plot_density_distribution_peaks: {e}")
+
+
+def plot_density_distribution_peaks(
+    df_alarms_1h: pd.DataFrame,
+    folder_output_dir: str,
+    logger,
+    plotname: str,
+):
+    """
+    Plot:
+      1) Bar chart: total number of peaks per hour of day (using 'n_peaks' & 'hour')
+      2) KDE: density of peak occurrence over 24h (approximated using 'n_peaks' as weight)
+
+    Expects in df_alarms_1h:
+        - 'hour' column (0–23)
+        - 'n_peaks' column (may be 0 / NaN)
+    """
     try:
         sns.set_style("whitegrid")
-        df_merged = df_merged.copy()
+        df = df_alarms_1h.copy()
 
-        hourly_peaks = df_merged.groupby('hour').size()
+        # ---- basic checks ----
+        if "hour" not in df.columns:
+            logger.error("plot_density_distribution_peaks: 'hour' column not found in df_alarms_1h")
+            return
+
+        if "n_peaks" not in df.columns:
+            logger.error("plot_density_distribution_peaks: 'n_peaks' column not found in df_alarms_1h")
+            return
+
+        # make sure hour is numeric and in [0, 23]
+        df["hour"] = pd.to_numeric(df["hour"], errors="coerce")
+        df = df.dropna(subset=["hour"])
+        df["hour"] = df["hour"].astype(int)
+
+        # n_peaks numeric
+        df["n_peaks"] = pd.to_numeric(df["n_peaks"], errors="coerce").fillna(0)
+
+        # -------------------------------------------------
+        # 1) BAR PLOT: total peaks per hour of day
+        # -------------------------------------------------
+        hourly_peaks = df.groupby("hour")["n_peaks"].sum()
 
         plt.figure(figsize=(12, 6))
-        hourly_peaks.plot(kind='bar')
+        hourly_peaks.plot(kind="bar")
 
-        plt.xlabel('Hora del Día', fontsize=BIGGEST_SIZE)
-        plt.ylabel('Número de Picos', fontsize=BIGGEST_SIZE)
-        plt.title('Distribución de Picos por Hora', fontsize=BIGGEST_SIZE)
-        # rotate the x-axis labels
+        plt.xlabel("Hora del Día", fontsize=BIGGEST_SIZE)
+        plt.ylabel("Número de Picos", fontsize=BIGGEST_SIZE)
+        plt.title("Distribución de Picos por Hora", fontsize=BIGGEST_SIZE)
+
         plt.xticks(rotation=0, fontsize=BIGGEST_SIZE)
-        
         plt.grid(True)
         plt.tight_layout()
 
-        # save plot
-        plt.savefig(f"{folder_output_dir}/{plotname}_peak_distribution_hourly.png", dpi=150)
-        logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_distribution_hourly.png")
+        out_bar = f"{folder_output_dir}/{plotname}_peak_distribution_hourly.png"
+        plt.savefig(out_bar, dpi=150)
+        logger.info(f"Saved plot at {out_bar}")
 
+        # -------------------------------------------------
+        # 2) KDE PLOT: density of peaks over 24h
+        #    Use 'n_peaks' as weights to approximate original peak times
+        # -------------------------------------------------
+        # build a list of times (hour + 0.5) repeated n_peaks times
+        times_for_kde = []
+        for _, row in df.iterrows():
+            n = int(row["n_peaks"])
+            if n > 0:
+                # place all peaks at the center of the interval (hour + 0.5)
+                t = row["hour"] + 0.5
+                times_for_kde.extend([t] * n)
 
+        if len(times_for_kde) < 2:
+            logger.warning(
+                "plot_density_distribution_peaks: not enough peaks to compute KDE "
+                f"(found {len(times_for_kde)} peaks). Skipping KDE plot."
+            )
+            return
 
-        ########################################
-        ########################################
-        # plot the same informaiton but with kernel density estimation
-        ########################################
-        ########################################
-        time_of_day = df_merged['Timestamp'].dt.hour + df_merged['Timestamp'].dt.minute/60
+        time_of_day = np.array(times_for_kde, dtype=float)
 
         density = gaussian_kde(time_of_day)
-        xs = np.linspace(0,24,100)
-        density.covariance_factor = lambda : .25
+        xs = np.linspace(0, 24, 100)
+        density.covariance_factor = lambda: 0.25
         density._compute_covariance()
 
         plt.figure(figsize=(12, 6))
         plt.plot(xs, density(xs))
-        
-        plt.title(f'{plotname} Distribución de Densidad de Picos por Hora', fontsize=BIGGEST_SIZE)
-        plt.xlabel('Hora del Día', fontsize=BIGGEST_SIZE)
-        plt.ylabel('Densidad', fontsize=BIGGEST_SIZE)
 
-        # plt.xticks(range(25))
+        plt.title(f"{plotname} Distribución de Densidad de Picos por Hora", fontsize=BIGGEST_SIZE)
+        plt.xlabel("Hora del Día", fontsize=BIGGEST_SIZE)
+        plt.ylabel("Densidad", fontsize=BIGGEST_SIZE)
+
         plt.xlim(0, 24)
         plt.grid(True)
-
         plt.tight_layout()
 
-        # save plot
-        plt.savefig(f"{folder_output_dir}/{plotname}_peak_density_distribution_hourly.png", dpi=150)
-        logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_density_distribution_hourly.png")
-
-
+        out_kde = f"{folder_output_dir}/{plotname}_peak_density_distribution_hourly.png"
+        plt.savefig(out_kde, dpi=150)
+        logger.info(f"Saved plot at {out_kde}")
 
     except Exception as e:
         logger.error(f"Error in plot_density_distribution_peaks: {e}")
 
 
 
-def plot_density_distribution_peaks_week(df_merged: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
-    try:
-        sns.set_style("whitegrid")
-        df_merged = df_merged.copy()
-        df_merged['Timestamp'] = pd.to_datetime(df_merged['Timestamp'])
-        # df_merged['week'] = df_merged['Timestamp'].dt.to_period('W').start_time
-        df_merged['week'] = pd.to_datetime(df_merged['date']).dt.to_period('W').dt.start_time
-
-        weeks = df_merged['week'].unique()
-
-        for week_start in weeks:
-            df_week = df_merged[df_merged['week'] == week_start].copy()
-            if df_week.empty:
-                continue
-
-            # Create week folder
-            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
-            os.makedirs(week_folder, exist_ok=True)
-
-            # ------------------ Bar plot ------------------
-            hourly_peaks = df_week.groupby('hour').size()
-
-            plt.figure(figsize=(12, 6))
-            hourly_peaks.plot(kind='bar')
-
-            plt.xlabel('Hora del Día', fontsize=BIGGEST_SIZE)
-            plt.ylabel('Número de Picos', fontsize=BIGGEST_SIZE)
-            plt.title(f'{plotname} | Picos por Hora | Semana {week_start.strftime("%Y-%m-%d")}', fontsize=BIGGEST_SIZE)
-            plt.xticks(rotation=0, fontsize=BIGGEST_SIZE)
-            plt.grid(True)
-            plt.tight_layout()
-
-            bar_path = os.path.join(week_folder, f"{plotname}_peak_distribution_hourly.png")
-            plt.savefig(bar_path, dpi=150)
-            plt.close()
-            logger.info(f"Saved hourly peak distribution bar chart: {bar_path}")
-
-            # ------------------ Density plot ------------------
-            time_of_day = df_week['Timestamp'].dt.hour + df_week['Timestamp'].dt.minute / 60
-
-            if len(time_of_day) >= 2:  # KDE requires at least 2 data points
-                density = gaussian_kde(time_of_day)
-                xs = np.linspace(0, 24, 100)
-                density.covariance_factor = lambda: 0.25
-                density._compute_covariance()
-
-                plt.figure(figsize=(12, 6))
-                plt.plot(xs, density(xs))
-
-                plt.title(f'{plotname} | Densidad de Picos por Hora | Semana {week_start.strftime("%Y-%m-%d")}', fontsize=BIGGEST_SIZE)
-                plt.xlabel('Hora del Día', fontsize=BIGGEST_SIZE)
-                plt.ylabel('Densidad', fontsize=BIGGEST_SIZE)
-                plt.xlim(0, 24)
-                plt.grid(True)
-                plt.tight_layout()
-
-                density_path = os.path.join(week_folder, f"{plotname}_peak_density_distribution_hourly.png")
-                plt.savefig(density_path, dpi=150)
-                plt.close()
-                logger.info(f"Saved KDE density plot: {density_path}")
-            else:
-                logger.warning(f"Not enough data for KDE in week {week_start.strftime('%Y-%m-%d')}")
-
-    except Exception as e:
-        logger.error(f"Error in plot_density_distribution_peaks_weekly: {e}")
 
 
 
 
+####
+#
 def plot_predic_peak_laeq_mean(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
     try:
         # select just the row which has a 1 value on the "Peak" column

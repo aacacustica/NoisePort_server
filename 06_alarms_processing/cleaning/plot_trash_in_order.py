@@ -146,3 +146,21 @@ def plot_alarm():
         logger.info(f"[7.1] Plotting tonal frequency for folder {folder}")
         df_alarms_1h = tonal_frequency(df, df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
         print(df_alarms_1h)
+
+
+
+
+def plot_peaks():
+    if PLOT_PEAK_DISTRIBUTION_HEATMAP:
+        logger.info(f"[8.1] Plotting peak heatmap for folder {folder}")
+        df_alarms_1h=plot_peak_distribution_heatmap(df_peaks, df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
+
+
+    if PLOT_PEAK_DISTRIBUTION:
+        logger.info(f"[9.1] Plotting peak distribution for folder {folder}")
+        plot_peak_distribution(df_peaks, folder_output_dir_1h, logger, plotname=folder)
+
+
+    if PLOT_PEAK_DENSITY_DISTRIBUTION:
+        logger.info(f"[10.1] Plotting density distribution for folder {folder}")
+        plot_density_distribution_peaks(df_peaks, folder_output_dir_1h, logger, plotname=folder)
