@@ -100,3 +100,49 @@ def plot_prediction():
         # exit()
 ##############################################################################################################################################
 
+
+
+
+
+def plot_alarm():
+    if OCA_ALARM:
+        logger.info(f"[1.1] Plotting OCA alarm for folder {folder}")
+        df_alarms_1h = oca_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder)
+        print(df_alarms_1h)
+
+
+    if LMAX_ALARM:
+        logger.info(f"[2.1] Plotting LMAX alarm for folder {folder}")
+        df_alarms_1h=lmax_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold=95) # OCA +10
+        print(df_alarms_1h)
+
+
+    if LC_LA_ALARM:
+        logger.info(f"[3.1] Plotting LC-LA alarm for folder {folder}")
+        df_alarms_1h=LC_LA_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_norma=10, threshold_dB=3)
+        print(df_alarms_1h)
+
+
+    if L90_ALARM:
+        logger.info(f"[4.1] Plotting L90 alarm for folder {folder}")
+        l90_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_dB=5)
+
+
+    if L90_ALARM_DYNAMIC:
+        logger.info(f"[5.1] Plotting L90 alarm dynamic for folder {folder}")
+        df_alarms_1h=l90_alarm_dynamic(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_dB=5)
+        print(df_alarms_1h)
+
+
+
+    if FREQUENCY_COMPOSITION:
+        logger.info(f"[6.1] Plotting frequency composition for folder {folder}")            
+        df_alarms_1h =frequency_composition(df, df_alarms_1h, folder_output_dir_1h, logger, plotname=folder, threshold_comp=5)
+        print(df_alarms_1h)
+        # exit()
+
+
+    if TONAL_FREQUENCY:
+        logger.info(f"[7.1] Plotting tonal frequency for folder {folder}")
+        df_alarms_1h = tonal_frequency(df, df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
+        print(df_alarms_1h)

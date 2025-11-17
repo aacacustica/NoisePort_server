@@ -592,9 +592,6 @@ def leq_safe(series):
 
 def agg_hour(group):
     result = {}
-
-
-
     if "id_micro" in group:
         result["id_micro"] = group["id_micro"].iloc[0]
 
@@ -609,11 +606,17 @@ def agg_hour(group):
         "7943.3Hz", "10000.0Hz", "12589.3Hz", "15848.9Hz",
         "peak_leq",
     ]
-    # Leq
     for col in leq_cols:
         if col in group:
             result[col] = leq_safe(group[col])
 
+
+    if "LA" in group:
+        vals = group["LA"].dropna().values
+        if len(vals) > 0:
+            result["90percentile"] = np.percentile(vals, 90)
+        else:
+            result["90percentile"] = pd.NA
 
     # average
     if "LC-LA" in group:

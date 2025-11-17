@@ -2719,318 +2719,194 @@ def plt_spectrogram(df, folder_output_dir, sufix_string, logger, plotname):
 
 
 ########## OCA ALARM ##########
-def oca_alarm(df_1h_leq, folder_output_dir: str, logger, plotname: str):
-    # remove grey color background
-    sns.set_style("whitegrid")
+# def oca_alarm(df_1h_leq, folder_output_dir: str, logger, plotname: str):
+#     # remove grey color background
+#     sns.set_style("whitegrid")
     
-    # filter the data based on the thresholds
-    filtered_df_1h_leq = df_1h_leq[(df_1h_leq["LA_corrected_leq"] > df_1h_leq["oca"])]
+#     # filter the data based on the thresholds
+#     filtered_df_1h_leq = df_1h_leq[(df_1h_leq["LA_corrected_leq"] > df_1h_leq["oca"])]
 
-    plt.figure(figsize=(15, 8))
-    plt.plot(df_1h_leq["LA_corrected_leq"], label="LAeq")
-    plt.plot(filtered_df_1h_leq["LA_corrected_leq"], "ro", label="LAeq Alarm")
-
-
-    plt.title(f"{plotname} LAeq - OCA | Alarm")
-    plt.ylabel("dB(A)")
-
-    # draw horizontal lines for the thresholds for the OCA values
-    plt.plot(df_1h_leq.index, df_1h_leq["oca"], "r--", label="OCA", linewidth=2)
-
-    plt.legend()
-    plt.xticks(rotation=90)
-    plt.grid(True)
-
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
-    plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+#     plt.figure(figsize=(15, 8))
+#     plt.plot(df_1h_leq["LA_corrected_leq"], label="LAeq")
+#     plt.plot(filtered_df_1h_leq["LA_corrected_leq"], "ro", label="LAeq Alarm")
 
 
-    plt.xlim(df_1h_leq.index.min(), df_1h_leq.index.max())
-    plt.ylim([DB_LOWER_LIMIT, DB_UPPER_LIMIT])
-    plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
+#     plt.title(f"{plotname} LAeq - OCA | Alarm")
+#     plt.ylabel("dB(A)")
 
-    plt.tight_layout()
+#     # draw horizontal lines for the thresholds for the OCA values
+#     plt.plot(df_1h_leq.index, df_1h_leq["oca"], "r--", label="OCA", linewidth=2)
 
-    # save imgage
-    plt.savefig(f'{folder_output_dir}/{plotname}_OCA_Alarm.png', dpi=150)
-    logger.info(f"Saved plot at {folder_output_dir}/{plotname}_OCA_Alarm.png")
+#     plt.legend()
+#     plt.xticks(rotation=90)
+#     plt.grid(True)
+
+#     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
+#     plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+
+
+#     plt.xlim(df_1h_leq.index.min(), df_1h_leq.index.max())
+#     plt.ylim([DB_LOWER_LIMIT, DB_UPPER_LIMIT])
+#     plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
+
+#     plt.tight_layout()
+
+#     # save imgage
+#     plt.savefig(f'{folder_output_dir}/{plotname}_OCA_Alarm.png', dpi=150)
+#     logger.info(f"Saved plot at {folder_output_dir}/{plotname}_OCA_Alarm.png")
 
 
 
-    ########################
-    # marking with an 1 when an alarm is detected in the dataframe, otherwise leave it as blank
-    df_1h_leq["oca_alarm"] = np.where(df_1h_leq["LA_corrected_leq"] > df_1h_leq["oca"], 1, np.nan)
+#     ########################
+#     # marking with an 1 when an alarm is detected in the dataframe, otherwise leave it as blank
+#     df_1h_leq["oca_alarm"] = np.where(df_1h_leq["LA_corrected_leq"] > df_1h_leq["oca"], 1, np.nan)
+#     return df_1h_leq
+
+def oca_alarm(df_1h_leq: pd.DataFrame, logger):
+    if "LA" not in df_1h_leq.columns or "oca" not in df_1h_leq.columns:
+        logger.warning("OCA alarm: missing LA or oca column")
+        return df_1h_leq
+
+    df_1h_leq["oca_alarm"] = np.where(df_1h_leq["LA"] > df_1h_leq["oca"],1,np.nan,)
+    logger.info("Added column 'oca_alarm'")
     return df_1h_leq
 
 
-
-
-
-def oca_alarm_week(df_1h_leq, folder_output_dir: str, logger, plotname: str):
-    try:
-        sns.set_style("whitegrid")
-
-        # Make sure date_time is datetime
-        df_1h_leq['date_time'] = pd.to_datetime(df_1h_leq['date_time'])
-        df_1h_leq = df_1h_leq.sort_values('date_time').copy()
-        df_1h_leq.set_index('date_time', inplace=True)
-
-        # Add week column based on start of the ISO week
-        df_1h_leq['week'] = df_1h_leq.index.to_period('W').start_time
-        weeks = df_1h_leq['week'].unique()
-
-        for week_start in weeks:
-            df_week = df_1h_leq[df_1h_leq['week'] == week_start]
-
-            # Filter alarms where LAeq > OCA
-            filtered_df_week = df_week[df_week["LA_corrected_leq"] > df_week["oca"]]
-
-            plt.figure(figsize=(15, 8))
-            plt.plot(df_week.index, df_week["LA_corrected_leq"], label="LAeq")
-            plt.plot(filtered_df_week.index, filtered_df_week["LA_corrected_leq"], "ro", label="LAeq Alarm")
-            plt.plot(df_week.index, df_week["oca"], "r--", label="OCA", linewidth=2)
-
-            plt.title(f"{plotname} LAeq - OCA | Alarms | Week of {week_start.strftime('%Y-%m-%d')}")
-            plt.ylabel("dB(A)")
-            plt.xticks(rotation=90)
-            plt.grid(True)
-
-            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
-            plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
-
-            plt.xlim(df_week.index.min(), df_week.index.max())
-            plt.ylim([DB_LOWER_LIMIT, DB_UPPER_LIMIT])
-            plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
-
-            plt.tight_layout()
-
-
-            #week folder
-            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
-            os.makedirs(week_folder, exist_ok=True)
-
-            # Save the plot
-            output_path = os.path.join(week_folder, f"{plotname}_OCA_Alarm.png")
-            plt.savefig(output_path, dpi=150)
-            plt.close()
-            logger.info(f"Saved OCA weekly alarm plot: {output_path}")
-
-    except Exception as e:
-        logger.error(f"Error in oca_alarm_weekly: {e}")
 
 
 
 
 
 ########## LMAX ALARM ##########
-def lmax_alarm(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold: int):
-    sns.set_style("whitegrid")
-    filter_df = df_1h_leq[df_1h_leq['LAmax_corrected_max'] > threshold]
+# def lmax_alarm(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold: int):
+#     sns.set_style("whitegrid")
+#     filter_df = df_1h_leq[df_1h_leq['LAmax_corrected_max'] > threshold]
 
-    plt.figure(figsize=(15, 8))
-    plt.plot(df_1h_leq['LAmax_corrected_max'], label='LAmax')
-    plt.plot(filter_df['LAmax_corrected_max'], 'ro', label='LAeqmax Alarm')
+#     plt.figure(figsize=(15, 8))
+#     plt.plot(df_1h_leq['LAmax_corrected_max'], label='LAmax')
+#     plt.plot(filter_df['LAmax_corrected_max'], 'ro', label='LAeqmax Alarm')
     
-    plt.legend()
-    plt.grid(True)
+#     plt.legend()
+#     plt.grid(True)
     
-    plt.title(f"{plotname} LAmax | Alarm")
-    plt.ylabel('dB(A)')
+#     plt.title(f"{plotname} LAmax | Alarm")
+#     plt.ylabel('dB(A)')
 
-    plt.plot(df_1h_leq.index, [threshold] * len(df_1h_leq), 'r--', label='Threshold', linewidth=2)
-    plt.xlim(df_1h_leq.index.min(), df_1h_leq.index.max())
+#     plt.plot(df_1h_leq.index, [threshold] * len(df_1h_leq), 'r--', label='Threshold', linewidth=2)
+#     plt.xlim(df_1h_leq.index.min(), df_1h_leq.index.max())
     
-    plt.xticks(rotation=90)
-    plt.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
+#     plt.xticks(rotation=90)
+#     plt.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
     
-    plt.tight_layout()
+#     plt.tight_layout()
 
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
-    plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+#     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
+#     plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
     
-    plt.ylim([DB_LOWER_LIMIT, DB_UPPER_LIMIT])
+#     plt.ylim([DB_LOWER_LIMIT, DB_UPPER_LIMIT])
     
-    # save image
-    plt.savefig(f'{folder_output_dir}/{plotname}_LAmax_Alarm.png', dpi=150)
-    logger.info(f"Saved plot at {folder_output_dir}/{plotname}_LAmax_Alarm.png")
+#     # save image
+#     plt.savefig(f'{folder_output_dir}/{plotname}_LAmax_Alarm.png', dpi=150)
+#     logger.info(f"Saved plot at {folder_output_dir}/{plotname}_LAmax_Alarm.png")
 
 
-    #########################
-    # marking with an 1 when an alarm is detected in the dataframe, otherwise leave it as blank
-    df_1h_leq['LAmax_alarm'] = np.where(df_1h_leq['LAmax_corrected_max'] > threshold, 1, np.nan)
+#     #########################
+#     # marking with an 1 when an alarm is detected in the dataframe, otherwise leave it as blank
+#     df_1h_leq['LAmax_alarm'] = np.where(df_1h_leq['LAmax_corrected_max'] > threshold, 1, np.nan)
+#     return df_1h_leq
+
+def lmax_alarm(df_1h_leq: pd.DataFrame, logger, threshold: int):
+    if "LAmax" not in df_1h_leq.columns:
+        logger.warning("LMAX alarm: missing LAmax column")
+        return df_1h_leq
+
+    df_1h_leq["LAmax_alarm"] = np.where(df_1h_leq["LAmax"] > threshold,1,np.nan,)
+    logger.info(f"Added column 'LAmax_alarm' with threshold {threshold} dB")
     return df_1h_leq
 
 
 
 
-def lmax_alarm_week(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold: int):
-    try:
-        sns.set_style("whitegrid")
 
-        # Ensure datetime format and set as index
-        df_1h_leq['date_time'] = pd.to_datetime(df_1h_leq['date_time'])
-        df_1h_leq = df_1h_leq.sort_values('date_time').copy()
-        df_1h_leq.set_index('date_time', inplace=True)
-
-        # Add 'week' column
-        df_1h_leq['week'] = df_1h_leq.index.to_period('W').start_time
-        weeks = df_1h_leq['week'].unique()
-
-        for week_start in weeks:
-            df_week = df_1h_leq[df_1h_leq['week'] == week_start]
-            filter_df = df_week[df_week['LAmax_corrected_max'] > threshold]
-
-            plt.figure(figsize=(15, 8))
-            plt.plot(df_week.index, df_week['LAmax_corrected_max'], label='LAmax')
-            plt.plot(filter_df.index, filter_df['LAmax_corrected_max'], 'ro', label='LAmax Alarm')
-
-            # Threshold line
-            plt.plot(df_week.index, [threshold] * len(df_week), 'r--', label='Threshold', linewidth=2)
-
-            plt.title(f"{plotname} LAmax | Alarm | Week of {week_start.strftime('%Y-%m-%d')}")
-            plt.ylabel('dB(A)')
-            plt.xticks(rotation=90)
-            plt.grid(True)
-
-            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
-            plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
-
-            plt.xlim(df_week.index.min(), df_week.index.max())
-            plt.ylim([DB_LOWER_LIMIT, DB_UPPER_LIMIT])
-            plt.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
-
-            plt.tight_layout()
-
-            # Save image
-            #creating folder for week
-            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
-            os.makedirs(week_folder, exist_ok=True)
-
-
-            output_path = f'{week_folder}/{plotname}_LAmax_Alarm_week_{week_start.strftime("%Y-%m-%d")}.png'
-            plt.savefig(output_path, dpi=150)
-            plt.close()
-            logger.info(f"Saved LAmax weekly alarm plot: {output_path}")
-
-    except Exception as e:
-        logger.error(f"Error in lmax_alarm_weekly: {e}")
 
 
 
 
 ########## LC_LA ALARM ##########
-def LC_LA_alarm(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold_norma: int, threshold_dB: int):
-    sns.set_style("whitegrid")
-    df_1h_leq['LC_LA_threshold'] = df_1h_leq.groupby("indicador_str")["LCeq-LAeq_corrected_leq"].transform(leq).round(2)
+# def LC_LA_alarm(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold_norma: int, threshold_dB: int):
+#     sns.set_style("whitegrid")
+#     df_1h_leq['LC_LA_threshold'] = df_1h_leq.groupby("indicador_str")["LCeq-LAeq_corrected_leq"].transform(leq).round(2)
 
-    # filter [2]: threshold_dB upper the average threshold (Ld, Le, Ln)
-    filter1 = (df_1h_leq["LCeq-LAeq_corrected_leq"] > df_1h_leq["LC_LA_threshold"] + threshold_dB)
-    # filter [1]: LC-LA > 10 dB which is the law
-    filter2 = df_1h_leq["LCeq-LAeq_corrected_leq"] > threshold_norma
-    # combine the filters
+#     # filter [2]: threshold_dB upper the average threshold (Ld, Le, Ln)
+#     filter1 = (df_1h_leq["LCeq-LAeq_corrected_leq"] > df_1h_leq["LC_LA_threshold"] + threshold_dB)
+#     # filter [1]: LC-LA > 10 dB which is the law
+#     filter2 = df_1h_leq["LCeq-LAeq_corrected_leq"] > threshold_norma
+#     # combine the filters
+#     combined_filter = filter1 | filter2
+#     filtered_df_1h_leq = df_1h_leq[combined_filter]
+
+
+
+#     plt.figure(figsize=(15, 8))
+#     plt.plot(df_1h_leq.index, df_1h_leq["LCeq-LAeq_corrected_leq"], label="LC-LA")
+#     plt.plot(filtered_df_1h_leq.index, filtered_df_1h_leq["LCeq-LAeq_corrected_leq"], "ro", label="Alarm")
+
+#     # horizontal lines for the threshold values
+#     plt.plot(df_1h_leq.index, df_1h_leq["LC_LA_threshold"], "r--", label="Threshold", linewidth=2)
+#     # plot horizontal line for the threshold + constant
+#     plt.plot(df_1h_leq.index, df_1h_leq["LC_LA_threshold"] + threshold_dB, "y--", label=f"Threshold + {threshold_dB}", linewidth=2)
+#     # DRAW HORITZONTAL LINES FOR THE 10 dB THRESHOLD
+#     plt.plot(df_1h_leq.index, [threshold_norma] * len(df_1h_leq), "g--", label="10 dB Threshold", linewidth=2)
+
+
+#     plt.title(f"{plotname} LCeq - LAeq | Alarm")
+#     plt.ylabel("dB(A)")
+#     plt.xticks(rotation=90)
+#     plt.grid(True)
+
+#     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
+#     plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+
+#     plt.xlim(df_1h_leq.index.min(), df_1h_leq.index.max())
+#     plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
+#     plt.tight_layout()
+
+#     # save the plot
+#     plt.savefig(f"{folder_output_dir}/{plotname}_LC_LA_Alarm.png", dpi=150)
+#     logger.info(f"Saved plot at {folder_output_dir}/{plotname}_LC_LA_Alarm.png")
+
+
+
+#     #########################
+#     # marking with an 1 when an alarm is detected in the dataframe, otherwise leave it as blank
+#     df_1h_leq["LC_LA_alarm"] = np.where(combined_filter, 1, np.nan)
+
+#     #removing the LC_LA_threshold column
+#     df_1h_leq.drop(columns=["LC_LA_threshold"], inplace=True)
+#     return df_1h_leq
+
+def LC_LA_alarm(df_1h_leq: pd.DataFrame, logger, threshold_norma: int, threshold_dB: int):
+    if "LC-LA_mean" not in df_1h_leq.columns:
+        logger.warning("LC_LA alarm: missing 'LC-LA_mean' column")
+        return df_1h_leq
+    if "indicador_str" not in df_1h_leq.columns:
+        logger.warning("LC_LA alarm: missing 'indicador_str' column")
+        return df_1h_leq
+
+    # threshold per indicador_str
+    df_1h_leq["LC_LA_threshold"] = (df_1h_leq.groupby("indicador_str")["LC-LA_mean"].transform(leq).round(2))
+
+    filter1 = df_1h_leq["LC-LA_mean"] > df_1h_leq["LC_LA_threshold"] + threshold_dB
+    filter2 = df_1h_leq["LC-LA_mean"] > threshold_norma
     combined_filter = filter1 | filter2
-    filtered_df_1h_leq = df_1h_leq[combined_filter]
 
-
-
-    plt.figure(figsize=(15, 8))
-    plt.plot(df_1h_leq.index, df_1h_leq["LCeq-LAeq_corrected_leq"], label="LC-LA")
-    plt.plot(filtered_df_1h_leq.index, filtered_df_1h_leq["LCeq-LAeq_corrected_leq"], "ro", label="Alarm")
-
-    # horizontal lines for the threshold values
-    plt.plot(df_1h_leq.index, df_1h_leq["LC_LA_threshold"], "r--", label="Threshold", linewidth=2)
-    # plot horizontal line for the threshold + constant
-    plt.plot(df_1h_leq.index, df_1h_leq["LC_LA_threshold"] + threshold_dB, "y--", label=f"Threshold + {threshold_dB}", linewidth=2)
-    # DRAW HORITZONTAL LINES FOR THE 10 dB THRESHOLD
-    plt.plot(df_1h_leq.index, [threshold_norma] * len(df_1h_leq), "g--", label="10 dB Threshold", linewidth=2)
-
-
-    plt.title(f"{plotname} LCeq - LAeq | Alarm")
-    plt.ylabel("dB(A)")
-    plt.xticks(rotation=90)
-    plt.grid(True)
-
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
-    plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
-
-    plt.xlim(df_1h_leq.index.min(), df_1h_leq.index.max())
-    plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
-    plt.tight_layout()
-
-    # save the plot
-    plt.savefig(f"{folder_output_dir}/{plotname}_LC_LA_Alarm.png", dpi=150)
-    logger.info(f"Saved plot at {folder_output_dir}/{plotname}_LC_LA_Alarm.png")
-
-
-
-    #########################
-    # marking with an 1 when an alarm is detected in the dataframe, otherwise leave it as blank
     df_1h_leq["LC_LA_alarm"] = np.where(combined_filter, 1, np.nan)
-
-    #removing the LC_LA_threshold column
     df_1h_leq.drop(columns=["LC_LA_threshold"], inplace=True)
+
+    logger.info("Added column 'LC_LA_alarm'")
     return df_1h_leq
 
 
-
-def LC_LA_alarm_week(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold_norma: int, threshold_dB: int):
-    try:
-        sns.set_style("whitegrid")
-
-        # Ensure datetime is in proper format and set index
-        df_1h_leq['date_time'] = pd.to_datetime(df_1h_leq['date_time'])
-        df_1h_leq = df_1h_leq.sort_values('date_time').copy()
-        df_1h_leq.set_index('date_time', inplace=True)
-
-        # Add 'week' column for iteration
-        df_1h_leq['week'] = df_1h_leq.index.to_period('W').start_time
-        weeks = df_1h_leq['week'].unique()
-
-        for week_start in weeks:
-            df_week = df_1h_leq[df_1h_leq['week'] == week_start].copy()
-
-            # Compute dynamic threshold based on 'indicador_str'
-            df_week['LC_LA_threshold'] = df_week.groupby("indicador_str")["LCeq-LAeq_corrected_leq"].transform(leq).round(2)
-
-            # Two filters for alarms
-            filter1 = df_week["LCeq-LAeq_corrected_leq"] > df_week["LC_LA_threshold"] + threshold_dB
-            filter2 = df_week["LCeq-LAeq_corrected_leq"] > threshold_norma
-            combined_filter = filter1 | filter2
-            filtered_df_week = df_week[combined_filter]
-
-            plt.figure(figsize=(15, 8))
-            plt.plot(df_week.index, df_week["LCeq-LAeq_corrected_leq"], label="LC-LA")
-            plt.plot(filtered_df_week.index, filtered_df_week["LCeq-LAeq_corrected_leq"], "ro", label="Alarm")
-
-            # Threshold lines
-            plt.plot(df_week.index, df_week["LC_LA_threshold"], "r--", label="Threshold", linewidth=2)
-            plt.plot(df_week.index, df_week["LC_LA_threshold"] + threshold_dB, "y--", label=f"Threshold + {threshold_dB}", linewidth=2)
-            plt.plot(df_week.index, [threshold_norma] * len(df_week), "g--", label="10 dB Threshold", linewidth=2)
-
-            plt.title(f"{plotname} LCeq - LAeq | Alarms | Week of {week_start.strftime('%Y-%m-%d')}")
-            plt.ylabel("dB(A)")
-            plt.xticks(rotation=90)
-            plt.grid(True)
-
-            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
-            plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
-
-            plt.xlim(df_week.index.min(), df_week.index.max())
-            plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
-            plt.tight_layout()
-
-            # Save weekly plot
-            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
-            os.makedirs(week_folder, exist_ok=True)
-
-
-            output_path = f"{week_folder}/{plotname}_LC_LA_Alarm_week_{week_start.strftime('%Y-%m-%d')}.png"
-            plt.savefig(output_path, dpi=150)
-            plt.close()
-            logger.info(f"Saved LC-LA weekly alarm plot: {output_path}")
-
-    except Exception as e:
-        logger.error(f"Error in LC_LA_alarm_weekly: {e}")
 
 
 
@@ -3081,428 +2957,604 @@ def l90_alarm(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname:
 
 
 
-def l90_alarm_week(df_1h_leq: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold_dB: int):
-    try:
-        sns.set_style("whitegrid")
-
-        # Ensure datetime is correct and set index
-        df_1h_leq['date_time'] = pd.to_datetime(df_1h_leq['date_time'])
-        df_1h_leq = df_1h_leq.sort_values('date_time').copy()
-        df_1h_leq.set_index('date_time', inplace=True)
-
-        # Add week column
-        df_1h_leq['week'] = df_1h_leq.index.to_period('W').start_time
-        weeks = df_1h_leq['week'].unique()
-
-        for week_start in weeks:
-            df_week = df_1h_leq[df_1h_leq['week'] == week_start].copy()
-
-            if df_week['90percentile'].dropna().empty:
-                logger.warning(f"No valid L90 data for week {week_start.strftime('%Y-%m-%d')}")
-                continue
-
-            l90_column = df_week['90percentile'].dropna()
-            avg_week = leq(l90_column).round(2)
-            filter_df = l90_column > avg_week + threshold_dB
-
-            plt.figure(figsize=(15, 8))
-            plt.plot(df_week.index, l90_column, label="90th Percentile")
-            plt.plot(df_week[filter_df].index, df_week[filter_df]["90percentile"], "ro", label="Alarm")
-
-            plt.axhline(avg_week, color="r", linestyle="--", label="avg", linewidth=2)
-            plt.axhline(avg_week + threshold_dB, color="g", linestyle="--", label=f"avg + {threshold_dB}", linewidth=2)
-
-            plt.title(f"90th Percentile | Alarm | Week of {week_start.strftime('%Y-%m-%d')}")
-            plt.ylabel("dB(A)")
-            plt.xticks(rotation=90)
-            plt.grid(True)
-
-            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
-            plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
-
-            plt.xlim(df_week.index.min(), df_week.index.max())
-            plt.ylim([DB_LOWER_LIMIT, DB_UPPER_LIMIT])
-            plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
-            plt.tight_layout()
-
-            # Save weekly plot
-            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
-            os.makedirs(week_folder, exist_ok=True)
-            output_path = f'{week_folder}/{plotname}_L90_Alarm_week_{week_start.strftime("%Y-%m-%d")}.png'
-            plt.savefig(output_path, dpi=150)
-            plt.close()
-            logger.info(f"Saved L90 weekly alarm plot: {output_path}")
-
-    except Exception as e:
-        logger.error(f"Error in l90_alarm_weekly: {e}")
-
 
 
 
 
 ########## L90 ALARM DYNAMIC ##########
-def l90_alarm_dynamic(df_1h: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold_dB: int):
-    sns.set_style("whitegrid")
+# def l90_alarm_dynamic(df_1h: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold_dB: int):
+#     sns.set_style("whitegrid")
 
 
-    #######################
+#     #######################
+#     df_1h = df_1h.copy()
+#     df_1h.rename(columns={"90percentile": "L90"}, inplace=True)
+
+#     df_1h["L90_rolling_median"] = df_1h["L90"].rolling(window=3, min_periods=1).median()
+#     df_1h["alarm"] = df_1h["L90"] > df_1h["L90_rolling_median"] + threshold_dB
+
+
+
+#     #######################
+#     plt.figure(figsize=(15, 8))
+#     plt.plot(df_1h.index, df_1h["L90"], label="L90")
+#     plt.plot(df_1h.index, df_1h["L90_rolling_median"] + threshold_dB, "--", color="green", label=f"+{threshold_dB} dB")
+#     # plt.plot(df_1h.index, df_1h["L90_rolling_median"], "--", color="orange", label="Rolling Median")
+#     plt.plot(df_1h[df_1h["alarm"]].index, df_1h[df_1h["alarm"]]["L90"], "ro", label="Alarma")
+
+#     plt.title("Alarma L90 Dinamica")
+#     plt.ylabel("dB(A)")
+#     plt.xticks(rotation=90)
+#     plt.grid(True)
+#     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
+#     plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+
+#     plt.xlim(df_1h.index.min(), df_1h.index.max())
+#     plt.ylim([DB_LOWER_LIMIT, DB_UPPER_LIMIT])
+#     plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
+#     plt.tight_layout()
+
+
+
+#     #######################
+#     filename = f'{folder_output_dir}/{plotname}_L90_Dyn_Alarm.png'
+#     plt.savefig(filename, dpi=150)
+#     logger.info(f"Saved plot at {filename}")
+
+
+#     ########################
+#     # marking with an 1 when an alarm is detected in the dataframe, otherwise leave it as blank
+#     df_1h["l90_alarm"] = np.where(df_1h["alarm"], 1, np.nan)
+#     # remove columns L90_rolling_median and alarm
+#     df_1h.drop(columns=["L90_rolling_median", "alarm"], inplace=True)
+    
+#     return df_1h
+
+
+def l90_alarm_dynamic(df_1h: pd.DataFrame, logger, threshold_dB: int):
+    if "90percentile" not in df_1h.columns:
+        logger.warning("L90 dynamic alarm: missing '90percentile' column")
+        return df_1h
+
     df_1h = df_1h.copy()
     df_1h.rename(columns={"90percentile": "L90"}, inplace=True)
 
     df_1h["L90_rolling_median"] = df_1h["L90"].rolling(window=3, min_periods=1).median()
     df_1h["alarm"] = df_1h["L90"] > df_1h["L90_rolling_median"] + threshold_dB
 
-
-
-    #######################
-    plt.figure(figsize=(15, 8))
-    plt.plot(df_1h.index, df_1h["L90"], label="L90")
-    plt.plot(df_1h.index, df_1h["L90_rolling_median"] + threshold_dB, "--", color="green", label=f"+{threshold_dB} dB")
-    # plt.plot(df_1h.index, df_1h["L90_rolling_median"], "--", color="orange", label="Rolling Median")
-    plt.plot(df_1h[df_1h["alarm"]].index, df_1h[df_1h["alarm"]]["L90"], "ro", label="Alarma")
-
-    plt.title("Alarma L90 Dinamica")
-    plt.ylabel("dB(A)")
-    plt.xticks(rotation=90)
-    plt.grid(True)
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
-    plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
-
-    plt.xlim(df_1h.index.min(), df_1h.index.max())
-    plt.ylim([DB_LOWER_LIMIT, DB_UPPER_LIMIT])
-    plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
-    plt.tight_layout()
-
-
-
-    #######################
-    filename = f'{folder_output_dir}/{plotname}_L90_Dyn_Alarm.png'
-    plt.savefig(filename, dpi=150)
-    logger.info(f"Saved plot at {filename}")
-
-
-    ########################
-    # marking with an 1 when an alarm is detected in the dataframe, otherwise leave it as blank
     df_1h["l90_alarm"] = np.where(df_1h["alarm"], 1, np.nan)
-    # remove columns L90_rolling_median and alarm
     df_1h.drop(columns=["L90_rolling_median", "alarm"], inplace=True)
-    
+    logger.info(f"Added column 'l90_alarm' with dynamic threshold +{threshold_dB} dB")
     return df_1h
 
 
 
-def l90_alarm_dynamic_week(df_1h: pd.DataFrame, folder_output_dir: str, logger, plotname: str, threshold_dB: int):
-    try:
-        sns.set_style("whitegrid")
 
-        # Ensure datetime and sort
-        df_1h['date_time'] = pd.to_datetime(df_1h['date_time'])
-        df_1h = df_1h.sort_values('date_time').copy()
-        df_1h.set_index('date_time', inplace=True)
-
-        # Add week column
-        df_1h['week'] = df_1h.index.to_period('W').start_time
-        weeks = df_1h['week'].unique()
-
-        for week_start in weeks:
-            df_week = df_1h[df_1h['week'] == week_start].copy()
-
-            if '90percentile' not in df_week.columns:
-                logger.warning(f"No L90 data available for week {week_start.strftime('%Y-%m-%d')}")
-                continue
-
-            df_week.rename(columns={"90percentile": "L90"}, inplace=True)
-            df_week["L90_rolling_median"] = df_week["L90"].rolling(window=3, min_periods=1).median()
-            df_week["alarm"] = df_week["L90"] > df_week["L90_rolling_median"] + threshold_dB
-
-            plt.figure(figsize=(15, 8))
-            plt.plot(df_week.index, df_week["L90"], label="L90")
-            plt.plot(df_week.index, df_week["L90_rolling_median"] + threshold_dB, "--", color="green", label=f"+{threshold_dB} dB")
-            plt.plot(df_week[df_week["alarm"]].index, df_week[df_week["alarm"]]["L90"], "ro", label="Alarma")
-
-            plt.title(f"L90 Dinámica | Alarma | Semana {week_start.strftime('%Y-%m-%d')}")
-            plt.ylabel("dB(A)")
-            plt.xticks(rotation=90)
-            plt.grid(True)
-            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
-            plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
-
-            plt.xlim(df_week.index.min(), df_week.index.max())
-            plt.ylim([DB_LOWER_LIMIT, DB_UPPER_LIMIT])
-            plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
-            plt.tight_layout()
-
-            week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
-            os.makedirs(week_folder, exist_ok=True)
-
-            filename = f'{week_folder}/{plotname}_L90_Dyn_Alarm_week_{week_start.strftime("%Y-%m-%d")}.png'
-            plt.savefig(filename, dpi=150)
-            plt.close()
-            logger.info(f"Saved dynamic L90 alarm plot: {filename}")
-
-    except Exception as e:
-        logger.error(f"Error in l90_alarm_dynamic_weekly: {e}")
-
-
-
-
+####################
 # FREQUENCY COMPOSITION
-def frequency_composition(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_output_dir_1h_folder: str, logger, plotname: str, threshold_comp: int):
-    sns.set_style("whitegrid")
-    df_oct_cp = df_oct.copy()
+# def frequency_composition(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_output_dir_1h_folder: str, logger, plotname: str, threshold_comp: int):
+#     sns.set_style("whitegrid")
+#     df_oct_cp = df_oct.copy()
 
-    # creating the columns for the frequency bands
-    df_oct_cp["low_freq"] = df_oct_cp[LOW_FREQ_BANDS].apply(sum_dBs, axis=1)
-    df_oct_cp["medium_freq"] = df_oct_cp[MEDIUM_FREQ_BANDS].apply(sum_dBs, axis=1)
-    df_oct_cp["high_freq"] = df_oct_cp[HIGH_FREQ_BANDS].apply(sum_dBs, axis=1)
+#     # creating the columns for the frequency bands
+#     df_oct_cp["low_freq"] = df_oct_cp[LOW_FREQ_BANDS].apply(sum_dBs, axis=1)
+#     df_oct_cp["medium_freq"] = df_oct_cp[MEDIUM_FREQ_BANDS].apply(sum_dBs, axis=1)
+#     df_oct_cp["high_freq"] = df_oct_cp[HIGH_FREQ_BANDS].apply(sum_dBs, axis=1)
 
-    #     low_freq  medium_freq  high_freq
-    # datetime
-    #  for hour
-    df_oct_cp[["low_freq", "medium_freq", "high_freq"]]
-    df_oct_1hour = df_oct_cp.resample("h").agg(
-        {"low_freq": leq, "medium_freq": leq, "high_freq": leq}
-    )
+#     #     low_freq  medium_freq  high_freq
+#     # datetime
+#     #  for hour
+#     df_oct_cp[["low_freq", "medium_freq", "high_freq"]]
+#     df_oct_1hour = df_oct_cp.resample("h").agg(
+#         {"low_freq": leq, "medium_freq": leq, "high_freq": leq}
+#     )
 
-    # apply correction
-    df_oct_1hour["low_freq"] = df_oct_1hour["low_freq"] + LOW_FREQ_CORRECTION
-    df_oct_1hour["medium_freq"] = df_oct_1hour["medium_freq"] + MEDIUM_FREQ_CORRECTION
-    df_oct_1hour["high_freq"] = df_oct_1hour["high_freq"] + HIGH_FREQ_CORRECTION
+#     # apply correction
+#     df_oct_1hour["low_freq"] = df_oct_1hour["low_freq"] + LOW_FREQ_CORRECTION
+#     df_oct_1hour["medium_freq"] = df_oct_1hour["medium_freq"] + MEDIUM_FREQ_CORRECTION
+#     df_oct_1hour["high_freq"] = df_oct_1hour["high_freq"] + HIGH_FREQ_CORRECTION
     
-    # remove nan values
-    df_oct_1hour = df_oct_1hour.dropna()
+#     # remove nan values
+#     df_oct_1hour = df_oct_1hour.dropna()
     
-    # copy for the low and high frequency analñysis
-    df_oct_1hour_lineal_comparsion = df_oct_1hour.copy()
-    df_oct_1hour = df_oct_1hour.dropna().reset_index()
+#     # copy for the low and high frequency analñysis
+#     df_oct_1hour_lineal_comparsion = df_oct_1hour.copy()
+#     df_oct_1hour = df_oct_1hour.dropna().reset_index()
 
 
-    df_oct_1hour["predominant_freq"] = "None"
-    for index, row in df_oct_1hour.iterrows():
-        if row["low_freq"] > row["medium_freq"] or row["low_freq"] > row["high_freq"]:
-            df_oct_1hour.at[index, "predominant_freq"] = "Low frequency"
-        elif row["medium_freq"] > row["low_freq"] or row["medium_freq"] > row["high_freq"]:
-            df_oct_1hour.at[index, "predominant_freq"] = "Medium frequency"
-        elif row["high_freq"] > row["low_freq"] or row["high_freq"] > row["medium_freq"]:
-            df_oct_1hour.at[index, "predominant_freq"] = "High frequency"
+#     df_oct_1hour["predominant_freq"] = "None"
+#     for index, row in df_oct_1hour.iterrows():
+#         if row["low_freq"] > row["medium_freq"] or row["low_freq"] > row["high_freq"]:
+#             df_oct_1hour.at[index, "predominant_freq"] = "Low frequency"
+#         elif row["medium_freq"] > row["low_freq"] or row["medium_freq"] > row["high_freq"]:
+#             df_oct_1hour.at[index, "predominant_freq"] = "Medium frequency"
+#         elif row["high_freq"] > row["low_freq"] or row["high_freq"] > row["medium_freq"]:
+#             df_oct_1hour.at[index, "predominant_freq"] = "High frequency"
+#         else:
+#             df_oct_1hour.at[index, "predominant_freq"] = "No predominant frequency"
+
+#     df_oct_1hour = df_oct_1hour.dropna()
+#     # print(df_oct_1hour)
+#     # print(df_alarms_1h)
+
+
+#     ################################
+#     ################################
+#     # join the df_oct_1hour['predominant_freq] column to the df_alarms_1h dataframe
+#     df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"])
+#     df_oct_1hour["datetime"] = pd.to_datetime(df_oct_1hour["datetime"])
+
+#     df_alarms_1h = df_alarms_1h.merge(
+#         df_oct_1hour[["datetime", "predominant_freq"]],
+#         left_on="date_time",
+#         right_on="datetime",
+#         how="left"
+#     )
+#     df_alarms_1h.drop(columns=["datetime"], inplace=True)
+#     #rename 
+#     df_alarms_1h.rename(columns={"predominant_freq": "predominant_freq_alarm"}, inplace=True)
+#     # print(df_alarms_1h)
+#     ################################
+#     ################################
+
+
+#     # plt.figure(figsize=(20, 6))
+#     # color_map = {
+#     #     "Low frequency": "blue",
+#     #     "Medium frequency": "green",
+#     #     "High frequency": "red",
+#     # }
+#     # colors = df_oct_1hour["predominant_freq"].map(color_map)
+
+#     # # set a X for the points value
+#     # plt.scatter(
+#     #     df_oct_1hour.index,
+#     #     df_oct_1hour["predominant_freq"],
+#     #     c=colors,
+#     #     marker="X",
+#     #     linewidths=0.1,
+#     #     s=100,
+#     #     label="Predominant Frequency",
+#     # )
+
+#     # plt.title(f"{plotname} Predominant Frequency")
+#     # plt.xlim(df_oct_1hour.index.min(), df_oct_1hour.index.max())
+#     # plt.xticks(rotation=90)
+#     # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
+#     # plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+
+#     # # legend
+#     # legend_labels = [
+#     #     plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=color, markersize=10)
+#     #     for color in color_map.values()
+#     # ]
+#     # plt.legend(
+#     #     legend_labels,
+#     #     color_map.keys(),
+#     #     title="Frequency Bands",
+#     #     loc="upper left",
+#     #     bbox_to_anchor=(1, 1),
+#     # )
+#     # plt.tight_layout()
+
+#     # # save the plot
+#     # plt.savefig(f"{folder_output_dir_1h_folder}/{plotname}_Predominant_Frequency.png", dpi=150)
+#     # logger.info(f"Saved plot at {folder_output_dir_1h_folder}/{plotname}_Predominant_Frequency.png")
+
+
+
+#     ################################
+#     ################################
+#     # LINEAL COMPARISON
+#     logger.info(f"[6] Plotting frequency composition comparation for folder {plotname}")
+#     low_freq_filter = df_oct_1hour_lineal_comparsion["low_freq"] > df_oct_1hour_lineal_comparsion["low_freq"].shift(1) + threshold_comp
+#     high_freq_filter = df_oct_1hour_lineal_comparsion["high_freq"] > df_oct_1hour_lineal_comparsion["high_freq"].shift(1) + threshold_comp
+
+#     df_oct_1hour_lineal_comparsion["low_high_freq_alarm"] = np.where(low_freq_filter | high_freq_filter, 1, np.nan)
+#     # print(df_oct_1hour_lineal_comparsion)
+
+
+#     ################################
+#     ################################
+#     # join the df_oct_1hour['predominant_freq] column to the df_alarms_1h dataframe
+#     df_oct_1hour_lineal_comparsion = df_oct_1hour_lineal_comparsion.reset_index()
+
+#     df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"])
+#     df_alarms_1h = df_alarms_1h.merge(
+#         df_oct_1hour_lineal_comparsion[["datetime", "low_high_freq_alarm"]],
+#         left_on="date_time",
+#         right_on="datetime",
+#         how="left"
+#     )
+#     df_alarms_1h.drop(columns=["datetime"], inplace=True)
+#     ################################
+#     ################################
+
+
+#     # # plot the low frequency values
+#     # plt.figure(figsize=(20, 6))
+#     # plt.plot(df_oct_1hour_lineal_comparsion["high_freq"], label="hIGH Freq")
+#     # plt.plot(df_oct_1hour_lineal_comparsion[high_freq_filter].index, df_oct_1hour_lineal_comparsion[high_freq_filter]["high_freq"], "ro", label="Alarm")
+
+#     # plt.plot(df_oct_1hour_lineal_comparsion["low_freq"], label="Low Freq", color="orange")
+#     # plt.plot(df_oct_1hour_lineal_comparsion[low_freq_filter].index, df_oct_1hour_lineal_comparsion[low_freq_filter]["low_freq"], "go", label="Alarm")
+
+#     # plt.title(f"{plotname} Low and High Frequency | Alarm")
+#     # plt.ylabel("dB")
+#     # plt.xticks(rotation=90)
+#     # plt.grid(True)
+
+#     # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%d-%m-%Y %H-%M"))
+#     # plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+
+#     # plt.xlim(df_oct_1hour_lineal_comparsion.index.min(), df_oct_1hour_lineal_comparsion.index.max())
+#     # plt.ylim([0, DB_UPPER_LIMIT])
+#     # plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
+#     # plt.tight_layout()
+
+#     # # save the plot
+#     # plt.savefig(f"{folder_output_dir_1h_folder}/{plotname}_Low_High_Frequency_Alarm.png", dpi=150)
+#     # logger.info(f"Saved plot at {folder_output_dir_1h_folder}/{plotname}_Low_High_Frequency_Alarm.png")
+
+
+#     return df_alarms_1h
+
+
+
+def frequency_composition(df_1h: pd.DataFrame,df_alarms_1h: pd.DataFrame,logger,threshold_comp: int,):
+    df_freq = df_1h.copy()
+
+    # ensure datetime is proper datetime and sorted
+    df_freq["datetime"] = pd.to_datetime(df_freq["datetime"])
+    df_freq = df_freq.sort_values("datetime")
+    df_freq = df_freq.set_index("datetime", drop=False)
+
+    # band columns actually present
+    low_cols = [c for c in LOW_FREQ_BANDS if c in df_freq.columns]
+    med_cols = [c for c in MEDIUM_FREQ_BANDS if c in df_freq.columns]
+    high_cols = [c for c in HIGH_FREQ_BANDS if c in df_freq.columns]
+
+    if low_cols:
+        df_freq["low_freq"] = df_freq[low_cols].apply(sum_dBs, axis=1)
+    else:
+        logger.warning("frequency_composition: no LOW_FREQ_BANDS found in df_1h")
+
+    if med_cols:
+        df_freq["medium_freq"] = df_freq[med_cols].apply(sum_dBs, axis=1)
+    else:
+        logger.warning("frequency_composition: no MEDIUM_FREQ_BANDS found in df_1h")
+
+    if high_cols:
+        df_freq["high_freq"] = df_freq[high_cols].apply(sum_dBs, axis=1)
+    else:
+        logger.warning("frequency_composition: no HIGH_FREQ_BANDS found in df_1h")
+
+    # drop rows without any of the three
+    df_freq = df_freq.dropna(subset=["low_freq", "medium_freq", "high_freq"])
+
+    # predominant band
+    df_freq = df_freq.reset_index(drop=True)
+    df_freq["predominant_freq"] = "None"
+
+    for idx, row in df_freq.iterrows():
+        low = row["low_freq"]
+        med = row["medium_freq"]
+        high = row["high_freq"]
+
+        if low > med and low > high:
+            df_freq.at[idx, "predominant_freq"] = "Low frequency"
+        elif med > low and med > high:
+            df_freq.at[idx, "predominant_freq"] = "Medium frequency"
+        elif high > low and high > med:
+            df_freq.at[idx, "predominant_freq"] = "High frequency"
         else:
-            df_oct_1hour.at[index, "predominant_freq"] = "No predominant frequency"
+            df_freq.at[idx, "predominant_freq"] = "No predominant frequency"
 
-    df_oct_1hour = df_oct_1hour.dropna()
-    # print(df_oct_1hour)
-    # print(df_alarms_1h)
+    df_pred = df_freq[["datetime", "low_freq", "medium_freq", "high_freq", "predominant_freq"]]
 
-
-    ################################
-    ################################
-    # join the df_oct_1hour['predominant_freq] column to the df_alarms_1h dataframe
-    df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"])
-    df_oct_1hour["datetime"] = pd.to_datetime(df_oct_1hour["datetime"])
+    df_alarms_1h = df_alarms_1h.copy()
+    df_alarms_1h["datetime"] = pd.to_datetime(df_alarms_1h["datetime"])
 
     df_alarms_1h = df_alarms_1h.merge(
-        df_oct_1hour[["datetime", "predominant_freq"]],
-        left_on="date_time",
-        right_on="datetime",
-        how="left"
+        df_pred[["datetime", "predominant_freq"]],
+        on="datetime",
+        how="left",
     )
-    df_alarms_1h.drop(columns=["datetime"], inplace=True)
-    #rename 
-    df_alarms_1h.rename(columns={"predominant_freq": "predominant_freq_alarm"}, inplace=True)
-    # print(df_alarms_1h)
-    ################################
-    ################################
+    df_alarms_1h = df_alarms_1h.rename(
+        columns={"predominant_freq": "predominant_freq_alarm"}
+    )
 
+    
+    
+    logger.info("frequency_composition: computing low/high frequency jump alarms")
 
-    # plt.figure(figsize=(20, 6))
-    # color_map = {
-    #     "Low frequency": "blue",
-    #     "Medium frequency": "green",
-    #     "High frequency": "red",
-    # }
-    # colors = df_oct_1hour["predominant_freq"].map(color_map)
+    df_freq_jump = df_pred.set_index("datetime").sort_index()
 
-    # # set a X for the points value
-    # plt.scatter(
-    #     df_oct_1hour.index,
-    #     df_oct_1hour["predominant_freq"],
-    #     c=colors,
-    #     marker="X",
-    #     linewidths=0.1,
-    #     s=100,
-    #     label="Predominant Frequency",
-    # )
+    low_freq_filter = df_freq_jump["low_freq"] > df_freq_jump["low_freq"].shift(1) + threshold_comp
+    high_freq_filter = df_freq_jump["high_freq"] > df_freq_jump["high_freq"].shift(1) + threshold_comp
 
-    # plt.title(f"{plotname} Predominant Frequency")
-    # plt.xlim(df_oct_1hour.index.min(), df_oct_1hour.index.max())
-    # plt.xticks(rotation=90)
-    # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
-    # plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+    df_freq_jump["low_high_freq_alarm"] = np.where(low_freq_filter | high_freq_filter,1,np.nan,)
 
-    # # legend
-    # legend_labels = [
-    #     plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=color, markersize=10)
-    #     for color in color_map.values()
-    # ]
-    # plt.legend(
-    #     legend_labels,
-    #     color_map.keys(),
-    #     title="Frequency Bands",
-    #     loc="upper left",
-    #     bbox_to_anchor=(1, 1),
-    # )
-    # plt.tight_layout()
+    df_freq_jump = df_freq_jump.reset_index()
 
-    # # save the plot
-    # plt.savefig(f"{folder_output_dir_1h_folder}/{plotname}_Predominant_Frequency.png", dpi=150)
-    # logger.info(f"Saved plot at {folder_output_dir_1h_folder}/{plotname}_Predominant_Frequency.png")
-
-
-
-    ################################
-    ################################
-    # LINEAL COMPARISON
-    logger.info(f"[6] Plotting frequency composition comparation for folder {plotname}")
-    low_freq_filter = df_oct_1hour_lineal_comparsion["low_freq"] > df_oct_1hour_lineal_comparsion["low_freq"].shift(1) + threshold_comp
-    high_freq_filter = df_oct_1hour_lineal_comparsion["high_freq"] > df_oct_1hour_lineal_comparsion["high_freq"].shift(1) + threshold_comp
-
-    df_oct_1hour_lineal_comparsion["low_high_freq_alarm"] = np.where(low_freq_filter | high_freq_filter, 1, np.nan)
-    # print(df_oct_1hour_lineal_comparsion)
-
-
-    ################################
-    ################################
-    # join the df_oct_1hour['predominant_freq] column to the df_alarms_1h dataframe
-    df_oct_1hour_lineal_comparsion = df_oct_1hour_lineal_comparsion.reset_index()
-
-    df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"])
     df_alarms_1h = df_alarms_1h.merge(
-        df_oct_1hour_lineal_comparsion[["datetime", "low_high_freq_alarm"]],
-        left_on="date_time",
-        right_on="datetime",
-        how="left"
+        df_freq_jump[["datetime", "low_high_freq_alarm"]],
+        on="datetime",
+        how="left",
     )
-    df_alarms_1h.drop(columns=["datetime"], inplace=True)
-    ################################
-    ################################
-
-
-    # # plot the low frequency values
-    # plt.figure(figsize=(20, 6))
-    # plt.plot(df_oct_1hour_lineal_comparsion["high_freq"], label="hIGH Freq")
-    # plt.plot(df_oct_1hour_lineal_comparsion[high_freq_filter].index, df_oct_1hour_lineal_comparsion[high_freq_filter]["high_freq"], "ro", label="Alarm")
-
-    # plt.plot(df_oct_1hour_lineal_comparsion["low_freq"], label="Low Freq", color="orange")
-    # plt.plot(df_oct_1hour_lineal_comparsion[low_freq_filter].index, df_oct_1hour_lineal_comparsion[low_freq_filter]["low_freq"], "go", label="Alarm")
-
-    # plt.title(f"{plotname} Low and High Frequency | Alarm")
-    # plt.ylabel("dB")
-    # plt.xticks(rotation=90)
-    # plt.grid(True)
-
-    # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%d-%m-%Y %H-%M"))
-    # plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
-
-    # plt.xlim(df_oct_1hour_lineal_comparsion.index.min(), df_oct_1hour_lineal_comparsion.index.max())
-    # plt.ylim([0, DB_UPPER_LIMIT])
-    # plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
-    # plt.tight_layout()
-
-    # # save the plot
-    # plt.savefig(f"{folder_output_dir_1h_folder}/{plotname}_Low_High_Frequency_Alarm.png", dpi=150)
-    # logger.info(f"Saved plot at {folder_output_dir_1h_folder}/{plotname}_Low_High_Frequency_Alarm.png")
-
 
     return df_alarms_1h
 
 
 
-# FREQUENCY COMPOSITION
-def frequency_composition_week(df_oct: pd.DataFrame, folder_output_dir_1h_folder: str, logger, plotname: str, threshold_comp: int):
-    sns.set_style("whitegrid")
-    df_oct_cp = df_oct.copy()
-    df_oct_cp.index = pd.to_datetime(df_oct_cp.index)
 
-    df_oct_cp["week"] = df_oct_cp.index.to_period("W").start_time
+######
+# TONAL FREQUENCY
+# def tonal_frequency(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_output_dir_1h_folder: str, logger, plotname: str):
+#     sns.set_style("whitegrid")
 
-    for week_start, df_week in df_oct_cp.groupby("week"):
-        weekly_folder = os.path.join(folder_output_dir_1h_folder, f"week_{week_start.strftime('%Y-%m-%d')}")
-        os.makedirs(weekly_folder, exist_ok=True)
-
-        df_week["low_freq"] = df_week[LOW_FREQ_BANDS].apply(sum_dBs, axis=1)
-        df_week["medium_freq"] = df_week[MEDIUM_FREQ_BANDS].apply(sum_dBs, axis=1)
-        df_week["high_freq"] = df_week[HIGH_FREQ_BANDS].apply(sum_dBs, axis=1)
-
-        df_hourly = df_week.resample("h").agg({
-            "low_freq": leq,
-            "medium_freq": leq,
-            "high_freq": leq
-        }).dropna()
-
-        df_hourly["low_freq"] += LOW_FREQ_CORRECTION
-        df_hourly["medium_freq"] += MEDIUM_FREQ_CORRECTION
-        df_hourly["high_freq"] += HIGH_FREQ_CORRECTION
-
-        df_hourly_lineal = df_hourly.copy()
-        df_hourly["predominant_freq"] = df_hourly.apply(
-            lambda row: max(("Low frequency", row["low_freq"]),
-                            ("Medium frequency", row["medium_freq"]),
-                            ("High frequency", row["high_freq"]),
-                            key=lambda x: x[1])[0], axis=1)
+#     tonal_frequency = []
+#     tonal_frequency_value = []
+#     previous_tonal_frequency = []
+#     previous_tonal_value_frequency = []
+#     next_tonal_frequency = []
+#     next_tonal_value_frequency = []
+#     previous_diff = []
+#     next_diff = []
+#     filenames = []
+#     dates = []
+#     bands = []
+#     band_thresholds = []
 
 
+#     logger.info("Detecting tonal frequencies. It may take a while (5-10 min)...")
+#     for _, row in df_oct.iterrows():
+#         for i in range(len(df_oct.columns)):
+#             current_column = df_oct.columns[i]
+#             current_filename = row["Filename"]
+#             current_date = row["Timestamp"]
+
+#             if current_column in COLUMNS_DISCARD:
+#                 continue
+
+#             current_column_value = row[current_column]
+
+#             # get previous and next columns and values
+#             previous_column = df_oct.columns[i - 1] if i - 1 >= 0 else None
+#             previos_column_value = row[previous_column] if previous_column else None
+#             next_column = df_oct.columns[i + 1] if i + 1 < len(df_oct.columns) else None
+#             next_column_value = row[next_column] if next_column else None
 
 
-        ######################### Predominant frequency markers #########################
-        plt.figure(figsize=(20, 6))
-        colors = df_hourly["predominant_freq"].map({
-            "Low frequency": "blue",
-            "Medium frequency": "green",
-            "High frequency": "red"
-        })
+#             # convert values to float
+#             current_column_value = pd.to_numeric(current_column_value, errors="coerce")
+#             previos_column_value = pd.to_numeric(previos_column_value, errors="coerce")
+#             next_column_value = pd.to_numeric(next_column_value, errors="coerce")
 
-        plt.scatter(df_hourly.index, df_hourly["predominant_freq"], c=colors, marker="X", s=100)
-        plt.title(f"{plotname} Predominant Frequency | Week of {week_start.strftime('%Y-%m-%d')}")
-        plt.xticks(rotation=90)
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
-        plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
-        plt.tight_layout()
-        plt.savefig(os.path.join(weekly_folder, f"{plotname}_Predominant_Frequency_{week_start.strftime('%Y-%m-%d')}.png"), dpi=150)
-        plt.close()
+#             if pd.isna(previos_column_value):
+#                 previos_column_value = next_column_value
+#             if pd.isna(next_column_value):
+#                 next_column_value = previos_column_value
+
+#             # differences
+#             diff_previous_band = (
+#                 current_column_value - previos_column_value
+#                 if pd.notna(previos_column_value)
+#                 else None
+#             )
+#             diff_next_band = (
+#                 current_column_value - next_column_value
+#                 if pd.notna(next_column_value)
+#                 else None
+#             )
+#             diff_previous_band = (
+#                 round(diff_previous_band, 2) if diff_previous_band is not None else None
+#             )
+#             diff_next_band = (
+#                 round(diff_next_band, 2) if diff_next_band is not None else None
+#             )
+
+#             detected_band = None
+#             band_threshold = None
+
+#             if current_column in LOW_BAND_TONAL_FREQ:
+#                 if (
+#                     diff_previous_band is not None
+#                     and diff_next_band is not None
+#                     and diff_previous_band > LOW_BAND_THRESHOLD
+#                     and diff_next_band > LOW_BAND_THRESHOLD
+#                 ):
+#                     detected_band = "LOW"
+#                     band_threshold = LOW_BAND_THRESHOLD
+
+#             elif current_column in MEDIUM_BAND_TONAL_FREQ:
+#                 if (
+#                     diff_previous_band is not None
+#                     and diff_next_band is not None
+#                     and diff_previous_band > MEDIUM_BAND_THRESHOLD
+#                     and diff_next_band > MEDIUM_BAND_THRESHOLD
+#                 ):
+#                     detected_band = "MEDIUM"
+#                     band_threshold = MEDIUM_BAND_THRESHOLD
+
+#             elif current_column in HIGH_BAND_TONAL_FREQ:
+#                 if (
+#                     diff_previous_band is not None
+#                     and diff_next_band is not None
+#                     and diff_previous_band > HIGH_BAND_THRESHOLD
+#                     and diff_next_band > HIGH_BAND_THRESHOLD
+#                 ):
+#                     detected_band = "HIGH"
+#                     band_threshold = HIGH_BAND_THRESHOLD
 
 
 
-        ##########################Alarm comparison #########################
-        low_alarm = df_hourly_lineal["low_freq"] > df_hourly_lineal["low_freq"].shift(1) + threshold_comp
-        high_alarm = df_hourly_lineal["high_freq"] > df_hourly_lineal["high_freq"].shift(1) + threshold_comp
-
-        plt.figure(figsize=(20, 6))
-        plt.plot(df_hourly_lineal["high_freq"], label="High Freq")
-        plt.plot(df_hourly_lineal[high_alarm].index, df_hourly_lineal[high_alarm]["high_freq"], "ro", label="High Alarm")
-
-        plt.plot(df_hourly_lineal["low_freq"], label="Low Freq", color="orange")
-        plt.plot(df_hourly_lineal[low_alarm].index, df_hourly_lineal[low_alarm]["low_freq"], "go", label="Low Alarm")
-
-        plt.title(f"{plotname} Low & High Frequency Alarm | Week of {week_start.strftime('%Y-%m-%d')}")
-        plt.ylabel("dB")
-        plt.xticks(rotation=90)
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
-        plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
-        plt.ylim([0, DB_UPPER_LIMIT])
-        plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
-        plt.tight_layout()
-        plt.savefig(os.path.join(weekly_folder, f"{plotname}_Low_High_Frequency_Alarm_{week_start.strftime('%Y-%m-%d')}.png"), dpi=150)
-        plt.close()
-
-        logger.info(f"Saved frequency composition plots for week {week_start.strftime('%Y-%m-%d')} in {weekly_folder}")
+#             if detected_band:
+#                 bands.append(detected_band)
+#                 tonal_frequency.append(current_column)
+#                 tonal_frequency_value.append(current_column_value)
+#                 previous_tonal_frequency.append(previous_column)
+#                 previous_tonal_value_frequency.append(previos_column_value)
+#                 next_tonal_frequency.append(next_column)
+#                 next_tonal_value_frequency.append(next_column_value)
+#                 previous_diff.append(diff_previous_band)
+#                 next_diff.append(diff_next_band)
+#                 filenames.append(current_filename)
+#                 dates.append(current_date)
+#                 band_thresholds.append(band_threshold)
 
 
 
+#     df_tonal_freq = pd.DataFrame(
+#         {
+#             "date": dates,
+#             "filename": filenames,
+#             "tonal_frequency": tonal_frequency,
+#             "tonal_frequency_value": tonal_frequency_value,
+#             "previous_column": previous_tonal_frequency,
+#             "previous_column_value": previous_tonal_value_frequency,
+#             "next_column": next_tonal_frequency,
+#             "next_column_value": next_tonal_value_frequency,
+#             "previous_diff": previous_diff,
+#             "next_diff": next_diff,
+#             "threshold": band_thresholds,
+#             "band": bands,
+#         }
+#     )
+
+#     # plotting
+#     df_tonal_freq['date'] = pd.to_datetime(df_tonal_freq['date'], errors='coerce')
+#     print(df_tonal_freq)
+    
+
+#     # drop row with values -np.inf, -np.inf and np.nan
+#     # TODO --> TEST THIS
+#     df_tonal_freq["date"] = pd.to_datetime(df_tonal_freq["date"])
+
+#     # filter out any invalid values
+#     df_tonal_freq = df_tonal_freq[
+#         (df_tonal_freq["tonal_frequency_value"] != -np.inf)
+#         & (df_tonal_freq["tonal_frequency_value"] != np.inf)
+#         & (~df_tonal_freq["tonal_frequency_value"].isna())
+#     ]
 
 
-def tonal_frequency(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_output_dir_1h_folder: str, logger, plotname: str):
-    sns.set_style("whitegrid")
+#     # setup desired order
+#     df_tonal_freq["tonal_frequency"] = pd.Categorical(
+#         df_tonal_freq["tonal_frequency"], categories=TONAL_FREQ_BANDS_ORDERED, ordered=True
+#     )
+    
+#     print(df_tonal_freq)
 
-    tonal_frequency = []
+
+
+
+
+#     df_tonal_freq["hour"] = df_tonal_freq["date"].dt.floor("h")
+#     band_counts = df_tonal_freq.groupby(["hour", "band"]).size().unstack(fill_value=0)
+#     def get_predominant_band(row):
+#         top = row[row == row.max()]
+#         if len(top) == 1:
+#             return top.index[0]  #band name
+#         else:
+#             return ""  #empty string
+
+#     band_counts["predominant_tonal_band"] = band_counts.apply(get_predominant_band, axis=1)
+#     df_predominant_bands = band_counts[["predominant_tonal_band"]].reset_index()
+#     print(df_predominant_bands)
+#     # print(df_alarms_1h)
+
+
+
+#     ################################
+#     ################################
+#     # join the df_oct_1hour['predominant_freq] column to the df_alarms_1h dataframe
+#     df_predominant_bands["hour"] = pd.to_datetime(df_predominant_bands["hour"])
+#     df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"])
+
+#     df_alarms_1h = df_alarms_1h.merge(
+#         df_predominant_bands,
+#         left_on="date_time",
+#         right_on="hour",
+#         how="left"
+#     )
+#     df_alarms_1h.drop(columns=["hour_y"], inplace=True)
+#     #rename
+#     df_alarms_1h.rename(columns={"predominant_tonal_band": "tonal_band_alarm"}, inplace=True)
+#     ################################
+#     ################################
+#     print(df_alarms_1h)
+
+    
+
+#     plt.figure(figsize=(18, 10))
+#     # plt.figure(figsize=(25, 12))
+#     plt.scatter(df_tonal_freq["date"], df_tonal_freq["tonal_frequency"].cat.codes, marker="x", color="orange")
+#     plt.title(f"{plotname} | Tonal Frequency Alarm Detection")
+#     plt.xticks(rotation=90)
+#     plt.yticks(range(len(TONAL_FREQ_BANDS_ORDERED)), TONAL_FREQ_BANDS_ORDERED)  # !!!!!! set y-ticks to ordered frequencies !!!!!! 
+
+#     plt.grid(True)
+
+#     # # date column format --> 2023-12-11 13:37:24
+#     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
+#     plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
+
+#     # X AND Y LMIT
+#     plt.xlim(df_tonal_freq["date"].min(), df_tonal_freq["date"].max())
+#     plt.ylim(-1, len(TONAL_FREQ_BANDS_ORDERED)) 
+
+#     plt.tight_layout()
+    
+#     # # save the plot
+#     plt.savefig(f"{folder_output_dir_1h_folder}/{plotname}_tonal_frequency.png", dpi=150)
+#     logger.info(f"Saved plot at {folder_output_dir_1h_folder}/{plotname}_tonal_frequency.png")
+
+
+#     return df_alarms_1h
+
+
+def tonal_frequency(
+    df_oct: pd.DataFrame,
+    df_alarms_1h: pd.DataFrame,
+    folder_output_dir_1h_folder: str,
+    logger,
+    plotname: str,
+):
+    """
+    Detect tonal components in df_oct (1/3-octave data) and, for each hour,
+    determine which band (LOW / MEDIUM / HIGH) is predominant in terms of
+    number of tonal detections. The result is merged into df_alarms_1h as
+    column 'tonal_band_alarm'.
+
+    If no tonal events are detected, a 'tonal_band_alarm' column filled with
+    NaN is added so the schema is consistent.
+    """
+
+    # -------------------------
+    # 0. Decide which time column to use in df_oct
+    # -------------------------
+    time_col = None
+    for cand in ["Timestamp", "datetime", "date_time", "date"]:
+        if cand in df_oct.columns:
+            time_col = cand
+            break
+
+    if time_col is None:
+        logger.warning(
+            "tonal_frequency: no time column found in df_oct "
+            "(expected one of: 'Timestamp', 'datetime', 'date_time', 'date')"
+        )
+        # Ensure column exists with NaN
+        df_alarms_1h = df_alarms_1h.copy()
+        if "tonal_band_alarm" not in df_alarms_1h.columns:
+            df_alarms_1h["tonal_band_alarm"] = np.nan
+        return df_alarms_1h
+
+    df_oct = df_oct.copy()
+    df_oct[time_col] = pd.to_datetime(df_oct[time_col], errors="coerce")
+
+    tonal_frequency_list = []
     tonal_frequency_value = []
     previous_tonal_frequency = []
     previous_tonal_value_frequency = []
@@ -3515,37 +3567,42 @@ def tonal_frequency(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_out
     bands = []
     band_thresholds = []
 
+    logger.info("Detecting tonal frequencies (compute-only, no plots)...")
 
-    logger.info("Detecting tonal frequencies. It may take a while (5-10 min)...")
+    # -------------------------
+    # 1. Main loop over rows and bands
+    # -------------------------
     for _, row in df_oct.iterrows():
         for i in range(len(df_oct.columns)):
             current_column = df_oct.columns[i]
-            current_filename = row["Filename"]
-            current_date = row["Timestamp"]
 
+            # Skip non-octave / discarded columns
             if current_column in COLUMNS_DISCARD:
                 continue
 
+            current_filename = row.get("Filename", None)
+            current_date = row.get(time_col, None)
             current_column_value = row[current_column]
 
-            # get previous and next columns and values
+            # Previous / next columns
             previous_column = df_oct.columns[i - 1] if i - 1 >= 0 else None
-            previos_column_value = row[previous_column] if previous_column else None
             next_column = df_oct.columns[i + 1] if i + 1 < len(df_oct.columns) else None
+
+            previos_column_value = row[previous_column] if previous_column else None
             next_column_value = row[next_column] if next_column else None
 
-
-            # convert values to float
+            # Convert to numeric
             current_column_value = pd.to_numeric(current_column_value, errors="coerce")
             previos_column_value = pd.to_numeric(previos_column_value, errors="coerce")
             next_column_value = pd.to_numeric(next_column_value, errors="coerce")
 
+            # If neighbor is NaN, approximate with the other one
             if pd.isna(previos_column_value):
                 previos_column_value = next_column_value
             if pd.isna(next_column_value):
                 next_column_value = previos_column_value
 
-            # differences
+            # Differences
             diff_previous_band = (
                 current_column_value - previos_column_value
                 if pd.notna(previos_column_value)
@@ -3556,6 +3613,7 @@ def tonal_frequency(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_out
                 if pd.notna(next_column_value)
                 else None
             )
+
             diff_previous_band = (
                 round(diff_previous_band, 2) if diff_previous_band is not None else None
             )
@@ -3566,6 +3624,7 @@ def tonal_frequency(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_out
             detected_band = None
             band_threshold = None
 
+            # LOW band
             if current_column in LOW_BAND_TONAL_FREQ:
                 if (
                     diff_previous_band is not None
@@ -3576,6 +3635,7 @@ def tonal_frequency(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_out
                     detected_band = "LOW"
                     band_threshold = LOW_BAND_THRESHOLD
 
+            # MEDIUM band
             elif current_column in MEDIUM_BAND_TONAL_FREQ:
                 if (
                     diff_previous_band is not None
@@ -3586,6 +3646,7 @@ def tonal_frequency(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_out
                     detected_band = "MEDIUM"
                     band_threshold = MEDIUM_BAND_THRESHOLD
 
+            # HIGH band
             elif current_column in HIGH_BAND_TONAL_FREQ:
                 if (
                     diff_previous_band is not None
@@ -3596,11 +3657,10 @@ def tonal_frequency(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_out
                     detected_band = "HIGH"
                     band_threshold = HIGH_BAND_THRESHOLD
 
-
-
+            # If we detected a tonal band, store it
             if detected_band:
                 bands.append(detected_band)
-                tonal_frequency.append(current_column)
+                tonal_frequency_list.append(current_column)
                 tonal_frequency_value.append(current_column_value)
                 previous_tonal_frequency.append(previous_column)
                 previous_tonal_value_frequency.append(previos_column_value)
@@ -3612,13 +3672,14 @@ def tonal_frequency(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_out
                 dates.append(current_date)
                 band_thresholds.append(band_threshold)
 
-
-
+    # -------------------------
+    # 2. Build tonal events dataframe
+    # -------------------------
     df_tonal_freq = pd.DataFrame(
         {
             "date": dates,
             "filename": filenames,
-            "tonal_frequency": tonal_frequency,
+            "tonal_frequency": tonal_frequency_list,
             "tonal_frequency_value": tonal_frequency_value,
             "previous_column": previous_tonal_frequency,
             "previous_column_value": previous_tonal_value_frequency,
@@ -3631,103 +3692,88 @@ def tonal_frequency(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_out
         }
     )
 
-    # plotting
-    df_tonal_freq['date'] = pd.to_datetime(df_tonal_freq['date'], errors='coerce')
-    print(df_tonal_freq)
-    
+    # If nothing detected, still add column with NaN
+    if df_tonal_freq.empty:
+        logger.info("tonal_frequency: no tonal events detected.")
+        df_alarms_1h = df_alarms_1h.copy()
+        if "tonal_band_alarm" not in df_alarms_1h.columns:
+            df_alarms_1h["tonal_band_alarm"] = np.nan
+        return df_alarms_1h
 
-    # drop row with values -np.inf, -np.inf and np.nan
-    # TODO --> TEST THIS
-    df_tonal_freq["date"] = pd.to_datetime(df_tonal_freq["date"])
+    # Clean dates & invalid values
+    df_tonal_freq["date"] = pd.to_datetime(df_tonal_freq["date"], errors="coerce")
 
-    # filter out any invalid values
     df_tonal_freq = df_tonal_freq[
         (df_tonal_freq["tonal_frequency_value"] != -np.inf)
         & (df_tonal_freq["tonal_frequency_value"] != np.inf)
         & (~df_tonal_freq["tonal_frequency_value"].isna())
+        & (~df_tonal_freq["date"].isna())
     ]
 
+    if df_tonal_freq.empty:
+        logger.info("tonal_frequency: all tonal events invalid after cleaning.")
+        df_alarms_1h = df_alarms_1h.copy()
+        if "tonal_band_alarm" not in df_alarms_1h.columns:
+            df_alarms_1h["tonal_band_alarm"] = np.nan
+        return df_alarms_1h
 
-    # setup desired order
+    # Optional ordering of tonal_frequency for consistency (not used for merging)
     df_tonal_freq["tonal_frequency"] = pd.Categorical(
-        df_tonal_freq["tonal_frequency"], categories=TONAL_FREQ_BANDS_ORDERED, ordered=True
+        df_tonal_freq["tonal_frequency"],
+        categories=TONAL_FREQ_BANDS_ORDERED,
+        ordered=True,
     )
-    
-    print(df_tonal_freq)
 
+    # -------------------------
+    # 3. Aggregate by hour → predominant tonal band
+    # -------------------------
+    df_tonal_freq["hour_dt"] = df_tonal_freq["date"].dt.floor("H")
+    band_counts = df_tonal_freq.groupby(["hour_dt", "band"]).size().unstack(fill_value=0)
 
-
-
-
-    df_tonal_freq["hour"] = df_tonal_freq["date"].dt.floor("h")
-    band_counts = df_tonal_freq.groupby(["hour", "band"]).size().unstack(fill_value=0)
     def get_predominant_band(row):
         top = row[row == row.max()]
         if len(top) == 1:
-            return top.index[0]  #band name
+            return top.index[0]  # "LOW" / "MEDIUM" / "HIGH"
         else:
-            return ""  #empty string
+            return ""  # tie or no clear winner
 
     band_counts["predominant_tonal_band"] = band_counts.apply(get_predominant_band, axis=1)
     df_predominant_bands = band_counts[["predominant_tonal_band"]].reset_index()
-    print(df_predominant_bands)
-    # print(df_alarms_1h)
 
+    # -------------------------
+    # 4. Merge into df_alarms_1h by hour (using df_alarms_1h['datetime'])
+    # -------------------------
+    df_predominant_bands["hour_dt"] = pd.to_datetime(df_predominant_bands["hour_dt"])
 
-
-    ################################
-    ################################
-    # join the df_oct_1hour['predominant_freq] column to the df_alarms_1h dataframe
-    df_predominant_bands["hour"] = pd.to_datetime(df_predominant_bands["hour"])
-    df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"])
+    df_alarms_1h = df_alarms_1h.copy()
+    df_alarms_1h["datetime"] = pd.to_datetime(df_alarms_1h["datetime"])
+    df_alarms_1h["hour_dt"] = df_alarms_1h["datetime"].dt.floor("H")
 
     df_alarms_1h = df_alarms_1h.merge(
         df_predominant_bands,
-        left_on="date_time",
-        right_on="hour",
-        how="left"
+        on="hour_dt",
+        how="left",
     )
-    df_alarms_1h.drop(columns=["hour_y"], inplace=True)
-    #rename
-    df_alarms_1h.rename(columns={"predominant_tonal_band": "tonal_band_alarm"}, inplace=True)
-    ################################
-    ################################
-    print(df_alarms_1h)
 
-    
+    # Drop helper column and rename
+    df_alarms_1h = df_alarms_1h.drop(columns=["hour_dt"])
+    df_alarms_1h = df_alarms_1h.rename(
+        columns={"predominant_tonal_band": "tonal_band_alarm"}
+    )
 
-    plt.figure(figsize=(18, 10))
-    # plt.figure(figsize=(25, 12))
-    plt.scatter(df_tonal_freq["date"], df_tonal_freq["tonal_frequency"].cat.codes, marker="x", color="orange")
-    plt.title(f"{plotname} | Tonal Frequency Alarm Detection")
-    plt.xticks(rotation=90)
-    plt.yticks(range(len(TONAL_FREQ_BANDS_ORDERED)), TONAL_FREQ_BANDS_ORDERED)  # !!!!!! set y-ticks to ordered frequencies !!!!!! 
-
-    plt.grid(True)
-
-    # # date column format --> 2023-12-11 13:37:24
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
-    plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
-
-    # X AND Y LMIT
-    plt.xlim(df_tonal_freq["date"].min(), df_tonal_freq["date"].max())
-    plt.ylim(-1, len(TONAL_FREQ_BANDS_ORDERED)) 
-
-    plt.tight_layout()
-    
-    # # save the plot
-    plt.savefig(f"{folder_output_dir_1h_folder}/{plotname}_tonal_frequency.png", dpi=150)
-    logger.info(f"Saved plot at {folder_output_dir_1h_folder}/{plotname}_tonal_frequency.png")
-
-
+    logger.info("tonal_frequency: added 'tonal_band_alarm' to df_alarms_1h")
     return df_alarms_1h
 
 
 
 
+
+
+
 ##################################################################
 ##################################################################
 ##################################################################
+# PEAK ANALYSIS
 def plot_peak_distribution_heatmap(df_peaks: pd.DataFrame,df_alarms_1h: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
     try:
         sns.set_style("whitegrid")

@@ -275,62 +275,52 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
                 #####
                 #ssave
-                df_1h.to_csv(df_1h_csv_path, index=False)
-                logger.info(f"Saved 1 hour dataframe to {df_1h_csv_path}")
+                # df_1h.to_csv(df_1h_csv_path, index=False)
+                # logger.info(f"Saved 1 hour dataframe to {df_1h_csv_path}")
 
             except Exception as e:
                 logger.error(f"An error occurred while transforming 1 second data to 1 hour data: {e}")
                 continue
 
 
-            exit()
-
             ###################################
             ###################################
             logger.info("")
             logger.info(f"PLOTTING ALARMS!!!")
-
-            if OCA_ALARM:
-                logger.info(f"[1.1] Plotting OCA alarm for folder {folder}")
-                df_alarms_1h = oca_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder)
-                print(df_alarms_1h)
+            df_alarms_1h = df_1h.copy()
 
 
-            if LMAX_ALARM:
-                logger.info(f"[2.1] Plotting LMAX alarm for folder {folder}")
-                df_alarms_1h=lmax_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold=95) # OCA +10
-                print(df_alarms_1h)
+            #OCA alarm
+            logger.info("[1.1] Computing OCA alarm columns")
+            df_alarms_1h = oca_alarm(df_alarms_1h, logger=logger)
 
+            #LMAX alarm
+            logger.info("[2.1] Computing LMAX alarm columns")
+            df_alarms_1h = lmax_alarm(df_alarms_1h, logger=logger, threshold=95)
 
-            if LC_LA_ALARM:
-                logger.info(f"[3.1] Plotting LC-LA alarm for folder {folder}")
-                df_alarms_1h=LC_LA_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_norma=10, threshold_dB=3)
-                print(df_alarms_1h)
+            #LC-LA alarm
+            logger.info("[3.1] Computing LC-LA alarm columns")
+            df_alarms_1h = LC_LA_alarm(df_alarms_1h, logger=logger,threshold_norma=10, threshold_dB=3)
 
+            #L90 dynamic alarm
+            logger.info("[4.1] Computing dynamic L90 alarm columns")
+            df_alarms_1h = l90_alarm_dynamic(df_alarms_1h, logger=logger, threshold_dB=5)
 
-            if L90_ALARM:
-                logger.info(f"[4.1] Plotting L90 alarm for folder {folder}")
-                l90_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_dB=5)
+            #freq composition
+            logger.info("[5.1] Computing frequency composition alarms")
+            df_alarms_1h = frequency_composition(df_1h,df_alarms_1h,logger=logger,threshold_comp=5)
 
-
-            if L90_ALARM_DYNAMIC:
-                logger.info(f"[5.1] Plotting L90 alarm dynamic for folder {folder}")
-                df_alarms_1h=l90_alarm_dynamic(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_dB=5)
-                print(df_alarms_1h)
+            #tonal frequ
+            logger.info("[6.1] Computing tonal frequency alarms")
+            df_alarms_1h = tonal_frequency(df_1h,df_alarms_1h,folder_output_dir_1h,logger,plotname=folder)
 
 
 
-            if FREQUENCY_COMPOSITION:
-                logger.info(f"[6.1] Plotting frequency composition for folder {folder}")            
-                df_alarms_1h =frequency_composition(df, df_alarms_1h, folder_output_dir_1h, logger, plotname=folder, threshold_comp=5)
-                print(df_alarms_1h)
-                # exit()
 
 
-            if TONAL_FREQUENCY:
-                logger.info(f"[7.1] Plotting tonal frequency for folder {folder}")
-                df_alarms_1h = tonal_frequency(df, df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
-                print(df_alarms_1h)
+
+
+
             
 
 
