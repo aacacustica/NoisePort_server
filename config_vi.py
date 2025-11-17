@@ -15,8 +15,8 @@ RELATIVE_PATH_TAXONOMY_PORT = "/Modelos_IA/taxonomies_json/port_1_taxonomy_mappi
 
 ###
 # Remove start time and end time
-REMOVE_START_TIME = 900
-REMOVE_END_TIME = 900
+REMOVE_START_TIME = 300
+REMOVE_END_TIME = 300
 
 # Time limits for evaluation indicadores
 LD_SECONDS = 21600

@@ -36,6 +36,16 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             processed_csvs = set()
 
 
+        yamnet_df = yamnet_csv[[
+            # "mid",
+            "display_name",
+            # "iso_taxonomy",
+            # "Brown_Level_2",
+            # "Brown_Level_3",
+            "NoisePort_Level_1",
+            # "NoisePort_Level_2",
+        ]]
+
 
         #############################
         ## GETTING THE DATAFRAME ###
@@ -62,7 +72,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
                     logger.info(f"Processing CSV: {csv_path_abs}")
                     df=pd.read_csv(csv_path_abs)
-                    print(df.columns)
 
                     # ─────────────
                     # CLEAN / TIDY
@@ -75,13 +84,26 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     if "Filename_acoustic" in df.columns:
                         df = df.rename(columns={"Filename_acoustic": "Filename"})
 
+
+                    if "Prediction_1" in df.columns:
+                        df = df.merge(
+                            yamnet_df,
+                            how="left",
+                            left_on="Prediction_1",
+                            right_on="display_name",
+                        )
+                    else:
+                        logger.warning("Prediction_1 column not found in df; cannot merge YAMNet taxonomy")
+
+
                     # drop other filenames columns
                     cols_to_drop = []
-                    for col in ["Filename_prediction", "peak_filename"]:
+                    for col in ["Filename_prediction", "peak_filename", "Prediction_2", "Prediction_3", "Prob_2", "Prob_3", "display_name"]:
                         if col in df.columns:
                             cols_to_drop.append(col)
                     if cols_to_drop:
                         df = df.drop(columns=cols_to_drop)
+ 
 
                     # [2] desired order
                     base_cols = [
@@ -100,6 +122,10 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     pred_cols = [c for c in df.columns
                                 if c.startswith("Prediction_") or c.startswith("Prob_")]
 
+                    taxonomy_cols = []
+                    if "NoisePort_Level_1" in df.columns:
+                        taxonomy_cols = ["NoisePort_Level_1"]
+
                     # [5] peak columns
                     peak_cols = [
                         "is_peak",
@@ -113,19 +139,17 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
                     # 6] rerange
                     ordered_cols = [
-                        c for c in base_cols + band_cols + pred_cols + peak_cols
-                        if c in df.columns
+                        c for c in base_cols + band_cols + pred_cols+taxonomy_cols + peak_cols if c in df.columns
                     ]
 
                     df = df[ordered_cols]
                     df = df.sort_values("datetime").reset_index(drop=True)
-                    print(df)
 
                     #save
-                    base, ext = os.path.splitext(csv_path_abs)
-                    corrected_path = base + "_corrected" + ext
-                    df.to_csv(corrected_path, index=False)
-                    logger.info(f"Saved corrected CSV to: {corrected_path}")
+                    # base, ext = os.path.splitext(csv_path_abs)
+                    # corrected_path = base + "_corrected" + ext
+                    # df.to_csv(corrected_path, index=False)
+                    # logger.info(f"Saved corrected CSV to: {corrected_path}")
 
 
             elif sufix_string == "SONOMETRO":
@@ -136,8 +160,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.error(f"suffix is wrong {sufix_string}")                
             ###################################################################
             ###################################################################
-
             
+
+
             logger.info("")
             if TENERIFE_TIMEZONE:
                 df['datetime'] = pd.to_datetime(df['datetime']) - pd.Timedelta(hours=1)
@@ -163,16 +188,16 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             except Exception as e:
                 logger.error(f"An error occurred while adding datetime columns: {e}")
 
-            print(df)
-            exit()
+
+
             try:
                 logger.info("")
-                if df is not None:
+                # if df is not None:
                     # drop the beginning and ending of the measurement (15min)
-                    df = df.loc[start_date + pd.Timedelta(REMOVE_START_TIME, unit='seconds'):end_date - pd.Timedelta(REMOVE_END_TIME, unit='seconds')]
-                    logger.info(f"SPL df was trimmed, {REMOVE_START_TIME} secs from the beggining and {REMOVE_END_TIME} secs from the end")
+                    # df = df.loc[start_date + pd.Timedelta(REMOVE_START_TIME, unit='seconds'):end_date - pd.Timedelta(REMOVE_END_TIME, unit='seconds')]
+                    # logger.info(f"SPL df was trimmed, {REMOVE_START_TIME} secs from the beggining and {REMOVE_END_TIME} secs from the end")
+                    # print(df)
                 
-
                 # add indicators column
                 if df is not None:
                     logger.info(f"Adding indicators column")
@@ -186,171 +211,37 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 logger.error(f"An error occurred while adding indicators and nights columns: {e}")
 
 
-
             try:
                 # add oca column
                 logger.info(f"Adding oca column")
                 logger.info(f"OCA Limits --> {oca_limits}")
-
                 if df is not None:
-                    df['oca'] = df['hour'].apply(
-                            lambda h: db_limit(h, **oca_limits)
-                    )
-                if df.isnull().values.any():
-                # check if there is nan values
-                    logger.warning(f"There are nan values in the dataframe")
-                    # removing nan values
-                    df = df.dropna()
-                    logger.info(f"Removing nan values from the dataframe")
-
+                    df['oca'] = df['hour'].apply(lambda h: db_limit(h, **oca_limits))
             except Exception as e:
                 logger.error(f"An error occurred while adding oca column: {e}")
                 
 
-
-            try:
-                logger.info("")    
-                logger.info(f"Creating slm_dict")    
-                folder = folder.split("/")[-1]
-                
-                # add slm_dict column LAEQ_COLUMN_COEFF: with the value of LA_corrected
-                slm_dict["LAEQ_COLUMN_COEFF"] = 'LA_corrected'
-                slm_dict["LAMAX_COLUMN_COEFF"] = 'LAmax_corrected'
-                slm_dict["LAMIN_COLUMN_COEFF"] = 'LAmin_corrected'
-                slm_dict["LC-LA_COLUMN_COEFF"] = 'LCeq-LAeq_corrected'
-                # slm_dict["L90_COLUMN_COEFF"] = '90percentile'
-
-
-                # SAVE THE INFO IN A JSON FILE
-                info_dict = {
-                    "PERIODO_AGREGACION": PERIODO_AGREGACION,
-                    "PERCENTILES": PERCENTILES,
-                    "stable_version": stable_version,
-                    "oca_limits": oca_limits,
-                    "oca_type": oca_type,
-                }
-
-                # save the info in a json file
-                with open(os.path.join(folder_output_dir, "processing_parameters.json"), 'w') as f:
-                    json.dump(info_dict, f)
-                logger.info(f"Saved processing_parameters.json in {folder_output_dir}")
-            except Exception as e:
-                logger.error(f"An error occurred while creating slm_dict: {e}")
-                continue
-
-            
-            # try:
-                ######################
-                # this is working
-                # logger.info("")
-                # logger.info(f"Adding the ships on dock to the general dataframe")
-
-
-                # logger.info(f"Ship dock 1h")
-                # ship_dock_1h_path = os.path.join(home_dir, RELATIVE_PATH_SHIPS_1H)
-                # #check if the file exists
-                # if not os.path.exists(ship_dock_1h_path):
-                #     logger.error(f"File {ship_dock_1h_path} does not exist. Please check the path.")
-                # else:
-                #     logger.info(f"File {ship_dock_1h_path} exist!")
-                # df_ship_dock_1h = pd.read_csv(ship_dock_1h_path, parse_dates=['date_time'])
-                # this is working. up to here
-                ######################
-                
-
-
-                # logger.info(f"Ship dock 15min")
-                # ship_dock_15min_path = os.path.join(home_dir, RELATIVE_PATH_SHIPS_15MIN)
-                # #check if the file exists
-                # if not os.path.exists(ship_dock_15min_path):
-                #     logger.error(f"File {ship_dock_15min_path} does not exist. Please check the path.")
-                # else:
-                #     logger.info(f"File {ship_dock_15min_path} exist!")
-                # df_ship_dock_15min = pd.read_csv(ship_dock_15min_path, parse_dates=['datetime'])
-                
-
-                # df_ship_1s_csv_path = os.path.join(folder_output_dir, f"{actual_folder_name}_ship_1s.csv")
-                # if os.path.exists(df_ship_1s_csv_path):
-                #     logger.info(f"File {df_ship_1s_csv_path} already exists, skipping ship dock 1s analysis")
-                #     df = pd.read_csv(df_ship_1s_csv_path)
-                #     logger.info(f"Loaded ships on dock 1s dataframe from {df_ship_1s_csv_path}")
-                #     # continue
-                
-                # else:
-                #     logger.info(f"Ship dock 1s")
-                #     ship_dock_1s_path = os.path.join(home_dir, RELATIVE_PATH_SHIPS_1S)
-                #     #check if the file exists
-                #     if not os.path.exists(ship_dock_1s_path):
-                #         logger.error(f"File {ship_dock_1s_path} does not exist. Please check the path.")
-                #     else:
-                #         logger.info(f"File {ship_dock_1s_path} exist!")
-                #     df_ship_dock_1s = pd.read_csv(ship_dock_1s_path, parse_dates=['date_time'])
-                #     df['Timestamp'] = pd.to_datetime(df['Timestamp'], errors='coerce')
-
-                #     # df = Timestamp
-                #     # df_ship_dock_1s = date_time
-
-                #     # merging
-                #     logger.info(f"Merging the ships on dock dataframes with the main dataframe")
-                #     df = df.merge(
-                #         df_ship_dock_1s[['date_time', 'nships']],
-                #         left_on='Timestamp',
-                #         right_on='date_time',
-                #         how='left'
-                #     )
-                #     # remove the date_time column from the df_ship_dock_1s
-                #     df.drop(columns=['date_time'], inplace=True, errors='ignore')
-
-                #     df.to_csv(df_ship_1s_csv_path, index=False)
-                #     logger.info(f"Saved ships on dock 1s dataframe to {df_ship_1s_csv_path}")
-                    # if the values inside the nships is 1 or more, then 1, else 0
-                    # df_alarms_1h['ships_alarm'] = df_alarms_1h['ships_alarm'].apply(lambda x: 1 if x > 0 else 0)
-            # except Exception as e:
-            #     logger.error(f"An error occurred while adding the ships on dock to the alarms dataframe: {e}")
-            #     continue
-
-
-
             try:
                 logger.info("")
-                logger.info("FILTERING THE PREDICTION DF. TAKING JUST THE FIRST ONE AND IF IT OVERCOME THE THRESHOLD")
+                logger.info("FILTERING PREDICTIONS")
+                if "Prediction_1" in df.columns and "Prob_1" in df.columns:
+                    mask = df["Prob_1"] >= PROBABILITY_THRESHOLD
+                    cols_to_clear = ["Prediction_1", "Prob_1"]
+                    if "NoisePort_Level_1" in df.columns:
+                        cols_to_clear.append("NoisePort_Level_1")
+                    # keep row
+                    df.loc[~mask, cols_to_clear] = pd.NA
 
-                # getting just the first class and their oribability
-                df_prediction_alarms = df_prediction 
-                df_prediction_alarms["class"] = df_prediction_alarms["class"].apply(lambda x: ast.literal_eval(x) if isinstance(x, str) else x)
-                df_prediction_alarms["probability"] = df_prediction_alarms["probability"].apply(lambda x: ast.literal_eval(x) if isinstance(x, str) else x)
-                df_prediction_alarms["class"] = df_prediction_alarms["class"].apply(lambda x: x[0] if isinstance(x, list) and len(x) > 0 else None)
-                df_prediction_alarms["probability"] = df_prediction_alarms["probability"].apply(lambda x: float(x[0]) if isinstance(x, list) and len(x) > 0 else None)
-
-                #now, just taking the first class when its probability is greater than the threshold
-                df_prediction_alarms = df_prediction_alarms[df_prediction_alarms['probability'] >= PROBABILITY_THRESHOLD]
-
-
-                #adding the prediction to the df
-                yamnet_csv_renamed = yamnet_csv.rename(columns={"display_name": "class"})
-                df_prediction_alarms_mapped = df_prediction_alarms.merge(
-                    yamnet_csv_renamed,
-                    on="class",
-                    how="left"
-                )
-
-
-                df['Timestamp'] = pd.to_datetime(df['Timestamp'])
-                df_prediction_alarms_mapped['datetime'] = pd.to_datetime(df_prediction_alarms_mapped['datetime'])
-
-                df = df.merge(
-                    df_prediction_alarms_mapped[['datetime', 'class', 'probability', 'NoisePort_Level_1']],
-                    left_on='Timestamp',
-                    right_on='datetime',
-                    how='left'
-                )
-                df.drop(columns=['datetime_y'], inplace=True, errors='ignore')
-                df.rename(columns={'datetime_x': 'datetime'}, inplace=True, errors='ignore')
-                logger.info("Added the prediction data to the main dataframe")
+                else:
+                    logger.warning("Prediction_1 or Prob_1 column not found in df")
 
             except Exception as e:
-                logger.error(f"An error occurred while processing folder {folder}: {e}")
+                logger.error(f"An error occurred while processing predictions in folder {folder}: {e}")
 
+
+            print(df)
+            print(df.columns)
+            exit()
 
 
             ################################################################
@@ -478,11 +369,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 # exit()
 
             
-            # TODO
-            # # Plotting tree map
-            # if PLOT_TREE_MAP:
-            #     logger.info(f"[8] Plotting PLOT_TREE_MAP for folder {folder}")
-            #     plot_tree_map(df_prediction,taxonomy,ia_visualization_folder, logger, plotname=folder)
             ##############################################################################################################################################
 
  
