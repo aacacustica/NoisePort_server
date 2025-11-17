@@ -27,6 +27,16 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
         logger.info(f"Suffix string: {sufix_string}")
 
 
+        # making the processed files txt to avoind repeting processing 
+        processed_list_path = os.path.join(folder,f"processed_csv_{sufix_string}_{stable_version}.txt")
+        if os.path.exists(processed_list_path):
+            with open(processed_list_path, "r", encoding="utf-8") as f:
+                processed_csvs = {line.strip() for line in f if line.strip()}
+        else:
+            processed_csvs = set()
+
+
+
         #############################
         ## GETTING THE DATAFRAME ###
         #############################
@@ -34,35 +44,43 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info("")
             logger.info(f"Processing folder {folder}") 
             logger.info(f"Getting the data from the dataframes")
-            exit()
             
             
-            if sufix_string == "SONOMETRO":
+            if sufix_string == "raspberry":
+                logger.info("Processing RASPBERRY data")
+                csv_files = [f for f in os.listdir(folder) if f.lower().endswith(".csv")]
+                csv_paths = [os.path.join(folder, f) for f in csv_files]
+                logger.info(f"Found {len(csv_paths)} CSV files in {folder}")
+
+                for csv_path in csv_paths:
+                    csv_path_abs = os.path.abspath(csv_path)
+
+                    #skip processed files
+                    if csv_path_abs in processed_csvs:
+                        logger.info(f"Skipping already processed file: {csv_path_abs}")
+                        continue
+
+                    logger.info(f"Processing CSV: {csv_path_abs}")
+                    df=pd.read_csv(csv_path_abs)
+                    print(df.columns)
+
+            elif sufix_string == "SONOMETRO":
                 logger.info(f"Processing SONOMETRO data")
-                reg_folder = reg_folder.replace(ACOUSTIC_PARAMS_FOLDER, SONOMETER_FOLDER)
-                df, slm_type, slm_dict = process_folder(reg_folder, folder_date_time, folder_threshold, logger,selected_folder=SONOMETER_FOLDER)
-                if df is None:
-                    logger.warning(f"df is None")
-                    continue
+                pass
             
             else:
-                logger.info(f"Getting the acoustic data from the dataframes")
-                df, slm_type, slm_dict = process_folder(reg_folder, folder_date_time, folder_threshold, logger, ACOUSTIC_PARAMS_FOLDER)
-                if df is None:
-                    logger.warning(f"df is None")
-                    continue
-            
+                logger.error(f"suffix is wrong {sufix_string}")                
+            ###################################################################
             ###################################################################
 
-
+            
             logger.info("")
             if TENERIFE_TIMEZONE:
                 df['datetime'] = pd.to_datetime(df['datetime']) - pd.Timedelta(hours=1)
                 logger.info(f"Time zone was set to Tenerife")
 
-            #take data from 06/05/2025  16:00:00
-            # df = df.loc[df['datetime'] >= '2025-05-06 16:00:00']
 
+            exit()
             try:
                 if df is not None:
                     logger.info("")
