@@ -642,7 +642,7 @@ def main():
 
             leftover_seconds = {}
 
-            for measurement_folder in tqdm.tqdm(sorted(os.listdir(point)),desc=f'Fixing time slops {measurement_folder}',unit='measurement_folder'):
+            for measurement_folder in tqdm.tqdm(sorted(os.listdir(point)),desc=f'Fixing time slops ',unit='measurement_folder'):
                 if measurement_folder not in ['acoustic_params', 'predictions_litle']:
                     continue
 
@@ -745,13 +745,13 @@ def main():
                 if folder == 'acoustic_params'  and ACOUSTIC_QUERY_SWITCH:
                     
                     logger.info("Starting ACOUSTIC processing")
-                    end_time = acoustic_processing(folder_days_acoustics_predictions,folder,db,logger, all_info, query_acoustic_folder, processed_wavs, processed_folder_acoustic_txt)
+                    #end_time = acoustic_processing(folder_days_acoustics_predictions,folder,db,logger, all_info, query_acoustic_folder, processed_wavs, processed_folder_acoustic_txt)
                     print(" --- %s seconds in execution ---" %end_time)                      
                 
                 if folder == 'predictions_litle' and PREDICT_QUERY_SWITCH:
                     
                     logger.info("Starting PREDICTIONS processing")
-                    end_time = prediction_processing(folder_days_acoustics_predictions,folder,db,logger, all_info, query_pred_folder, processed_wavs, processed_folder_predictions_txt)
+                    #end_time = prediction_processing(folder_days_acoustics_predictions,folder,db,logger, all_info, query_pred_folder, processed_wavs, processed_folder_predictions_txt)
                     print(" --- %s seconds in execution ---" %end_time)  
                 
                 if folder == 'wav_files' and WAV_QUERY_SWITCH:
@@ -763,7 +763,7 @@ def main():
                 if folder == 'sonometer_files' and SONOMETER_QUERY_SWITCH:  
                    
                     logger.info("Starting SONOMETER FOLDER processing")
-                    end_time = sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed_folder_sonometer_txt)
+                    #end_time = sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed_folder_sonometer_txt)
                     print(" --- %s seconds in execution ---" %end_time)
             
             print(" --- %s seconds in total execution ---" % round(time.time() - whole_start_time,2))

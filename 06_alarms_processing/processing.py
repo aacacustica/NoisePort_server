@@ -291,27 +291,27 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
             #OCA alarm
-            logger.info("[1.1] Computing OCA alarm columns")
+            logger.info("[1] Computing OCA alarm columns")
             df_alarms_1h = oca_alarm(df_alarms_1h, logger=logger)
 
             #LMAX alarm
-            logger.info("[2.1] Computing LMAX alarm columns")
+            logger.info("[2] Computing LMAX alarm columns")
             df_alarms_1h = lmax_alarm(df_alarms_1h, logger=logger, threshold=95)
 
             #LC-LA alarm
-            logger.info("[3.1] Computing LC-LA alarm columns")
+            logger.info("[3] Computing LC-LA alarm columns")
             df_alarms_1h = LC_LA_alarm(df_alarms_1h, logger=logger,threshold_norma=10, threshold_dB=3)
 
             #L90 dynamic alarm
-            logger.info("[4.1] Computing dynamic L90 alarm columns")
+            logger.info("[4] Computing dynamic L90 alarm columns")
             df_alarms_1h = l90_alarm_dynamic(df_alarms_1h, logger=logger, threshold_dB=5)
 
             #freq composition
-            logger.info("[5.1] Computing frequency composition alarms")
+            logger.info("[5] Computing frequency composition alarms")
             df_alarms_1h = frequency_composition(df_1h,df_alarms_1h,logger=logger,threshold_comp=5)
 
             #tonal frequ
-            logger.info("[6.1] Computing tonal frequency alarms")
+            logger.info("[6] Computing tonal frequency alarms")
             df_alarms_1h = tonal_frequency(df_1h,df_alarms_1h,folder_output_dir_1h,logger,plotname=folder)
 
 
@@ -323,15 +323,15 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info(f"PEAKS PLOTTING!!!")
             
 
-            logger.info(f"[8.1] Plotting peak heatmap for folder {folder}")
-            df_alarms_1h=plot_peak_distribution_heatmap(df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
+            logger.info(f"[8] Plotting peak heatmap for folder {folder}")
+            plot_peak_distribution_heatmap(df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
 
 
-            logger.info(f"[9.1] Plotting peak distribution for folder {folder}")
+            logger.info(f"[9] Plotting peak distribution for folder {folder}")
             plot_peak_distribution(df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
 
 
-            logger.info(f"[10.1] Plotting density distribution for folder {folder}")
+            logger.info(f"[10] Plotting density distribution for folder {folder}")
             plot_density_distribution_peaks(df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
 
 
@@ -339,41 +339,17 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             # #####################################################
             # PLOTTING PREDICTION SECTION
             # #####################################################
-            if PLOT_PEAK_PREDIC_LAEQ_MEAN:
-                logger.info(f"[11.1] Plotting PLOT_PREDIC_LAEQ for folder {folder}")
-                plot_predic_peak_laeq_mean(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+            logger.info(f"[11] Plotting PLOT_PREDIC_LAEQ for folder {folder}")
+            plot_predic_peak_laeq_mean(df_alarms_1h, ia_visualization_folder, logger, plotname=folder)
 
 
-            if PLOT_PEAK_BOX_PLOT_PREDICTION:
-                logger.info(f"[12] Plotting box plot prediction for folder {folder}")
-                plot_box_plot_prediction(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+            logger.info(f"[12] Plotting box plot prediction for folder {folder}")
+            plot_box_plot_prediction(df_alarms_1h, ia_visualization_folder, logger, plotname=folder)
 
 
+            logger.info(f"[13] Plotting heatmap prediction for folder {folder}")
+            plot_heat_map_prediction(df_alarms_1h, ia_visualization_folder, logger, plotname=folder)
 
-            if PLOT_PEAK_HEATMAT_PREDICTION:
-                logger.info(f"[13] Plotting heatmap prediction for folder {folder}")
-                plot_heat_map_prediction(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
-
-
-
-            ################################
-            ################################
-            ################################
-            # # ADDING THE NEW ALARMS CALCULATED
-            logger.info("")
-            logger.info(f"Adding the yamnet taxonomy to the alarms dataframe")
-            columns_to_merge = ["datetime", "mid", "iso_taxonomy", "Brown_Level_2", "Brown_Level_3", "NoisePort_Level_1", "NoisePort_Level_2"]
-            df_subset = df_all_yamnet_1h[columns_to_merge]
-
-
-            df_alarms_1h = df_alarms_1h.merge(
-                df_subset,
-                left_on="date_time",
-                right_on="datetime",
-                how="left"
-            )
-            df_alarms_1h.drop(columns=["datetime"], inplace=True)
-            logger.info(f"Adding the yamnet taxonomy to the alarms dataframe successful")
 
 
             ################################
@@ -382,7 +358,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             # SAVING THE ALARMS CSV FILE
             logger.info("")
             logger.info(f"SAVING THE ALARMS CSV FILE")
-
             try:
                 alarms_csv_path = os.path.join(folder_output_dir_1h, f"{actual_folder_name}_full_alarms.csv")
                 df_alarms_1h.to_csv(alarms_csv_path, index=False)
@@ -391,10 +366,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             except Exception as e:
                 logger.error(f"An error occurred while saving the alarms dataframe: {e}")
                 continue
-            ################################
-            ################################
-            ################################
-
 
 
         except Exception as e:

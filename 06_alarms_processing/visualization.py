@@ -3885,45 +3885,28 @@ def tonal_frequency(
 
 
 
-def plot_peak_distribution_heatmap(
-    df_alarms_1h: pd.DataFrame,
-    folder_output_dir: str,
-    logger,
-    plotname: str,
-):
-    """
-    Plot heatmaps of peak counts per day/hour using the *already aggregated*
-    df_alarms_1h dataframe.
-
-    Expects in df_alarms_1h:
-        - 'datetime' column (per-hour / per-2h timestamps)
-        - 'n_peaks' column with number of peaks in that interval
-    """
-
+def plot_peak_distribution_heatmap(df_alarms_1h: pd.DataFrame,folder_output_dir: str,logger,plotname: str):
     try:
         sns.set_style("whitegrid")
 
         df = df_alarms_1h.copy()
 
-        # Ensure datetime
         if "datetime" not in df.columns:
             logger.error("plot_peak_distribution_heatmap: 'datetime' column not found in df_alarms_1h")
             return df_alarms_1h
-
         df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
         df = df.dropna(subset=["datetime"])
 
-        # Ensure n_peaks
+
         if "n_peaks" not in df.columns:
             logger.error("plot_peak_distribution_heatmap: 'n_peaks' column not found in df_alarms_1h")
             return df_alarms_1h
 
-        # Basic date/hour info
+
+
         df["date"] = df["datetime"].dt.date
         df["hour"] = df["datetime"].dt.hour
         df["weekday"] = df["datetime"].dt.weekday  # 0=Monday, 6=Sunday
-
-        # Map weekday to Spanish names
         weekday_map = {
             0: "Lunes",
             1: "Martes",
@@ -3934,13 +3917,11 @@ def plot_peak_distribution_heatmap(
             6: "Domingo",
         }
         df["Día"] = df["weekday"].map(weekday_map)
-
-        # e.g. "2025-04-01 Lunes"
         df["date_day"] = df["date"].astype(str) + " " + df["Día"]
 
-        # ─────────────────────────────────────
-        # 1) Heatmap (hour vs date, using n_peaks)
-        # ─────────────────────────────────────
+
+
+        #heatmap
         pivot_table = df.pivot_table(
             index="date_day",
             columns="hour",
@@ -3978,9 +3959,8 @@ def plot_peak_distribution_heatmap(
         plt.savefig(out_path, dpi=150)
         logger.info(f"Saved plot at {out_path}")
 
-        # ─────────────────────────────────────
-        # 2) Same info but in 4h blocks
-        # ─────────────────────────────────────
+        
+        #4h blocks
         df["4HourBlock"] = (df["hour"] // 4) * 4  # 0,4,8,...,20
 
         pivot_table_4h = df.pivot_table(
@@ -4020,9 +4000,6 @@ def plot_peak_distribution_heatmap(
         out_path_4h = f"{folder_output_dir}/{plotname}_peak_distribution_heatmap_4h.png"
         plt.savefig(out_path_4h, dpi=150)
         logger.info(f"Saved plot at {out_path_4h}")
-
-        # df_alarms_1h is not modified logically, but we return it for consistency
-        return df_alarms_1h
 
     except Exception as e:
         logger.error(f"Error in plot_peak_distribution_heatmap: {e}")
@@ -4119,25 +4096,12 @@ def plot_peak_distribution_heatmap(
 #         raise 
 
 
-def plot_peak_distribution(
-    df_alarms_1h: pd.DataFrame,
-    folder_output_dir: str,
-    logger,
-    plotname: str,
-):
-    """
-    Plot time evolution of peak LEQ using the aggregated df_alarms_1h.
-
-    Expects in df_alarms_1h:
-        - 'datetime' column (datetime64)
-        - 'peak_leq' column (dB), may contain NaNs when no peaks
-    """
+def plot_peak_distribution(df_alarms_1h: pd.DataFrame,folder_output_dir: str,logger,plotname: str):
     try:
         sns.set_style("whitegrid")
 
         df = df_alarms_1h.copy()
 
-        # ---- check columns ----
         if "datetime" not in df.columns:
             logger.error("plot_peak_distribution: 'datetime' column not found in df_alarms_1h")
             return
@@ -4157,9 +4121,9 @@ def plot_peak_distribution(
             logger.warning("plot_peak_distribution: no non-NaN 'peak_leq' values to plot")
             return
 
-        # ==============================
-        # 1) Simple time series of peak_leq
-        # ==============================
+
+
+        # plot
         plt.figure(figsize=(25, 9))
         plt.plot(
             df_peaks["datetime"],
@@ -4185,9 +4149,9 @@ def plot_peak_distribution(
         plt.savefig(out_path, dpi=150)
         logger.info(f"Saved plot at {out_path}")
 
-        # ==============================
-        # 2) Same, with night shading (20:00–07:00)
-        # ==============================
+
+
+        #same, with night shading (20:00–07:00)
         min_date = df["datetime"].dt.date.min()
         max_date = df["datetime"].dt.date.max()
 
@@ -4307,26 +4271,11 @@ def plot_peak_distribution(
 #         logger.error(f"Error in plot_density_distribution_peaks: {e}")
 
 
-def plot_density_distribution_peaks(
-    df_alarms_1h: pd.DataFrame,
-    folder_output_dir: str,
-    logger,
-    plotname: str,
-):
-    """
-    Plot:
-      1) Bar chart: total number of peaks per hour of day (using 'n_peaks' & 'hour')
-      2) KDE: density of peak occurrence over 24h (approximated using 'n_peaks' as weight)
-
-    Expects in df_alarms_1h:
-        - 'hour' column (0–23)
-        - 'n_peaks' column (may be 0 / NaN)
-    """
+def plot_density_distribution_peaks(df_alarms_1h: pd.DataFrame,folder_output_dir: str,logger,plotname: str):
     try:
         sns.set_style("whitegrid")
         df = df_alarms_1h.copy()
 
-        # ---- basic checks ----
         if "hour" not in df.columns:
             logger.error("plot_density_distribution_peaks: 'hour' column not found in df_alarms_1h")
             return
@@ -4343,9 +4292,7 @@ def plot_density_distribution_peaks(
         # n_peaks numeric
         df["n_peaks"] = pd.to_numeric(df["n_peaks"], errors="coerce").fillna(0)
 
-        # -------------------------------------------------
-        # 1) BAR PLOT: total peaks per hour of day
-        # -------------------------------------------------
+        #barplot
         hourly_peaks = df.groupby("hour")["n_peaks"].sum()
 
         plt.figure(figsize=(12, 6))
@@ -4363,11 +4310,8 @@ def plot_density_distribution_peaks(
         plt.savefig(out_bar, dpi=150)
         logger.info(f"Saved plot at {out_bar}")
 
-        # -------------------------------------------------
-        # 2) KDE PLOT: density of peaks over 24h
-        #    Use 'n_peaks' as weights to approximate original peak times
-        # -------------------------------------------------
-        # build a list of times (hour + 0.5) repeated n_peaks times
+
+        #plot kde
         times_for_kde = []
         for _, row in df.iterrows():
             n = int(row["n_peaks"])
