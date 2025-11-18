@@ -7,6 +7,8 @@ import glob
 import json
 from scipy.signal import find_peaks
 import ast
+import re
+
 
 from .visualization import *
 from .reading import *
@@ -21,13 +23,13 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
     home_dir = os.path.expanduser('~')
 
 
-
-    for folder in tqdm(folders, desc="Processing folders"): # \\192.168.205.117\AAC_Server\OCIO\24052_ZARAUTZ\CAMPAÑA_1\3-Medidas\ZARAUTZ_C1_P1\AUDIOMOTH
+    for folder in tqdm(folders, desc="Processing folders"):
         logger.info("")
         logger.info(f"Suffix string: {sufix_string}")
 
-
+        ###################
         # making the processed files txt to avoind repeting processing 
+        ###################
         processed_list_path = os.path.join(folder,f"processed_csv_{sufix_string}_{stable_version}.txt")
         if os.path.exists(processed_list_path):
             with open(processed_list_path, "r", encoding="utf-8") as f:
@@ -35,7 +37,8 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
         else:
             processed_csvs = set()
 
-
+        ###################
+        ###################
         yamnet_df = yamnet_csv[[
             # "mid",
             "display_name",
@@ -73,9 +76,8 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     logger.info(f"Processing CSV: {csv_path_abs}")
                     df=pd.read_csv(csv_path_abs)
 
-                    # ─────────────
-                    # CLEAN / TIDY
-                    # ─────────────
+
+
                     # [0] datetimecolumn
                     df["datetime"] = pd.to_datetime(df["Timestamp"])
                     df["datetime"] = df["datetime"].dt.tz_localize(None)
@@ -142,29 +144,43 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     df = df.sort_values("datetime").reset_index(drop=True)
 
                     #save
-                    # base, ext = os.path.splitext(csv_path_abs)
-                    # corrected_path = base + "_corrected" + ext
-                    # df.to_csv(corrected_path, index=False)
-                    # logger.info(f"Saved corrected CSV to: {corrected_path}")
+                    #folder to 
+                    prosprocessing_str = "postprocessing_csv"
+                    base_dir = os.path.dirname(csv_path_abs)
+
+                    post_dir = os.path.join(base_dir, "postprocessing")
+                    os.makedirs(post_dir, exist_ok=True)
+                    filename = os.path.basename(csv_path_abs)
+                    stem, _ = os.path.splitext(filename)
+                    m = re.search(r"(\d{8}_\d{2})", stem)
+                    if m:
+                        date_hour = m.group(1)# "20250401_12"
+                    else:
+                        logger.error(f"Could not find YYYYMMDD_HH pattern in filename {filename}, using full stem")
+                    
+                    output_path = os.path.join(post_dir, f"{date_hour}.csv")
+                    df.to_csv(output_path, index=False)
+                    logger.info(f"Saved corrected CSV to: {corrected_path}")
+
+                    
+                    # mark it
+                    with open(processed_list_path, "a", encoding="utf-8") as f:
+                        f.write(csv_path_abs + "\n")
+
 
 
             elif sufix_string == "SONOMETRO":
                 logger.info(f"Processing SONOMETRO data")
-                pass
             
+
+
             else:
                 logger.error(f"suffix is wrong {sufix_string}")                
-            ###################################################################
-            ###################################################################
-            
 
 
+            ###################################################################
+            ###################################################################
             logger.info("")
-            if TENERIFE_TIMEZONE:
-                df['datetime'] = pd.to_datetime(df['datetime']) - pd.Timedelta(hours=1)
-                logger.info(f"Time zone was set to Tenerife")
-
-
             try:
                 if df is not None:
                     logger.info("")
@@ -188,12 +204,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
             try:
                 logger.info("")
-                # if df is not None:
-                    # drop the beginning and ending of the measurement (15min)
-                    # df = df.loc[start_date + pd.Timedelta(REMOVE_START_TIME, unit='seconds'):end_date - pd.Timedelta(REMOVE_END_TIME, unit='seconds')]
-                    # logger.info(f"SPL df was trimmed, {REMOVE_START_TIME} secs from the beggining and {REMOVE_END_TIME} secs from the end")
-                    # print(df)
-                
                 # add indicators column
                 if df is not None:
                     logger.info(f"Adding indicators column")
@@ -227,7 +237,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                         cols_to_clear.append("NoisePort_Level_1")
                     # keep row
                     df.loc[~mask, cols_to_clear] = pd.NA
-
                 else:
                     logger.warning("Prediction_1 or Prob_1 column not found in df")
 
@@ -237,11 +246,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
             ################################################################
-            ################################################################
+            # TRANSFORMING 1 SECOND DATA TO 1 HOUR DATA
+            ##################################################################
             try:
-                ################################################################
-                # TRANSFORMING 1 SECOND DATA TO 1 HOUR DATA
-                ##################################################################
                 logger.info("")
                 logger.info(f"MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA")
                 # remove the last part of the folder_output_dir
@@ -252,7 +259,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 ia_visualization_folder = os.path.join(folder_output_dir_1h, 'AI_ALARMS')
                 os.makedirs(ia_visualization_folder, exist_ok=True)
 
-
                 logger.info("")
                 logger.info(f"Transforming 1 second data to 1 hour data")
                 df_1h = df.resample("2h").apply(agg_hour)
@@ -260,23 +266,14 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 df_1h = df_1h.round(1)
 
 
-                try:
-                    logger.info(f"Adding oca column")
-                    df_1h["hour"] = df_1h["datetime"].dt.hour
-                    df_1h["weekday"] = df_1h["datetime"].dt.weekday
-                    logger.info("Adding indicators / night / oca to 2H dataframe")
+                logger.info(f"Adding oca column")
+                df_1h["hour"] = df_1h["datetime"].dt.hour
+                df_1h["weekday"] = df_1h["datetime"].dt.weekday
+                logger.info("Adding indicators / night / oca to 2H dataframe")
 
-                    df_1h["indicador_str"] = df_1h["hour"].apply(evaluation_period_str)
-                    df_1h["night_str"] = df_1h.apply(lambda x: add_night_column(x["hour"], x["weekday"]), axis=1)
-                    df_1h["oca"] = df_1h["hour"].apply(lambda h: db_limit(h, **oca_limits))
-                except Exception as e:
-                    logger.error(f"An error occurred while adding indicators and nights columns and oca column: {e}")
-
-
-                #####
-                #ssave
-                # df_1h.to_csv(df_1h_csv_path, index=False)
-                # logger.info(f"Saved 1 hour dataframe to {df_1h_csv_path}")
+                df_1h["indicador_str"] = df_1h["hour"].apply(evaluation_period_str)
+                df_1h["night_str"] = df_1h.apply(lambda x: add_night_column(x["hour"], x["weekday"]), axis=1)
+                df_1h["oca"] = df_1h["hour"].apply(lambda h: db_limit(h, **oca_limits))
 
             except Exception as e:
                 logger.error(f"An error occurred while transforming 1 second data to 1 hour data: {e}")

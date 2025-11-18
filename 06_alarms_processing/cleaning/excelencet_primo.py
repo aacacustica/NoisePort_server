@@ -1,3 +1,9 @@
+def tenerife_hour():
+    if TENERIFE_TIMEZONE:
+        df['datetime'] = pd.to_datetime(df['datetime']) - pd.Timedelta(hours=1)
+        logger.info(f"Time zone was set to Tenerife")
+
+
 def slm_dic():
     logger.info("")    
     logger.info(f"Creating slm_dict")    
