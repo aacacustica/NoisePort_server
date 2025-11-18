@@ -33,35 +33,53 @@ def arg_parser():
                         help='Urban taxonomy')
     parser.add_argument('--port', action='store_true', 
                         help='Port taxonomy')
+    parser.add_argument('--point', type=str, required=False, 
+    help='Only process this point (e.g. P5_TEST). If omitted, process all points.')
     return parser.parse_args()
 
 
 
-def collect_folders(input_folder,label_source_type, logger):
+def collect_folders(input_folder,label_source_type, logger,point_filter=None):
     folders = []
 
     if label_source_type == "raspberry":
-        logger.info("Searching for RASPBERRY")
+        logger.info("Searching for RASPBERRY merged folders")
         for root, dirs, _ in os.walk(input_folder):
+            if point_filter is not None:
+                parts = root.split(os.sep)
+                if point_filter not in parts:
+                    continue
+
             if config_vi.MERGED_FOLDER in dirs:
                 path = os.path.join(root, config_vi.MERGED_FOLDER)
                 folders.append(path)
+                logger.info(f"Found raspberry merged folder: {path}")
 
-
-    if label_source_type == "audiomoth":
-        logger.info("Searching for RASPBERRY")
+    elif label_source_type == "audiomoth":
+        logger.info("Searching for AUDIOMOTH folders")
         for root, dirs, _ in os.walk(input_folder):
+            if point_filter is not None:
+                parts = root.split(os.sep)
+                if point_filter not in parts:
+                    continue
+
             if "AUDIOMOTH" in dirs:
                 path = os.path.join(root, "AUDIOMOTH")
                 folders.append(path)
+                logger.info(f"Found audiomoth folder: {path}")
 
-
-    if label_source_type == "sonometer":
-        logger.info("Searching for RASPBERRY")
+    elif label_source_type == "sonometro":
+        logger.info("Searching for SONOMETER folders")
         for root, dirs, _ in os.walk(input_folder):
+            if point_filter is not None:
+                parts = root.split(os.sep)
+                if point_filter not in parts:
+                    continue
+
             if "SONOMETER" in dirs:
                 path = os.path.join(root, "SONOMETER")
                 folders.append(path)
+                logger.info(f"Found sonometer folder: {path}")
 
     return folders
 
@@ -85,7 +103,7 @@ def resolve_oca_type(oca_type):
 def main():
     """
     execution
-        python3 -m 06_alarms_processing.main -f "\192.168.205.120\Contenedores\5-Resultados\P5_TEST" --raspbery --port
+        python3 -m 06_alarms_processing.main -f "\192.168.205.120\Contenedores\5-Resultados\" --raspbery --port (--point P5_TEST)
     """
     try:
         logger = setup_logging()
@@ -116,7 +134,7 @@ def main():
             logger.info(f"Processing {label_source_type} data")
 
             ############################
-            folders = collect_folders(input_folder, label_source_type,logger)
+            folders = collect_folders(input_folder, label_source_type,logger,point_filter=args.point)
 
             logger.info(f"Using percentiles {args.percentiles}")
             logger.info(f"Aggregation period {args.agg_period}")

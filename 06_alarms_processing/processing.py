@@ -27,8 +27,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
         logger.info("")
         logger.info(f"Suffix string: {sufix_string}")
 
+
         ###################
-        # making the processed files txt to avoind repeting processing 
+        # PROCESSED FILE 
         ###################
         processed_list_path = os.path.join(folder,f"processed_csv_{sufix_string}_{stable_version}.txt")
         logger.info(f"Processed list file path: {processed_list_path}")
@@ -38,7 +39,10 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
         else:
             processed_csvs = set()
 
+
+
         ###################
+        # YAMNET COLUMNS
         ###################
         yamnet_df = yamnet_csv[[
             # "mid",
@@ -51,6 +55,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
         ]]
 
 
+
         #############################
         ## GETTING THE DATAFRAME ###
         #############################
@@ -59,7 +64,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info(f"Processing folder {folder}") 
             logger.info(f"Getting the data from the dataframes")
             
-            
+            ############
+            # RASPBERRY
+            ############
             if sufix_string == "raspberry":
                 logger.info("") 
                 logger.info("Processing RASPBERRY data")
@@ -160,213 +167,237 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     else:
                         logger.error(f"Could not find YYYYMMDD_HH pattern in filename {filename}, using full stem")
                     
-                    output_path = os.path.join(post_dir, f"{date_hour}.csv")
+
+                    output_path = os.path.join(post_dir, f"{date_hour}_postpo.csv")
                     df.to_csv(output_path, index=False)
                     logger.info(f"Saved corrected CSV to: {output_path}")
 
                     
                     # mark it
-                    with open(processed_list_path, "a", encoding="utf-8") as f:
-                        f.write(csv_path_abs + "\n")
+                    # with open(processed_list_path, "a", encoding="utf-8") as f:
+                    #     f.write(csv_path_abs + "\n")
+                
+
+
+                    ###################################################################
+                    ###################################################################
+                    logger.info("")
+                    try:
+                        if df is not None:
+                            logger.info("")
+                            # add datetime columns, sort by datetime and set datetime as index
+                            logger.info(f"Adding datetime columns, sorting by datetime and setting datetime as index")
+                            df = add_datetime_columns(df,logger, date_col='datetime')
+                            df = df.sort_values('datetime')
+                            df.set_index('datetime', inplace=True, drop=False)
+                            start_date = df.index[0]
+                            end_date = df.index[-1]
+
+                            logger.info(f"Start date {start_date} and end date {end_date}")
+                            logger.info(f"df was sorted by datetime and datetime was set as index")
+                        else:
+                            logger.warning(f"df is None")
+                            continue
+                    except Exception as e:
+                        logger.error(f"An error occurred while adding datetime columns: {e}")
 
 
 
-            elif sufix_string == "SONOMETRO":
-                logger.info(f"Processing SONOMETRO data")
+                    try:
+                        logger.info("")
+                        # add indicators column
+                        if df is not None:
+                            logger.info(f"Adding indicators column")
+                            df['indicador_str'] = df.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
+                        
+                        # add nights column
+                        if df is not None:
+                            logger.info(f"Adding nights column")
+                            df['night_str'] = df.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
+
+
+                        # add oca column
+                        logger.info(f"Adding oca column")
+                        logger.info(f"OCA Limits --> {oca_limits}")
+                        if df is not None:
+                            df['oca'] = df['hour'].apply(lambda h: db_limit(h, **oca_limits))
+
+                    except Exception as e:
+                        logger.error(f"An error occurred while adding indicators and nights columns and oca column: {e}")
+
+
+                        
+
+                    try:
+                        logger.info("")
+                        logger.info("FILTERING PREDICTIONS")
+                        if "Prediction_1" in df.columns and "Prob_1" in df.columns:
+                            mask = df["Prob_1"] >= PROBABILITY_THRESHOLD
+                            cols_to_clear = ["Prediction_1", "Prob_1"]
+                            if "NoisePort_Level_1" in df.columns:
+                                cols_to_clear.append("NoisePort_Level_1")
+                            # keep row
+                            df.loc[~mask, cols_to_clear] = pd.NA
+                        else:
+                            logger.warning("Prediction_1 or Prob_1 column not found in df")
+
+                    except Exception as e:
+                        logger.error(f"An error occurred while processing predictions in folder {folder}: {e}")
+
+
+
+                    ################################################################
+                    # TRANSFORMING 1 SECOND DATA TO 1 HOUR DATA
+                    ##################################################################
+                    try:
+                        logger.info("")
+                        logger.info(f"MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA")
+                        # remove the last part of the folder_output_dir
+                        folder_output_dir_for_alarms = folder.replace('SPL', 'Graphics_ALARMS')
+                        folder_output_dir_1h = os.path.dirname(folder_output_dir_for_alarms)
+                        os.makedirs(folder_output_dir_1h, exist_ok=True)
+
+                        ia_visualization_folder = os.path.join(folder_output_dir_1h, 'AI_ALARMS')
+                        os.makedirs(ia_visualization_folder, exist_ok=True)
+                        logger.info(f"folder_output_dir_1h: {folder_output_dir_1h}")
+                        logger.info(f"ia_visualization_folder: {ia_visualization_folder}")
+
+                        point_name = os.path.basename(os.path.dirname(folder_output_dir_1h))
+                        logger.info(f"Point name detected: {point_name}")
+
+
+                        logger.info("")
+                        logger.info(f"Transforming 1 second data to 1 hour data")
+                        df_1h = df.resample("1h").apply(agg_hour)
+                        df_1h = df_1h.reset_index()
+                        df_1h = df_1h.round(1)
+
+
+                        logger.info(f"")
+                        logger.info(f"Adding oca column")
+                        df_1h["hour"] = df_1h["datetime"].dt.hour
+                        df_1h["weekday"] = df_1h["datetime"].dt.weekday
+                        logger.info("Adding indicators / night / oca to 2H dataframe")
+
+                        df_1h["indicador_str"] = df_1h["hour"].apply(evaluation_period_str)
+                        df_1h["night_str"] = df_1h.apply(lambda x: add_night_column(x["hour"], x["weekday"]), axis=1)
+                        df_1h["oca"] = df_1h["hour"].apply(lambda h: db_limit(h, **oca_limits))
+
+                    except Exception as e:
+                        logger.error(f"An error occurred while transforming 1 second data to 1 hour data: {e}")
+                        continue
+
+
+                    ###################################
+                    ###################################
+                    logger.info("")
+                    logger.info(f"CREATING THE CSV ALARMS!!!")
+                    df_alarms_1h = df_1h.copy()
+
+
+                    #OCA alarm
+                    logger.info("[1] Computing OCA alarm columns")
+                    df_alarms_1h = oca_alarm(df_alarms_1h, logger=logger)
+
+                    #LMAX alarm
+                    logger.info("[2] Computing LMAX alarm columns")
+                    df_alarms_1h = lmax_alarm(df_alarms_1h, logger=logger, threshold=95)
+
+                    #LC-LA alarm
+                    logger.info("[3] Computing LC-LA alarm columns")
+                    df_alarms_1h = LC_LA_alarm(df_alarms_1h, logger=logger,threshold_norma=10, threshold_dB=3)
+
+                    #L90 dynamic alarm
+                    logger.info("[4] Computing dynamic L90 alarm columns")
+                    df_alarms_1h = l90_alarm_dynamic(df_alarms_1h, logger=logger, threshold_dB=5)
+
+                    #freq composition
+                    logger.info("[5] Computing frequency composition alarms")
+                    df_alarms_1h = frequency_composition(df_1h,df_alarms_1h,logger=logger,threshold_comp=5)
+
+                    #tonal frequ
+                    logger.info("[6] Computing tonal frequency alarms")
+                    df_alarms_1h = tonal_frequency(df_1h,df_alarms_1h,folder_output_dir_1h,logger,plotname=folder)
+
+
+
+                    ################################################################
+                    # PEAK ANALYSIS
+                    ##################################################################
+                    if PLOTTING_ALARMS:
+                        logger.info("")
+                        logger.info(f"PLOTTING PEAKS!!!")
+
+                        logger.info(f"[8] Plotting peak heatmap for folder {folder}")
+                        plot_peak_distribution_heatmap(df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
+
+
+                        logger.info(f"[9] Plotting peak distribution for folder {folder}")
+                        plot_peak_distribution(df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
+
+
+                        logger.info(f"[10] Plotting density distribution for folder {folder}")
+                        plot_density_distribution_peaks(df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
+
+
+
+                        #####################################################
+                        # PLOTTING PREDICTION SECTION
+                        #####################################################
+                        logger.info("")
+                        logger.info(f"PLOTTING PREDICTION !!!")
+
+                        logger.info(f"[11] Plotting PLOT_PREDIC_LAEQ for folder {folder}")
+                        plot_predic_peak_laeq_mean(df_alarms_1h, ia_visualization_folder, logger, plotname=folder)
+
+
+                        logger.info(f"[12] Plotting box plot prediction for folder {folder}")
+                        plot_box_plot_prediction(df_alarms_1h, ia_visualization_folder, logger, plotname=folder)
+
+
+                        logger.info(f"[13] Plotting heatmap prediction for folder {folder}")
+                        plot_heat_map_prediction(df_alarms_1h, ia_visualization_folder, logger, plotname=folder)
+                    else:
+                        logger.info("Not plotting alarms.")
+
+
+                    ################################
+                    ################################
+                    ################################
+                    # SAVING THE ALARMS CSV FILE
+                    logger.info("")
+                    logger.info(f"SAVING THE ALARMS CSV FILE")
+                    try:
+                        alarms_csv_path = os.path.join(folder_output_dir_1h, f"{point_name}_alarms.csv")
+                        write_header = not os.path.exists(alarms_csv_path)
+                        df_alarms_1h.to_csv(alarms_csv_path,mode="a" if not write_header else "w",header=write_header,index=False)
+                        logger.info(f"Saved or update alarms dataframe to {alarms_csv_path}")
+
+                    except Exception as e:
+                        logger.error(f"An error occurred while saving the alarms dataframe: {e}")
+                        continue
+
+            
+            ###############
+            # SONOMETER
+            ###############
+            elif sufix_string == "SONOMETER":
+               logger.info(f"Processing SONOMETER data")
+            
+            
+            ###############
+            # SONOMETER
+            ###############
+            elif sufix_string == "AUDIOMOTH":
+               logger.info(f"Processing AUDIOMOTH data")
             
 
-
+            ###############
+            # ERROR
+            ###############
             else:
-                logger.error(f"suffix is wrong {sufix_string}")                
+                logger.error(f"suffix is wrong {sufix_string}")  
 
-
-            ###################################################################
-            ###################################################################
-            logger.info("")
-            try:
-                if df is not None:
-                    logger.info("")
-                    # add datetime columns, sort by datetime and set datetime as index
-                    logger.info(f"FOR SPL FILE: Adding datetime columns, sorting by datetime and setting datetime as index")
-                    df = add_datetime_columns(df,logger, date_col='datetime')
-                    df = df.sort_values('datetime')
-                    df.set_index('datetime', inplace=True, drop=False)
-                    start_date = df.index[0]
-                    end_date = df.index[-1]
-
-                    logger.info(f"Start date {start_date} and end date {end_date}")
-                    logger.info(f"df was sorted by datetime and datetime was set as index")
-                else:
-                    logger.warning(f"df is None")
-                    continue
-            except Exception as e:
-                logger.error(f"An error occurred while adding datetime columns: {e}")
-
-
-
-            try:
-                logger.info("")
-                # add indicators column
-                if df is not None:
-                    logger.info(f"Adding indicators column")
-                    df['indicador_str'] = df.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
-                
-                # add nights column
-                if df is not None:
-                    logger.info(f"Adding nights column")
-                    df['night_str'] = df.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
-
-
-                # add oca column
-                logger.info(f"Adding oca column")
-                logger.info(f"OCA Limits --> {oca_limits}")
-                if df is not None:
-                    df['oca'] = df['hour'].apply(lambda h: db_limit(h, **oca_limits))
-
-            except Exception as e:
-                logger.error(f"An error occurred while adding indicators and nights columns and oca column: {e}")
-
-
-                
-
-            try:
-                logger.info("")
-                logger.info("FILTERING PREDICTIONS")
-                if "Prediction_1" in df.columns and "Prob_1" in df.columns:
-                    mask = df["Prob_1"] >= PROBABILITY_THRESHOLD
-                    cols_to_clear = ["Prediction_1", "Prob_1"]
-                    if "NoisePort_Level_1" in df.columns:
-                        cols_to_clear.append("NoisePort_Level_1")
-                    # keep row
-                    df.loc[~mask, cols_to_clear] = pd.NA
-                else:
-                    logger.warning("Prediction_1 or Prob_1 column not found in df")
-
-            except Exception as e:
-                logger.error(f"An error occurred while processing predictions in folder {folder}: {e}")
-
-
-
-            ################################################################
-            # TRANSFORMING 1 SECOND DATA TO 1 HOUR DATA
-            ##################################################################
-            try:
-                logger.info("")
-                logger.info(f"MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA")
-                # remove the last part of the folder_output_dir
-                folder_output_dir_for_alarms = folder.replace('SPL', 'Graphics_ALARMS')
-                folder_output_dir_1h = os.path.dirname(folder_output_dir_for_alarms)
-                os.makedirs(folder_output_dir_1h, exist_ok=True)
-
-                ia_visualization_folder = os.path.join(folder_output_dir_1h, 'AI_ALARMS')
-                os.makedirs(ia_visualization_folder, exist_ok=True)
-
-                logger.info("")
-                logger.info(f"Transforming 1 second data to 1 hour data")
-                df_1h = df.resample("2h").apply(agg_hour)
-                df_1h = df_1h.reset_index()
-                df_1h = df_1h.round(1)
-
-
-                logger.info(f"Adding oca column")
-                df_1h["hour"] = df_1h["datetime"].dt.hour
-                df_1h["weekday"] = df_1h["datetime"].dt.weekday
-                logger.info("Adding indicators / night / oca to 2H dataframe")
-
-                df_1h["indicador_str"] = df_1h["hour"].apply(evaluation_period_str)
-                df_1h["night_str"] = df_1h.apply(lambda x: add_night_column(x["hour"], x["weekday"]), axis=1)
-                df_1h["oca"] = df_1h["hour"].apply(lambda h: db_limit(h, **oca_limits))
-
-            except Exception as e:
-                logger.error(f"An error occurred while transforming 1 second data to 1 hour data: {e}")
-                continue
-
-
-            ###################################
-            ###################################
-            logger.info("")
-            logger.info(f"PLOTTING ALARMS!!!")
-            df_alarms_1h = df_1h.copy()
-
-
-            #OCA alarm
-            logger.info("[1] Computing OCA alarm columns")
-            df_alarms_1h = oca_alarm(df_alarms_1h, logger=logger)
-
-            #LMAX alarm
-            logger.info("[2] Computing LMAX alarm columns")
-            df_alarms_1h = lmax_alarm(df_alarms_1h, logger=logger, threshold=95)
-
-            #LC-LA alarm
-            logger.info("[3] Computing LC-LA alarm columns")
-            df_alarms_1h = LC_LA_alarm(df_alarms_1h, logger=logger,threshold_norma=10, threshold_dB=3)
-
-            #L90 dynamic alarm
-            logger.info("[4] Computing dynamic L90 alarm columns")
-            df_alarms_1h = l90_alarm_dynamic(df_alarms_1h, logger=logger, threshold_dB=5)
-
-            #freq composition
-            logger.info("[5] Computing frequency composition alarms")
-            df_alarms_1h = frequency_composition(df_1h,df_alarms_1h,logger=logger,threshold_comp=5)
-
-            #tonal frequ
-            logger.info("[6] Computing tonal frequency alarms")
-            df_alarms_1h = tonal_frequency(df_1h,df_alarms_1h,folder_output_dir_1h,logger,plotname=folder)
-
-
-
-            ################################################################
-            # PEAK ANALYSIS
-            ##################################################################
-            logger.info("")
-            logger.info(f"PEAKS PLOTTING!!!")
-
-            logger.info(f"[8] Plotting peak heatmap for folder {folder}")
-            plot_peak_distribution_heatmap(df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
-
-
-            logger.info(f"[9] Plotting peak distribution for folder {folder}")
-            plot_peak_distribution(df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
-
-
-            logger.info(f"[10] Plotting density distribution for folder {folder}")
-            plot_density_distribution_peaks(df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
-
-
-
-            # #####################################################
-            # PLOTTING PREDICTION SECTION
-            # #####################################################
-            logger.info("")
-            logger.info(f"PREDICTION PLOTTING!!!")
-
-            logger.info(f"[11] Plotting PLOT_PREDIC_LAEQ for folder {folder}")
-            plot_predic_peak_laeq_mean(df_alarms_1h, ia_visualization_folder, logger, plotname=folder)
-
-
-            logger.info(f"[12] Plotting box plot prediction for folder {folder}")
-            plot_box_plot_prediction(df_alarms_1h, ia_visualization_folder, logger, plotname=folder)
-
-
-            logger.info(f"[13] Plotting heatmap prediction for folder {folder}")
-            plot_heat_map_prediction(df_alarms_1h, ia_visualization_folder, logger, plotname=folder)
-
-
-
-            ################################
-            ################################
-            ################################
-            # SAVING THE ALARMS CSV FILE
-            logger.info("")
-            logger.info(f"SAVING THE ALARMS CSV FILE")
-            try:
-                alarms_csv_path = os.path.join(folder_output_dir_1h, f"{actual_folder_name}_full_alarms.csv")
-                df_alarms_1h.to_csv(alarms_csv_path, index=False)
-                logger.info(f"Saved alarms dataframe to {alarms_csv_path}")
-
-            except Exception as e:
-                logger.error(f"An error occurred while saving the alarms dataframe: {e}")
-                continue
 
 
         except Exception as e:
