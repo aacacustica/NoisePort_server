@@ -31,6 +31,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
         # making the processed files txt to avoind repeting processing 
         ###################
         processed_list_path = os.path.join(folder,f"processed_csv_{sufix_string}_{stable_version}.txt")
+        logger.info(f"Processed list file path: {processed_list_path}")
         if os.path.exists(processed_list_path):
             with open(processed_list_path, "r", encoding="utf-8") as f:
                 processed_csvs = {line.strip() for line in f if line.strip()}
@@ -60,6 +61,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             
             
             if sufix_string == "raspberry":
+                logger.info("") 
                 logger.info("Processing RASPBERRY data")
                 csv_files = [f for f in os.listdir(folder) if f.lower().endswith(".csv")]
                 csv_paths = [os.path.join(folder, f) for f in csv_files]
@@ -160,7 +162,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     
                     output_path = os.path.join(post_dir, f"{date_hour}.csv")
                     df.to_csv(output_path, index=False)
-                    logger.info(f"Saved corrected CSV to: {corrected_path}")
+                    logger.info(f"Saved corrected CSV to: {output_path}")
 
                     
                     # mark it
