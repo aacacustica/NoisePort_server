@@ -194,6 +194,7 @@ def send_mqtt_data(data, logger):
         client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     except:
         client = mqtt.Client()
+    
     if DEMO:
         # ensure port is an integer 
         port = int(MQTT_PORT_DEMO)
@@ -748,14 +749,14 @@ def main():
                     
                     logger.info("Starting WAV FILES processing")
                     end_time = 0 
-                    wav_processing(folder_days_wavs,folder,db,logger, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)
+                    #wav_processing(folder_days_wavs,folder,db,logger, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)
                     print(" --- %s seconds in execution ---" %end_time)  
         
                 if folder == 'sonometer_files' and SONOMETER_QUERY_SWITCH:  
                     
                     logger.info("Starting SONOMETER FOLDER processing")
                     end_time =0
-                    sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed_folder_sonometer_txt)
+                    #sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed_folder_sonometer_txt)
                     print(" --- %s seconds in execution ---" %end_time)
             
                 print(" --- %s seconds in total execution ---" % round(time.time() - whole_start_time,2))

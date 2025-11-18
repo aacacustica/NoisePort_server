@@ -564,10 +564,10 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
             logger.error(f"[Acoustics] Error concatenating CSV files: {e}")
             continue
 
-        try:           
+        try:            
             
             # ------------------------------------
-            # 4-ordering by timestamp, selecting columns,truncate first minute if not  = 00 and turning the result into a csv so we can use it
+            # 4-ordering by timestamp, selecting columns,truncate first minute if not = 00 and turning the result into a csv so we can use it
             # ------------------------------------
 
             df_day = df_day.sort_values(by=["Timestamp"])
@@ -577,23 +577,57 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
             # Truncar los minutos iniciales incompletos
             # -------------------------------
             if not df_day.empty:
-                # Asegurarse de que 'Timestamp' sea datetime
+                logger.info("[Acoustics] Converting 'Timestamp' to datetime and handling timezone.")
+                
+                # 1. Convertir a datetime (esto es lo que puede crear datetimes tz-aware)
                 df_day['Timestamp'] = pd.to_datetime(df_day['Timestamp'], errors='coerce')
+                
+                # 2. 🔥 CLAVE: NAIVIZAR DE FORMA SEGURA
+                
+                # Intentamos la naivización usando el accesor .dt de Pandas.
+                try:
+                    # Si la columna ya es datetime y tiene TZ, la naivizamos.
+                    if df_day['Timestamp'].dt.tz is not None:
+                        logger.warning("[Acoustics] Timestamp column is tz-aware. Naivizing using tz_localize(None).")
+                        # Esta línea es la que necesitamos para quitar la TZ sin cambiar la hora.
+                        df_day['Timestamp'] = df_day['Timestamp'].dt.tz_localize(None)
+                except AttributeError:
+                    # Si falla al acceder a .dt (porque es una Serie 'object' mezclada)
+                    # o si el paso anterior no fue suficiente, naivizamos usando una función lambda
+                    # que maneja los objetos datetime individuales de Python.
+                    logger.warning("[Acoustics] Direct naivization failed. Applying lambda to strip timezone from elements.")
+                    
+                    def strip_tz(ts):
+                        # Solo si es un objeto datetime y es tz-aware, quitamos la TZ.
+                        if isinstance(ts, pd.Timestamp) and ts.tz is not None:
+                            return ts.tz_localize(None)
+                        return ts
 
-                # Crear máscara: True donde el segundo es 0
+                    df_day['Timestamp'] = df_day['Timestamp'].apply(strip_tz)
+
+                # 3. Forzar el tipo final para asegurar que .dt.second funcione
+                # Ya que hemos quitado la TZ, este .astype no debería fallar con ValueError.
+                df_day['Timestamp'] = df_day['Timestamp'].astype('datetime64[ns]')
+                
+                # 4. La lógica de truncado, que ahora es segura
                 mask_sec0 = df_day['Timestamp'].dt.second == 0
-                if mask_sec0.any():  # si hay algún segundo = 0
-                    first_sec0_idx = mask_sec0.idxmax()  # obtiene el índice de la primera fila con segundo = 0
-                    df_day = df_day.loc[first_sec0_idx:]  # truncar hasta esa fila inclusive
+                
+                if mask_sec0.any():
+                    first_sec0_idx = mask_sec0.idxmax()
+                    df_day = df_day.loc[first_sec0_idx:]
+                    logger.info("[Acoustics] Truncated leading incomplete minute.")
                 else:
-                    # Si no hay ninguna fila con segundo=0, opcionalmente vaciar todo
                     df_day = df_day.iloc[0:0]
-
-            csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
-            logger.info("[Acoustics] Concatenated CSV file path: %s", csv_concat_path)
-
+                    logger.warning("[Acoustics] No records starting at second :00 found. DataFrame truncated to empty.")
+                
+            
             columns = ["LA", "LC", "LZ", "LAmax", "LAmin"] + THIRD_OCTAVES_SECOND_FORMAT + [
-                        "Timestamp","Filename","Unixtimestamp","id_micro"]
+                                "Timestamp","Filename","Unixtimestamp","id_micro"]
+            csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
+            
+            # 5. Limpiar NaT y formatear antes de guardar
+            df_day = df_day.dropna(subset=['Timestamp'])
+            df_day['Timestamp'] = df_day['Timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
             df_day = df_day[columns]
             df_day.to_csv(csv_concat_path, index=False)
@@ -745,14 +779,20 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
             df_day['probability1'],df_day['probability2'],df_day['probability3'] = zip(*list(df_day['probability'].values))
 
 
+            # -------------------------------
+            # Truncar los minutos iniciales incompletos
+            # -------------------------------
             if not df_day.empty:
-                df_day['Timestamp'] = pd.to_datetime(df_day['Timestamp'],errors='coerce')
+                # Asegurarse de que 'Timestamp' sea datetime
+                df_day['Timestamp'] = pd.to_datetime(df_day['Timestamp'], errors='coerce')
 
+                # Crear máscara: True donde el segundo es 0
                 mask_sec0 = df_day['Timestamp'].dt.second == 0
-                if mask_sec0.any():
-                    first_sec0_idx = mask_sec0.idxmax()
-                    df_day = df_day.loc[first_sec0_idx:]
+                if mask_sec0.any():  # si hay algún segundo = 0
+                    first_sec0_idx = mask_sec0.idxmax()  # obtiene el índice de la primera fila con segundo = 0
+                    df_day = df_day.loc[first_sec0_idx:]  # truncar hasta esa fila inclusive
                 else:
+                    # Si no hay ninguna fila con segundo=0, opcionalmente vaciar todo
                     df_day = df_day.iloc[0:0]
 
 
