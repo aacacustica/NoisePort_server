@@ -567,20 +567,36 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
         try:           
             
             # ------------------------------------
-            # 4-ordering by timestamp, selecting columns, and turning the result into a csv so we can use it
+            # 4-ordering by timestamp, selecting columns,truncate first minute if not  = 00 and turning the result into a csv so we can use it
             # ------------------------------------
 
             df_day = df_day.sort_values(by=["Timestamp"])
             df_day["LA"] = df_day["LA"].round(1)
+
+            # -------------------------------
+            # Truncar los minutos iniciales incompletos
+            # -------------------------------
+            if not df_day.empty:
+                # Asegurarse de que 'Timestamp' sea datetime
+                df_day['Timestamp'] = pd.to_datetime(df_day['Timestamp'], errors='coerce')
+
+                # Crear máscara: True donde el segundo es 0
+                mask_sec0 = df_day['Timestamp'].dt.second == 0
+                if mask_sec0.any():  # si hay algún segundo = 0
+                    first_sec0_idx = mask_sec0.idxmax()  # obtiene el índice de la primera fila con segundo = 0
+                    df_day = df_day.loc[first_sec0_idx:]  # truncar hasta esa fila inclusive
+                else:
+                    # Si no hay ninguna fila con segundo=0, opcionalmente vaciar todo
+                    df_day = df_day.iloc[0:0]
 
             csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
             logger.info("[Acoustics] Concatenated CSV file path: %s", csv_concat_path)
 
             columns = ["LA", "LC", "LZ", "LAmax", "LAmin"] + THIRD_OCTAVES_SECOND_FORMAT + [
                         "Timestamp","Filename","Unixtimestamp","id_micro"]
-            
+
             df_day = df_day[columns]
-            df_day.to_csv(os.path.join(query_folder, f"{day_str}.csv"), index=False)
+            df_day.to_csv(csv_concat_path, index=False)
             logger.info("[Acoustics] Concatenated CSV files, saved as: %s", csv_concat_path)
         
         except Exception as e:
@@ -727,7 +743,19 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
             df_day = df_day.sort_values(by=["Timestamp"])
             df_day["prediction1"],df_day["prediction2"],df_day["prediction3"] = zip(*list(df_day['class'].values))
             df_day['probability1'],df_day['probability2'],df_day['probability3'] = zip(*list(df_day['probability'].values))
-            
+
+
+            if not df_day.empty:
+                df_day['Timestamp'] = pd.to_datetime(df_day['Timestamp'],errors='coerce')
+
+                mask_sec0 = df_day['Timestamp'].dt.second == 0
+                if mask_sec0.any():
+                    first_sec0_idx = mask_sec0.idxmax()
+                    df_day = df_day.loc[first_sec0_idx:]
+                else:
+                    df_day = df_day.iloc[0:0]
+
+
             df_out = df_day.rename(columns={
                 'prediction1': 'Prediction_1',
                 'prediction2': 'Prediction_2',
@@ -740,9 +768,7 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
             cols = ['Prediction_1','Prediction_2','Prediction_3',
                     'Prob_1','Prob_2','Prob_3',
                     'Filename','Timestamp']
-
             df_out = df_out[cols]
-            
             csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
             logger.info("[Predictions] Concatenated CSV file path: %s", csv_concat_path)
             df_out.to_csv(csv_concat_path, index=False)
