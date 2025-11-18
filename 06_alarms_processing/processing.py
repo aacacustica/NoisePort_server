@@ -320,7 +320,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             ##################################################################
             logger.info("")
             logger.info(f"PEAKS PLOTTING!!!")
-            
 
             logger.info(f"[8] Plotting peak heatmap for folder {folder}")
             plot_peak_distribution_heatmap(df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
@@ -338,6 +337,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             # #####################################################
             # PLOTTING PREDICTION SECTION
             # #####################################################
+            logger.info("")
+            logger.info(f"PREDICTION PLOTTING!!!")
+
             logger.info(f"[11] Plotting PLOT_PREDIC_LAEQ for folder {folder}")
             plot_predic_peak_laeq_mean(df_alarms_1h, ia_visualization_folder, logger, plotname=folder)
 
