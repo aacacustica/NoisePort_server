@@ -736,12 +736,14 @@ def main():
                 if folder == 'acoustic_params'  and ACOUSTIC_QUERY_SWITCH:
                     
                     logger.info("Starting ACOUSTIC processing")
+                    end_time = 0
                     end_time = acoustic_processing(folder_days_acoustics_predictions,folder,db,logger, all_info, query_acoustic_folder, processed_wavs, processed_folder_acoustic_txt)
                     print(" --- %s seconds in execution ---" %end_time)                      
                 
                 if folder == 'predictions_litle' and PREDICT_QUERY_SWITCH:
                     
                     logger.info("Starting PREDICTIONS processing")
+                    end_time = 0
                     end_time = prediction_processing(folder_days_acoustics_predictions,folder,db,logger, all_info, query_pred_folder, processed_wavs, processed_folder_predictions_txt)
                     print(" --- %s seconds in execution ---" %end_time)  
                 

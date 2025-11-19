@@ -2,8 +2,19 @@
 #  FOLDERS
 # ----------------------------------------
 
-MEDIDAS_FOLDER = "3-Medidas"
-RESULTADOS_FOLDER = "5-Resultados"
+MEDIDAS_FOLDER = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/3-Medidas/"
+RESULTADOS_FOLDER = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/5-Resultados/"
+
+# ----------------------------------------
+#  SUBFOLDERS
+# ----------------------------------------
+
+ACOUSTICS_QUERY = "acoustic_params_query"
+PEAKS_QUERY = "peaks_query"
+WAV_FILES_QUERY = "wav_files_query"
+PREDICTIONS_QUERY = "predictions_litle_query"
+MERGED_QUERY = "merged_csv_query"
+
 
 # ----------------------------------------
 #  SANDISK PATH
