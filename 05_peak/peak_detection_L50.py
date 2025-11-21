@@ -33,7 +33,7 @@ def leq(levels):
 
 
 def get_hourly_folders():
-    
+
     hour_path_acoustics = []
     hour_path_predictions = []
     hour_path_peaks = []
@@ -51,10 +51,10 @@ def get_hourly_folders():
             if not os.path.exists(peaks_params_query): os.makedirs(peaks_params_query)
 
             for file in os.listdir(acoustic_params_query):
-                if file.endswith('.csv'):
+                if file.endswith('.csv') and 'fixed' in file:
                     hour_path_acoustics.append(os.path.join(acoustic_params_query,file))        
             for file in os.listdir(predictions_params_query):
-                if file.endswith('.csv'):
+                if file.endswith('.csv') and 'fixed' in file:
                     hour_path_predictions.append(os.path.join(predictions_params_query,file))
             for file in os.listdir(peaks_params_query):
                 if file.endswith('.csv'):
@@ -72,12 +72,19 @@ def merge_peaks(df_pk: pd.DataFrame, df_final: pd.DataFrame) -> pd.DataFrame:
 
     # Crear IntervalIndex
     intervals = pd.IntervalIndex.from_arrays(df_pk["start_time"], df_pk["end_time"], closed="both")
-
+    
+    intervals = pd.IntervalIndex.from_arrays(
+    intervals.left.tz_localize(None),
+    intervals.right.tz_localize(None),
+    closed=intervals.closed
+    )
     # Inicializar DataFrame con NaNs para los picos
     df_picos_matched = pd.DataFrame(pd.NA, index=df_final.index, columns=df_pk.columns)
 
     # Iterar sobre cada timestamp y asignar pico correspondiente
+
     for i, ts in enumerate(df_final["Timestamp"]):
+        ts = ts.tz_localize(None)
         matches = df_pk[intervals.contains(ts)]
         if not matches.empty:
             # Tomamos solo la primera coincidencia
@@ -110,6 +117,13 @@ def merge_acoustics_predictions_and_peaks(point,acoustics_paths,predictions_path
     spl_path = os.path.join(point_path,'SPL')
     output_path = os.path.join(spl_path,MERGED_QUERY)
 
+    peaks_paths = [f for f in peaks_paths if 'fixed' in f]
+    predictions_paths = [f for f in predictions_paths if 'fixed' in f]
+    acoustics_paths = [f for f in acoustics_paths if 'fixed' in f]
+    peaks_paths = sorted(peaks_paths)
+    predictions_paths = sorted(predictions_paths)
+    acoustics_paths = sorted(acoustics_paths)
+   
     for acoustic_path,pred_path,peak_path in zip(acoustics_paths,predictions_paths,peaks_paths):
             df_pk = pd.read_csv(peak_path)
             df_pr = pd.read_csv(pred_path)
@@ -127,6 +141,8 @@ def merge_acoustics_predictions_and_peaks(point,acoustics_paths,predictions_path
             df_pk['end_time'] = pd.to_datetime(df_pk['end_time'])
             
             #2 - Hacemos merge de acoustics y predictions ya que ambos tienen 1 registro por segundo y es mergeable a pelo
+            df_pr['Timestamp'] = df_pr['Timestamp'].dt.tz_convert(None)
+            df_ac['Timestamp'] = df_ac['Timestamp'].dt.tz_localize(None)
             df_merged = pd.merge(df_ac,df_pr,on='Timestamp',how='inner',suffixes=('_acoustic','_prediction'))
 
             #3 - Agregamos las columnas de peaks segun intervalo de tiempo

@@ -15,7 +15,23 @@ from pathlib import Path
 import warnings
 warnings.filterwarnings("ignore")
 
+def strip_tz(ts):
+    if isinstance(ts, pd.Timestamp):
+        if ts.tzinfo is not None:
+            return ts.tz_localize(None)
+        return ts
+    return pd.NaT 
 
+def load_sent_ids(path="\\192.168.205.120\Contenedores\5-Resultados\TENERIFE_SEND_MQTT\SPL\SONOMETER\sonometer_acoustics_query\records_sent.txt"):
+    try:
+        with open(path, "r") as f:
+            return set(line.strip() for line in f.readlines())
+    except FileNotFoundError:
+        return set()
+def save_sent_id(record_id, path="sent_ids.txt"):
+    with open(path, "a") as f:
+        f.write(str(record_id) + "\n")
+    
 def read_first_row_excel(path):
     try:
         try:
@@ -107,7 +123,7 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
             elif fname.endswith(('_Time History.csv', '_Historia del tiempo.csv')):
                 df_time = pd.read_csv(csv_file_path, header=0)
                 csv_time_history_path = csv_file_path
-                df_final = pd.DataFrame(columns = base_cols + THIRD_OCTAVES_TIME_HISTORY + tail_cols)
+                df_final = pd.DataFrame(columns = base_cols + THIRD_OCTAVES + tail_cols)
 
     except Exception as e:
         logger.error(f'[CSV Sonometer] Error checking for available sheets in CSV: {e}')
@@ -159,23 +175,10 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
         
             initial_date = handle_not_finished_minute(pd.to_datetime(f'{first_row.iloc[0,2]}' +' '+ f'{first_row.iloc[0,3]}'))
             final_date = pd.to_datetime(f'{last_row.iloc[0,2]}' +' '+ f'{last_row.iloc[0,3]}')
-            """
-            df_final['LAeq'] = df_measurement['LAeq']
-            df_final['LCeq'] = df_measurement[' LCeq']
-            df_final['LAmax'] = df_final['LAeq'].max()
-            df_final['LAmin'] = df_final['LAeq'].min()
-            df_final['LAmax'].fillna(df_final['LAmax'],inplace=True)
-            df_final['LAmin'].fillna(df_final['LAmin'],inplace=True)
 
-            first_row = pd.read_csv(csv_measurement_path,header = None,skiprows=1,nrows=1)
-            last_row = pd.read_csv(csv_measurement_path,header = None,skiprows = csv_length ,nrows = 1)
-        
-            initial_date = handle_not_finished_minute(pd.to_datetime(f'{first_row.iloc[0,1]}' +' '+ f'{first_row.iloc[0,2]}'))
-            final_date = pd.to_datetime(f'{last_row.iloc[0,1]}' +' '+ f'{last_row.iloc[0,2]}')
-            """
         else:
             
-            row_indexs = np.arange(start=1,stop=df_time.shape[0],step = 60)
+            row_indexs = np.arange(start=1,stop=df_time.shape[0],step = 3600)
             csv_length = df_time.shape[0]
             
             df_time = pd.read_csv(csv_time_history_path,header = 0,skiprows = lambda x: x not in np.append(row_indexs,[0]))
@@ -195,7 +198,8 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
                 df_final[THIRD_OCTAVES_TIME_HISTORY].apply(pd.to_numeric)
         
             df_final['LAeq'] = df_time['LAeq']
-            
+
+
             df_final = df_final.dropna(subset=['LAeq'])
             df_final['LAeq'] = df_final['LAeq'].astype(str).str.replace(',','.')
             
@@ -294,17 +298,17 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
         # ------------------------------------
         # 8-    Query and convert results to JSON
         # ------------------------------------
-        
-        logger.info("[CSV Processing] Query and Convert Results to JSON")
+        """
+                        logger.info("[CSV Processing] Query and Convert Results to JSON")
         avg_results = power_laeq_avg(db,logger,table_name = SONOMETER_TABLE_NAME)
         logger.info(avg_results)
 
         if avg_results is not None:
             logger.info("[CSV Processing] Power LAeq Average Results:")
-            send_mqtt_data(avg_results, logger)
+            send_mqtt_data(avg_results, logger,None)
         else:
             logger.warning("[CSV Processing] No reuslts returned from power_laeq_avg query")
-
+        """
     except Exception as e:
             logger.warning("[CSV Processing] No results returned from power_laeq_avg query.")
 
@@ -582,8 +586,6 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
                 # 1. Convertir a datetime (esto es lo que puede crear datetimes tz-aware)
                 df_day['Timestamp'] = pd.to_datetime(df_day['Timestamp'], errors='coerce')
                 
-                # 2. 🔥 CLAVE: NAIVIZAR DE FORMA SEGURA
-                
                 # Intentamos la naivización usando el accesor .dt de Pandas.
                 try:
                     # Si la columna ya es datetime y tiene TZ, la naivizamos.
@@ -596,12 +598,6 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
                     # o si el paso anterior no fue suficiente, naivizamos usando una función lambda
                     # que maneja los objetos datetime individuales de Python.
                     logger.warning("[Acoustics] Direct naivization failed. Applying lambda to strip timezone from elements.")
-                    
-                    def strip_tz(ts):
-                        # Solo si es un objeto datetime y es tz-aware, quitamos la TZ.
-                        if isinstance(ts, pd.Timestamp) and ts.tz is not None:
-                            return ts.tz_localize(None)
-                        return ts
 
                     df_day['Timestamp'] = df_day['Timestamp'].apply(strip_tz)
 
@@ -1027,9 +1023,9 @@ def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_
 
 
 
-def process_sonometer_folder(db,logger,files_folder,processed_sonometers_txt):
+def process_sonometer_folder(db,logger,files_folder,query_folder,processed_sonometers_txt):
         
-        output_folder = files_folder.replace('sonometer_files','sonometer_acoustics_query')
+        output_folder = query_folder.replace('sonometer_files','sonometer_acoustics_query')
         
         for point in tqdm.tqdm(os.listdir(files_folder), desc="[Sonometers] Processing Points"):
                 point_folder = os.path.join(files_folder,point)

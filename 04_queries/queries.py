@@ -137,15 +137,29 @@ def get_columns_for_table(table_name):
 def power_laeq_avg(db, logger, table_name=ACOUSTIC_TABLE_NAME):
     cursor = db.cursor(dictionary=True)
     if table_name == SONOMETER_TABLE_NAME:
+        """
+        query = f"""
+        #SELECT
+        #sensor_id,
+        #MIN(Unixtimestamp)                  AS unixtimestamp,
+        #10 * LOG10(AVG(POWER(10, LAeq/10)))   AS AVG_LAeq,
+        #MAX(LAmax)                          AS max_LAmax,
+        #MIN(LAmin)                          AS min_LAmin
+        #FROM {table_name}
+        #GROUP BY sensor_id;
+        """
+        """
+
         query = f"""
         SELECT
+        record_id,
         sensor_id,
         MIN(Unixtimestamp)                  AS unixtimestamp,
-        10 * LOG10(AVG(POWER(10, LAeq/10)))   AS AVG_LAeq,
+        10 * LOG10(AVG(POWER(10,LAeq/10)))  AS AVG_LAeq,
         MAX(LAmax)                          AS max_LAmax,
         MIN(LAmin)                          AS min_LAmin
         FROM {table_name}
-        GROUP BY sensor_id;
+        GROUP BY record_id,sensor_id,Timestamp
         """
     else:
             query = f"""
@@ -172,60 +186,68 @@ def power_laeq_avg(db, logger, table_name=ACOUSTIC_TABLE_NAME):
 
 
 
-def send_mqtt_data(data, logger):
+def send_mqtt_data(data, logger,sent_records_txt):
     payload = json.dumps(data, default=str)
-    
-    try:
-        if data and isinstance(data, list) and isinstance(data[0], dict) and "sensor_id" in data[0]:
-            sensor_id = data[0]["sensor_id"]
-        else:
-            sensor_id = "unknown"
-    except Exception as e:
-        logger.error("Error extracting sensor_id: %s", e)
-        sensor_id = "unknown"
-    
-    # topic using the sensor_id
-    topic = f"aacacustica/{sensor_id}"
-    
-    
-    #MQTT client and connect. Version1 and 2 compatibility to avoid deprecation warning
+    for record in data: 
+        with open(sent_records_txt) as myfile:
+            if str(record['record_id']) in myfile.read():
+                continue
+            else:
+                update_processed_folder(sent_records_txt,str(record['record_id']))
+                
+                try:
+                    if data and isinstance(data, list) and "sensor_id" in record:
+                        sensor_id = record["sensor_id"]
+                    else:
+                        sensor_id = "unknown"
+                except Exception as e:
+                    logger.error("Error extracting sensor_id: %s", e)
+                    sensor_id = "unknown"
+                
+                # topic using the sensor_id
+                topic = f"aacacustica/{sensor_id}"
+                
+                
+                #MQTT client and connect. Version1 and 2 compatibility to avoid deprecation warning
 
-    try:
-        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-    except:
-        client = mqtt.Client()
-    
-    if DEMO:
-        # ensure port is an integer 
-        port = int(MQTT_PORT_DEMO)
-        
-        client.connect(MQTT_BROKER_DEMO, port, 60)
-    
-        # Publish payload to the topic, save the info inside the broker
-        # client.publish(topic, payload)
-        client.publish(topic, payload, qos=1, retain=True) # keep it false
-        logger.info("Connected to MQTT broker at %s:%s", MQTT_BROKER_DEMO, port)
-        logger.info("Published data to topic '%s': %s", topic, payload)
-    
-    
-    else:
-        # ensure port is an integer 
-        port = int(MQTT_PORT_MUUTECH)
+                try:
+                    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+                except:
+                    client = mqtt.Client()
+                
+                if DEMO:
+                    # ensure port is an integer 
+                    port = int(MQTT_PORT_DEMO)
+                    
+                    client.connect(MQTT_BROKER_DEMO, port, 60)
+                
+                    # Publish payload to the topic, save the info inside the broker
+                    # client.publish(topic, payload)
+                    client.publish(topic, payload, qos=1, retain=True) # keep it false
+                    logger.info("Connected to MQTT broker at %s:%s", MQTT_BROKER_DEMO, port)
+                    logger.info("Published data to topic '%s': %s", topic, payload)
+                
+                
+                else:
+                    # ensure port is an integer 
+                    port = int(MQTT_PORT_MUUTECH)
 
-        
-        # connect to the broker using TLS trusting the server certificate
-        client.username_pw_set(MQTT_USER_MUUTECH, MQTT_PASSWORD_MUUTECH)
-        client.tls_set(cert_reqs=ssl.CERT_NONE)
-        client.tls_insecure_set(True)
+                    
+                    # connect to the broker using TLS trusting the server certificate
+                    client.username_pw_set(MQTT_USER_MUUTECH, MQTT_PASSWORD_MUUTECH)
+                    client.tls_set(cert_reqs=ssl.CERT_NONE)
+                    client.tls_insecure_set(True)
 
 
-        #connect & publish
-        client.connect(MQTT_BROKER_MUUTECH, port, keepalive=60)
-        client.publish(topic, payload, qos=1, retain=True)
-        logger.info("Connected to MQTT broker at %s:%s", MQTT_BROKER_MUUTECH, port)
-        logger.info("Published data to topic '%s' via TLS: %s", topic, payload)
-        
-    client.disconnect()
+                    #connect & publish
+                    record.pop('record_id',None)
+                    record_json = json.dumps(record,default=str)
+                    client.connect(MQTT_BROKER_MUUTECH, port, keepalive=60)
+                    client.publish(topic, record_json, qos=1, retain=True)
+                    logger.info("Connected to MQTT broker at %s:%s", MQTT_BROKER_MUUTECH, port)
+                    logger.info("Published data to topic '%s' via TLS: %s", topic, payload)
+                    
+                client.disconnect()
 
 
 
@@ -351,7 +373,7 @@ def sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed
     sonometer_path = point + f'/{folder}'                    
     logger.info("Starting PREDICTION FOLDER processing")
     start_time = time.time()
-    #process_sonometer_folder(db,logger,query_sonometer_folder,processed_folder_sonometer_txt)
+    process_sonometer_folder(db,logger,sonometer_path,query_sonometer_folder,processed_folder_sonometer_txt)
     end_time =  round(time.time() - start_time,2)
     return end_time
 
@@ -481,7 +503,7 @@ def append_leftover_rows_to_next_bucket(leftover_df, next_fixed_folder_path):
 
     csvs = sort_csvs_by_content_timestamp(next_fixed_folder_path)
     if not csvs:
-        fname = f"generated_{rows_for_hour.iloc[0]['Timestamp'].strftime('%Y%m%d_%H%M%S')}.csv"
+        fname = f"generated_{rows_for_hour.iloc[0]['Timestamp'].strftime('%Y%m%d_%H%M%S')}_tflt_w_1.0.csv"
         rows_for_hour.to_csv(os.path.join(next_fixed_folder_path, fname), index=False)
         logger.info(f"append_leftover_rows_to_next_bucket: created {fname} with {len(rows_for_hour)} rows")
         return
@@ -548,7 +570,7 @@ def main():
 
     all_info = []
     for point in tqdm.tqdm(points, desc="Processing points", unit="point"):
-        if "P5_TEST" in point:
+        if "TENERIFE_SEND_MQTT" in point :
             try:
                 
                 # ---------------------------
@@ -596,7 +618,7 @@ def main():
                 logger.info(f"Saving the processed list of predictions files txt here --> {processed_folder_predictions_txt}")
                 logger.info(f"Saving the processed list of acoustics files txt here -->  {processed_folder_acoustic_txt}")
                 logger.info(f"Saving the processed list of wav files txt here -->  {processed_folder_predictions_txt}")
-
+                logger.info(f"Saving the processed list of sonometer files txt here -->  {processed_folder_sonometer_txt}")
 
             except Exception as e:
                 logger.error(f"Error setting up folders: {e}")
@@ -737,14 +759,14 @@ def main():
                     
                     logger.info("Starting ACOUSTIC processing")
                     end_time = 0
-                    end_time = acoustic_processing(folder_days_acoustics_predictions,folder,db,logger, all_info, query_acoustic_folder, processed_wavs, processed_folder_acoustic_txt)
+                    #end_time = acoustic_processing(folder_days_acoustics_predictions,folder,db,logger, all_info, query_acoustic_folder, processed_wavs, processed_folder_acoustic_txt)
                     print(" --- %s seconds in execution ---" %end_time)                      
                 
                 if folder == 'predictions_litle' and PREDICT_QUERY_SWITCH:
                     
                     logger.info("Starting PREDICTIONS processing")
                     end_time = 0
-                    end_time = prediction_processing(folder_days_acoustics_predictions,folder,db,logger, all_info, query_pred_folder, processed_wavs, processed_folder_predictions_txt)
+                    #end_time = prediction_processing(folder_days_acoustics_predictions,folder,db,logger, all_info, query_pred_folder, processed_wavs, processed_folder_predictions_txt)
                     print(" --- %s seconds in execution ---" %end_time)  
                 
                 if folder == 'wav_files' and WAV_QUERY_SWITCH:
@@ -758,7 +780,12 @@ def main():
                     
                     logger.info("Starting SONOMETER FOLDER processing")
                     end_time =0
-                    #sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed_folder_sonometer_txt)
+                    sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed_folder_sonometer_txt)
+                    
+                    avg_results = power_laeq_avg(db,logger,table_name=SONOMETER_TABLE_NAME)
+                    sent_records_path = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/5-Resultados/TENERIFE_SEND_MQTT/SPL/SONOMETER/sonometer_acoustics_query/records_sent.txt"
+                    send_mqtt_data(avg_results,logger,sent_records_path)
+                    
                     print(" --- %s seconds in execution ---" %end_time)
             
                 print(" --- %s seconds in total execution ---" % round(time.time() - whole_start_time,2))
