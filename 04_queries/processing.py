@@ -299,13 +299,13 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
         # 8-    Query and convert results to JSON
         # ------------------------------------
         """
-                        logger.info("[CSV Processing] Query and Convert Results to JSON")
+        logger.info("[CSV Processing] Query and Convert Results to JSON")
         avg_results = power_laeq_avg(db,logger,table_name = SONOMETER_TABLE_NAME)
         logger.info(avg_results)
 
         if avg_results is not None:
             logger.info("[CSV Processing] Power LAeq Average Results:")
-            send_mqtt_data(avg_results, logger,None)
+            #send_mqtt_data(avg_results, logger)
         else:
             logger.warning("[CSV Processing] No reuslts returned from power_laeq_avg query")
         """

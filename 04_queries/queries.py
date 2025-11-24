@@ -137,25 +137,12 @@ def get_columns_for_table(table_name):
 def power_laeq_avg(db, logger, table_name=ACOUSTIC_TABLE_NAME):
     cursor = db.cursor(dictionary=True)
     if table_name == SONOMETER_TABLE_NAME:
-        """
-        query = f"""
-        #SELECT
-        #sensor_id,
-        #MIN(Unixtimestamp)                  AS unixtimestamp,
-        #10 * LOG10(AVG(POWER(10, LAeq/10)))   AS AVG_LAeq,
-        #MAX(LAmax)                          AS max_LAmax,
-        #MIN(LAmin)                          AS min_LAmin
-        #FROM {table_name}
-        #GROUP BY sensor_id;
-        """
-        """
-
-        query = f"""
+            query = f""" 
         SELECT
         record_id,
         sensor_id,
         MIN(Unixtimestamp)                  AS unixtimestamp,
-        10 * LOG10(AVG(POWER(10,LAeq/10)))  AS AVG_LAeq,
+        10 * LOG10 ( AVG(POWER(1,LAeq/10))) AS AVG_LAeq,
         MAX(LAmax)                          AS max_LAmax,
         MIN(LAmin)                          AS min_LAmin
         FROM {table_name}
@@ -186,69 +173,55 @@ def power_laeq_avg(db, logger, table_name=ACOUSTIC_TABLE_NAME):
 
 
 
-def send_mqtt_data(data, logger,sent_records_txt):
-    payload = json.dumps(data, default=str)
-    for record in data: 
-        with open(sent_records_txt) as myfile:
-            if str(record['record_id']) in myfile.read():
-                continue
-            else:
-                update_processed_folder(sent_records_txt,str(record['record_id']))
-                
-                try:
-                    if data and isinstance(data, list) and "sensor_id" in record:
-                        sensor_id = record["sensor_id"]
-                    else:
-                        sensor_id = "unknown"
-                except Exception as e:
-                    logger.error("Error extracting sensor_id: %s", e)
-                    sensor_id = "unknown"
-                
-                # topic using the sensor_id
-                topic = f"aacacustica/{sensor_id}"
-                
-                
-                #MQTT client and connect. Version1 and 2 compatibility to avoid deprecation warning
+def send_mqtt_data(data, logger, sent_Records_txt):
 
-                try:
-                    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-                except:
-                    client = mqtt.Client()
-                
-                if DEMO:
-                    # ensure port is an integer 
-                    port = int(MQTT_PORT_DEMO)
-                    
-                    client.connect(MQTT_BROKER_DEMO, port, 60)
-                
-                    # Publish payload to the topic, save the info inside the broker
-                    # client.publish(topic, payload)
-                    client.publish(topic, payload, qos=1, retain=True) # keep it false
-                    logger.info("Connected to MQTT broker at %s:%s", MQTT_BROKER_DEMO, port)
-                    logger.info("Published data to topic '%s': %s", topic, payload)
-                
-                
-                else:
-                    # ensure port is an integer 
-                    port = int(MQTT_PORT_MUUTECH)
+    # Asegurarse de que el archivo exista
+    if not os.path.exists(sent_Records_txt):
+        open(sent_Records_txt, 'w').close()
 
-                    
-                    # connect to the broker using TLS trusting the server certificate
-                    client.username_pw_set(MQTT_USER_MUUTECH, MQTT_PASSWORD_MUUTECH)
-                    client.tls_set(cert_reqs=ssl.CERT_NONE)
-                    client.tls_insecure_set(True)
+    # Leer los record_id ya enviados
+    with open(sent_Records_txt) as f:
+        sent_ids = set(f.read().splitlines())
 
+    # Crear cliente MQTT una sola vez
+    try:
+        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    except:
+        client = mqtt.Client()
 
-                    #connect & publish
-                    record.pop('record_id',None)
-                    record_json = json.dumps(record,default=str)
-                    client.connect(MQTT_BROKER_MUUTECH, port, keepalive=60)
-                    client.publish(topic, record_json, qos=1, retain=True)
-                    logger.info("Connected to MQTT broker at %s:%s", MQTT_BROKER_MUUTECH, port)
-                    logger.info("Published data to topic '%s' via TLS: %s", topic, payload)
-                    
-                client.disconnect()
+    if DEMO:
+        port = int(MQTT_PORT_DEMO)
+        client.connect(MQTT_BROKER_DEMO, port, 60)
+        logger.info("Connected to MQTT broker DEMO at %s:%s", MQTT_BROKER_DEMO, port)
+    else:
+        port = int(MQTT_PORT_MUUTECH)
+        client.username_pw_set(MQTT_USER_MUUTECH, MQTT_PASSWORD_MUUTECH)
+        client.tls_set(cert_reqs=ssl.CERT_NONE)
+        client.tls_insecure_set(True)
+        client.connect(MQTT_BROKER_MUUTECH, port, keepalive=60)
+        logger.info("Connected to MQTT broker MUUTECH at %s:%s", MQTT_BROKER_MUUTECH, port)
 
+    # Publicar cada registro individualmente
+    for record in data:
+        record_id = str(record.get('record_id', ''))
+        if not record_id or record_id in sent_ids:
+            continue
+
+        sensor_id = record.get("sensor_id", "unknown")
+        topic = f"aacacustica/{sensor_id}"
+        payload = json.dumps(record, default=str)
+
+        try:
+            client.publish(topic, payload, qos=1, retain=True)
+            logger.info("Published record %s to topic '%s'", record_id, topic)
+            update_processed_folder(record['record_id'])
+            sent_ids.add(record_id)
+        except Exception as e:
+            logger.error("Error publishing record %s: %s", record_id, e)
+
+    # Desconectar al final
+    client.disconnect()
+    logger.info("MQTT client disconnected")
 
 
 def load_processed_folder(processed_folder_path):
@@ -570,7 +543,7 @@ def main():
 
     all_info = []
     for point in tqdm.tqdm(points, desc="Processing points", unit="point"):
-        if "TENERIFE_SEND_MQTT" in point :
+        if "TENERIFE_SEND_MQTT" in point:
             try:
                 
                 # ---------------------------
@@ -779,12 +752,11 @@ def main():
                 if folder == 'sonometer_files' and SONOMETER_QUERY_SWITCH:  
                     
                     logger.info("Starting SONOMETER FOLDER processing")
-                    end_time =0
-                    sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed_folder_sonometer_txt)
-                    
-                    avg_results = power_laeq_avg(db,logger,table_name=SONOMETER_TABLE_NAME)
-                    sent_records_path = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/5-Resultados/TENERIFE_SEND_MQTT/SPL/SONOMETER/sonometer_acoustics_query/records_sent.txt"
-                    send_mqtt_data(avg_results,logger,sent_records_path)
+                    end_time = sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed_folder_sonometer_txt)
+                 
+                    power_avg_results = power_laeq_avg(db,logger,table_name=SONOMETER_TABLE_NAME) 
+                    records_sent_txt = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/5-Resultados/TENERIFE_SEND_MQTT/SPL/SONOMETER/sonometer_acoustics_query/records_sent.txt"
+                    send_mqtt_data(power_avg_results,logger,records_sent_txt)
                     
                     print(" --- %s seconds in execution ---" %end_time)
             
