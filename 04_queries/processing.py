@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import wave
 import contextlib
-import datetime
+import datetime 
 
 from config import *
 from queries import *
@@ -21,16 +21,6 @@ def strip_tz(ts):
             return ts.tz_localize(None)
         return ts
     return pd.NaT 
-
-def load_sent_ids(path="\\192.168.205.120\Contenedores\5-Resultados\TENERIFE_SEND_MQTT\SPL\SONOMETER\sonometer_acoustics_query\records_sent.txt"):
-    try:
-        with open(path, "r") as f:
-            return set(line.strip() for line in f.readlines())
-    except FileNotFoundError:
-        return set()
-def save_sent_id(record_id, path="sent_ids.txt"):
-    with open(path, "a") as f:
-        f.write(str(record_id) + "\n")
     
 def read_first_row_excel(path):
     try:
@@ -51,11 +41,18 @@ def get_length_excel(path,sheet_name):
     
     return last_row_idx
 
-def handle_not_finished_minute(datetime):
+def handle_not_finished_minute(dt):
+    """
+    Ajusta cualquier pandas.Timestamp o datetime.datetime al inicio de la hora.
+    Lo hace truncando: 16:59:59 -> 16:00:00
+    #TODO -> gestión de los slops también para sonómetros
+    """
 
-    if not datetime.minute == 00:
-        datetime = datetime.replace(second=00)
-        return datetime 
+    # Si es Timestamp de pandas
+    if isinstance(dt, pd.Timestamp):
+        dt = dt.to_pydatetime()
+    # Ahora dt es datetime.datetime
+    return dt.replace(minute=0, second=0, microsecond=0)
 
 def get_row_indices_by_column(path, sheet_name, column_name, row_content_list, header_row=1):
     

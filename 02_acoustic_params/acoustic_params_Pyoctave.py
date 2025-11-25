@@ -20,6 +20,19 @@ from logging_config import setup_logging
 from PyOctaveBand import *
 
 
+def twenty_db_fix(levels):
+    levels_fix = []
+    """"
+    for row in levels:
+        row_fix = []
+        for octave_level in row:
+            row_fix.append(octave_level + 20)
+        levels_fix.append(row_fix)
+    """
+    for level in levels:
+        levels_fix.append(level + 20)
+
+    return levels_fix
 
 class LeqLevelOct:
     def __init__(self, id_micro, fs, calibration_constant, window_size, audio_path, wav_files, acoustic_params, s3_bucket_name, upload_s3, logging):
@@ -216,8 +229,7 @@ class LeqLevelOct:
                 if audio_file in processed_files:
                     self.logging.info(f"Skipping {audio_file}, already processed.")
                     continue
-
-
+                
                 self.logging.info(f"Processing audio file: {audio_file}")
                 db = []
                 # reading audio data
@@ -285,6 +297,9 @@ class LeqLevelOct:
                     levels, freqs =third_octave_filter(frame, self.fs, order=6, limits=[12, 20000])
                     # eound the levels to 2 decimal places
                     levels = [round(level, 2) for level in levels]
+                    #20db fix
+                    levels = twenty_db_fix(levels)
+                    
                     if freq_labels is None:
                         freq_labels = [f"{round(freq, 1)}Hz" for freq in freqs]
                         col_names.extend(freq_labels)  # 1/3-oct columns

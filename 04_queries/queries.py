@@ -142,7 +142,7 @@ def power_laeq_avg(db, logger, table_name=ACOUSTIC_TABLE_NAME):
         record_id,
         sensor_id,
         MIN(Unixtimestamp)                  AS unixtimestamp,
-        10 * LOG10 ( AVG(POWER(1,LAeq/10))) AS AVG_LAeq,
+        10 * LOG10 ( AVG(POWER(10,LAeq/10))) AS AVG_LAeq,
         MAX(LAmax)                          AS max_LAmax,
         MIN(LAmin)                          AS min_LAmin
         FROM {table_name}
@@ -153,7 +153,7 @@ def power_laeq_avg(db, logger, table_name=ACOUSTIC_TABLE_NAME):
         SELECT
         sensor_id,
         MIN(Unixtimestamp)                  AS unixtimestamp,
-        10 * LOG10(AVG(POWER(10, LA/10)))   AS AVG_LAeq,
+        10 * LOG10 (AVG(POWER(10, LA/10)))   AS AVG_LAeq,
         MAX(LAmax)                          AS max_LAmax,
         MIN(LAmin)                          AS min_LAmin
         FROM {table_name}
@@ -183,15 +183,16 @@ def send_mqtt_data(data, logger, sent_Records_txt):
     with open(sent_Records_txt) as f:
         sent_ids = set(f.read().splitlines())
 
-    # Crear cliente MQTT una sola vez
+    # Crear cliente MQTT
     try:
         client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     except:
         client = mqtt.Client()
 
+    # Conexión al broker
     if DEMO:
         port = int(MQTT_PORT_DEMO)
-        client.connect(MQTT_BROKER_DEMO, port, 60)
+        client.connect(MQTT_BROKER_DEMO, port, keepalive=60)
         logger.info("Connected to MQTT broker DEMO at %s:%s", MQTT_BROKER_DEMO, port)
     else:
         port = int(MQTT_PORT_MUUTECH)
@@ -201,7 +202,9 @@ def send_mqtt_data(data, logger, sent_Records_txt):
         client.connect(MQTT_BROKER_MUUTECH, port, keepalive=60)
         logger.info("Connected to MQTT broker MUUTECH at %s:%s", MQTT_BROKER_MUUTECH, port)
 
-    # Publicar cada registro individualmente
+    # Iniciar loop en background
+    client.loop_start()
+
     for record in data:
         record_id = str(record.get('record_id', ''))
         if not record_id or record_id in sent_ids:
@@ -211,18 +214,24 @@ def send_mqtt_data(data, logger, sent_Records_txt):
         topic = f"aacacustica/{sensor_id}"
         payload = json.dumps(record, default=str)
 
+        if sensor_id in ['0005884', '0005886']:
+            print(f"Topic: {topic}")
+            print(f"Sensor_id: {sensor_id}")
+            print(f"Payload: {payload}")
+
         try:
-            client.publish(topic, payload, qos=1, retain=True)
+            result = client.publish(topic, payload, qos=1, retain=True)
+            result.wait_for_publish()  #Ahora puede recibir ACK
             logger.info("Published record %s to topic '%s'", record_id, topic)
-            update_processed_folder(record['record_id'])
+            update_processed_folder(sent_Records_txt, record_id)
             sent_ids.add(record_id)
         except Exception as e:
             logger.error("Error publishing record %s: %s", record_id, e)
 
-    # Desconectar al final
+    # Detener loop y desconectar
+    client.loop_stop()
     client.disconnect()
     logger.info("MQTT client disconnected")
-
 
 def load_processed_folder(processed_folder_path):
     """Load the set of processed filenames from a text file."""
