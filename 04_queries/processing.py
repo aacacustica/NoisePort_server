@@ -6,11 +6,16 @@ import numpy as np
 import wave
 import contextlib
 import datetime 
+import datetime
+import sys
 
-from config import *
+
+sys.path.insert(0, "/home/aac_s3_test/noisePort_server/04_queries")
 from queries import *
 from ast import literal_eval
 from pathlib import Path
+from queries import *
+from config import *
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -81,10 +86,11 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
         # ------------------------------------
         # 1-    Check if file is in processed txt list
         # ------------------------------------
-    file = os.path.basename(csv_path)
+    if not os.path.exists(processed_txt): open(processed_txt, 'w').close()
     with open(processed_txt) as myfile:
-     if file in myfile.read():
-         return
+        file = os.path.basename(csv_path)
+        if file in myfile.read():
+            return
     
     
     try:
@@ -108,17 +114,10 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
         for csv_file in os.listdir(csv_path):
             
             csv_file_path = os.path.join(csv_path,csv_file)
-            
             fname = Path(csv_file).name  
-            if fname.endswith(('_Summary.csv', '_Resumen.csv')):
-                df_summary = pd.read_csv(csv_file_path, encoding="ISO-8859-1")
-            elif fname.endswith(('_Measurement History.csv', '_Historia de mediciones.csv')):
-                df_measurement = pd.read_csv(csv_file_path, header=0)
-                csv_measurement_path = csv_file_path
-                df_final = pd.DataFrame(columns = base_cols + THIRD_OCTAVES + tail_cols)
-
-            elif fname.endswith(('_Time History.csv', '_Historia del tiempo.csv')):
-                df_time = pd.read_csv(csv_file_path, header=0)
+            
+            if 'Time History' in fname:
+                df_time = pd.read_csv(csv_file_path,header = 0)
                 csv_time_history_path = csv_file_path
                 df_final = pd.DataFrame(columns = base_cols + THIRD_OCTAVES + tail_cols)
 
@@ -244,21 +243,8 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
     try:
 
         # ------------------------------------
-        # 6-    Saving per day CSV files from whole DF, and whole DF
+        # 6-    Saving  whole DF
         # ------------------------------------
-        """
-        days = get_days_in_df(df_final)
-        output_folder_days = output_folder + f'/daily_{point}'
-        output_folder_whole = output_folder 
-        os.makedirs(output_folder_whole, exist_ok=True)
-        os.makedirs(output_folder_days, exist_ok=True)
-
-        for day in days:
-
-                day_df = df_final.loc[pd.to_datetime(df_final['Timestamp']).dt.day == int(day)].copy()
-                filename = os.path.join(output_folder_days, f"day{day}_{point}_Processed_{count}.csv") 
-                day_df.to_csv(filename, index=False)
-        """
 
     
         file_name = output_folder + f"/{point}_Processed.csv"
@@ -332,10 +318,12 @@ def process_sonometer_xlsx(db,xlsx_path,logger,point, output_folder,count,proces
         # 1-    Check if file is in processed txt list
         # ------------------------------------
     
-    file = os.path.basename(xlsx_path)
+    
+    if not os.path.exists(processed_folder_txt): open(processed_folder_txt, 'w').close()
     with open(processed_folder_txt) as myfile:
-     if file in myfile.read():
-         return
+        file = os.path.basename(xlsx_path)
+        if file in myfile.read():
+            return
     try:
 
         df_first_row = pd.read_excel(xlsx_path, sheet_name='Measurement History',header= None,skiprows=1,nrows=1)
@@ -514,11 +502,12 @@ def process_sonometer_xlsx(db,xlsx_path,logger,point, output_folder,count,proces
 
 
 def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processed_folder,processed_folder_txt):
+    if not os.path.exists(processed_folder_txt): open(processed_folder_txt, 'w').close()
     for day in tqdm.tqdm(folder_days, desc="[Acoustics] Processing days", unit="day"):
         
-        if day in processed_folder:
-            logger.info("[Acoustics] Already processed: %s", day)
-            continue
+        with open(processed_folder_txt) as myfile:
+            if day in myfile.read():
+                return
       
         try:
 
@@ -698,11 +687,11 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
 
 
 def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed_folder, processed_folder_txt):
-        
+    if not os.path.exists(processed_folder_txt): open(processed_folder_txt, 'w').close()
     for day in tqdm.tqdm(folder_days, desc="[Predictions] Processing days", unit="day"):
         with open(processed_folder_txt) as myfile:
             if day in myfile.read():
-                return
+                continue
 
 
         try:
@@ -877,8 +866,9 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
 
 
 def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_folder, processed_folder_txt):
-
+    if not os.path.exists(processed_folder_txt): open(processed_folder_txt, 'w').close()
     for day in tqdm.tqdm(folder_days, desc="[Wave Files] Processing days", unit="day"):
+        
         with open(processed_folder_txt) as myfile:
             if day in myfile.read():
                 continue
@@ -1025,28 +1015,29 @@ def process_sonometer_folder(db,logger,files_folder,query_folder,processed_sonom
         output_folder = query_folder.replace('sonometer_files','sonometer_acoustics_query')
         
         for point in tqdm.tqdm(os.listdir(files_folder), desc="[Sonometers] Processing Points"):
-                point_folder = os.path.join(files_folder,point)
-                file_count = 0
                 
-                lxt_files = [f for f in os.listdir(point_folder) if f.endswith('.xlsx')]                    
-                csvs_files = [f for f in os.listdir(point_folder) if f.endswith('_CSV')]
-                
-                if csvs_files != []:
+                    point_folder = os.path.join(files_folder,point)
+                    file_count = 0
                     
-                    for file in tqdm.tqdm(csvs_files, desc=f"Processing files in {point}"):
+                    lxt_files = [f for f in os.listdir(point_folder) if f.endswith('.xlsx')]                    
+                    csvs_files = [f for f in os.listdir(point_folder) if f.endswith('_CSV')]
+                    
+                    if csvs_files != []:
                         
-                        file_path = os.path.join(point_folder,file)                        
-                        logger.info(f"[SONOMETER] -> Processing file: {file_path}")                            
-                        process_sonometer_csv(db,file_path,logger,point,output_folder,processed_sonometers_txt,file_count)                                                    
-                        file_count += 1
-                        logger.info(f"[SONOMETER] -> Processed data saved at: {output_folder}")
-                
-                else:
+                        for file in tqdm.tqdm(csvs_files, desc=f"Processing files in {point}"):
+                            
+                            file_path = os.path.join(point_folder,file)                        
+                            logger.info(f"[SONOMETER] -> Processing file: {file_path}")                            
+                            process_sonometer_csv(db,file_path,logger,point,output_folder,processed_sonometers_txt,file_count)                                                    
+                            file_count += 1
+                            logger.info(f"[SONOMETER] -> Processed data saved at: {output_folder}")
+                    
+                    else:
 
-                    for file in tqdm.tqdm(lxt_files,desc = f'Processing files in {point}'):
+                        for file in tqdm.tqdm(lxt_files,desc = f'Processing files in {point}'):
 
-                        file_path = os.path.join(files_folder,point, file)
-                        logger.info(f"[SONOMETER] -> Processing file: {file_path}")                            
-                        process_sonometer_xlsx(db,file_path,logger,point,output_folder,file_count,processed_sonometers_txt)
-                        file_count += 1
-                        logger.info(f"[SONOMETER] -> Processed data saved at: {output_folder}")
+                            file_path = os.path.join(files_folder,point, file)
+                            logger.info(f"[SONOMETER] -> Processing file: {file_path}")                            
+                            process_sonometer_xlsx(db,file_path,logger,point,output_folder,file_count,processed_sonometers_txt)
+                            file_count += 1
+                            logger.info(f"[SONOMETER] -> Processed data saved at: {output_folder}")

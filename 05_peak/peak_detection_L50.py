@@ -33,7 +33,6 @@ def leq(levels):
 
 
 def get_hourly_folders():
-
     hour_path_acoustics = []
     hour_path_predictions = []
     hour_path_peaks = []

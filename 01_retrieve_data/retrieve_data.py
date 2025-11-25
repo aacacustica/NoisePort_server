@@ -8,6 +8,8 @@ from tqdm import tqdm
 import datetime
 
 
+HOME_DIR = os.getenv("HOME")
+
 
 def load_downloaded_file(downloaded_file_path):
     """Load the set of downloaded filenames from a text file."""
@@ -22,8 +24,6 @@ def update_downloaded_file(downloaded_file_path, filename):
     """Append a downloaded filename to the text file."""
     with open(downloaded_file_path, "a") as f:
         f.write(filename + "\n")
-
-
 
 def download_new_files(bucket_name, home_dir, logger, downloaded_list='downloaded_files.txt'):
     """
@@ -135,10 +135,9 @@ def download_new_files(bucket_name, home_dir, logger, downloaded_list='downloade
 
 def main():
     # initialize logger
+
     logger = setup_logging('retrive_data')
-    home_dir = os.getenv("HOME")
-    
-    download_new_files(BUCKET_NAME, home_dir,logger)
+    download_new_files(BUCKET_NAME, HOME_DIR,logger)
     
 
 if __name__ == "__main__":

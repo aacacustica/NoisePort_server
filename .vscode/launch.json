@@ -26,7 +26,18 @@
             "request": "launch",
             "console": "integratedTerminal",
             "args": [
-                 "-p", "\/\/192.168.205.120/Contenedores/3-Medidas/P5_TEST" 
+
+            ]
+        }        
+        
+        ,{
+            "name": "Python Debugger: acoustic params debugging",
+            "type": "debugpy",
+            "module": "02_acoustic_params.acoustic_params_Pyoctave",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "args": [
+                 
             ]
         }
         

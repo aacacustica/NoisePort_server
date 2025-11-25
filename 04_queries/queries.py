@@ -10,6 +10,8 @@ import time
 import sys
 import shutil
 import re
+import shutil
+import re
 
 sys.path.insert(0, "/home/aac_s3_test/noisePort_server/04_queries")
 
@@ -75,6 +77,7 @@ def initialize_database(db, logger):
 
 def load_data_db(db, data_path, logger, table_name=ACOUSTIC_TABLE_NAME):
     
+    
     cursor = db.cursor(dictionary=True)
     if table_name == ACOUSTIC_TABLE_NAME: query_load = QUERYS['load_acoustics_db'].format(data_path=data_path,table_name=table_name)
     if table_name == WAV_TABLE_NAME: query_load = QUERYS['load_wavs_db'].format(data_path=data_path,table_name=table_name)
@@ -94,6 +97,7 @@ def load_data_db(db, data_path, logger, table_name=ACOUSTIC_TABLE_NAME):
 
 
 def get_columns_for_table(table_name):
+    
     
     """
     Devuelve la lista de columnas para cada tabla como strings,
@@ -612,12 +616,19 @@ def main():
 
                 # ------------------------------------
                 #   Filter the FILES, JUST THE FOLDERS
+                #   Filter the FILES, JUST THE FOLDERS
                 # ------------------------------------
 
                 logger.info("")
                 folder_days = os.listdir(acoust_folder)
                 folder_days = [day_folder for day_folder in folder_days if os.path.isdir(os.path.join(acoust_folder, day_folder))]
                 logger.info("Folder days in %s: %s", acoust_folder, folder_days)
+                
+                folder_days_acoustics_predictions = [os.path.join(acoust_folder, day_folder) for day_folder in folder_days if 'fixed' in day_folder]
+                
+                folder_days_wavs = [os.path.join(acoust_folder,day_folder) for day_folder in folder_days ]
+                folder_days_wavs = [file.replace('acoustic_params','wav_files') for file in folder_days_wavs]
+                folder_days_wavs = [file.replace('fixed_','') for file in folder_days_wavs]
                 
                 folder_days_acoustics_predictions = [os.path.join(acoust_folder, day_folder) for day_folder in folder_days if 'fixed' in day_folder]
                 
@@ -737,6 +748,7 @@ def main():
             
             for folder in os.listdir(point):
                 
+                
                 if folder == 'acoustic_params'  and ACOUSTIC_QUERY_SWITCH:
                     
                     logger.info("Starting ACOUSTIC processing")
@@ -785,6 +797,7 @@ def main():
     logger.info("")
     logger.info("Saving all_info to JSON")
     logger.info("all_info: %s", all_info)
+    json.dump(all_info, sys.stdout, indent=4, default=decimal_to_native)
     json.dump(all_info, sys.stdout, indent=4, default=decimal_to_native)
 
     # ------------------------------------
