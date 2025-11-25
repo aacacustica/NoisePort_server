@@ -351,3 +351,11 @@ def get_stable_version(logging):
     tag_selected = tag_selected.replace(".", "_")
     logging.info(f"Latest stable version string: {tag_selected}")
     return tag_selected
+
+def get_desired_query_folder(days_folder,desired_folder):
+    
+    for i,folder in enumerate(days_folder):
+        if not desired_folder in folder.split('/'):
+            days_folder[i] = days_folder[i].replace(days_folder[i].split('/')[-2],desired_folder)
+
+    return days_folder

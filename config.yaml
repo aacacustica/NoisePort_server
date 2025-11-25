@@ -26,7 +26,7 @@ storage:
   s3_bucket_name: "demo-prototype-aac-2025"
   output_wav_folder: "wav_files"
   output_acoust_folder: "acoustic_params"
-  output_predict_folder: "predict"
+  output_predict_folder: "prediction_files"
   output_predict_lt_folder: "predictions_litle"
 
 

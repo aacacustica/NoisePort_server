@@ -2,154 +2,74 @@ import json
 import mysql.connector
 import paho.mqtt.client as mqtt
 import os
-import re
 import pandas as pd
-from logging_config import setup_logging
+import tqdm 
+import decimal
+import ssl
+import time
+import sys
+import shutil
+import re
+import shutil
+import re
+
+sys.path.insert(0, "/home/aac_s3_test/noisePort_server/04_queries")
+
+from processing import *
+from logging_config import *
 from utils import *
 from config import *
+from utils_queries import *
+from time_slop_fix import *
 
+PATH = SANDISK_PATH_LINUX
+ISDIR = os.path.isdir(PATH)
 
+ID_MICRO, LOCATION_RECORD, LOCATION_PLACE, LOCATION_POINT, \
+AUDIO_SAMPLE_RATE, AUDIO_WINDOW_SIZE, AUDIO_CALIBRATION_CONSTANT,\
+STORAGE_S3_BUCKET_NAME, STORAGE_OUTPUT_WAV_FOLDER, \
+STORAGE_OUTPUT_ACOUSTIC_FOLDER = load_config_acoustic('config.yaml')
 
-def initialize_database(db, logger):
-    """Ensure that the database and table exist"""
-    #this is to setting 
-    cursor = None
+FILENAME_TS_RE = re.compile(r'(\d{8}_\d{6})')  # extrae 'YYYYMMDD_HHMMSS'
+logger = setup_logging('query_automatize')
 
-    try:
-        # ---------------------------------------------------------------------------
-        # ENSURE DATABASE
-        # ---------------------------------------------------------------------------
-        logger.info("Ensure that the database and table exist")
-        #avoid unread result issues
-        cursor = db.cursor(buffered=True)
-
-        query_create_db = f"CREATE DATABASE IF NOT EXISTS {DATABASE_NAME};"
-        cursor.execute(query_create_db)
-        logger.info(f"Creating DATABASE --> {DATABASE_NAME}")
-
-        cursor.execute(f"USE {DATABASE_NAME};")
-        logger.info(f"Using --> {DATABASE_NAME}")
-
-
-        # ---------------------------------------------------------------------------
-        # ENSURE TABLES
-        # ---------------------------------------------------------------------------
-        for table_name, create_statement in TABLES.items():
-            logger.info("Creating table --> %s", table_name)
-            cursor.execute(create_statement)
-
-            # describe the table 
-            cursor.execute(f"DESCRIBE {table_name};")
-            table_structure = cursor.fetchall()
-            logger.info("Table structure for %s: %s", table_name, table_structure)
-
-        db.commit()
-        logger.info("Database and tables ensured.")
-
-
-    #LAST BLOCK
-    except mysql.connector.Error as err:
-        logger.error("Error initializing database: %s", err)
-    finally:
-        # close cursor
-        if cursor is not None:
-            try:
-                cursor.close()
-            except mysql.connector.Error as err:
-                logger.error("Error closing cursor: %s", err)
-        # try:
-        #     db.close()
-        # except mysql.connector.Error as err:
-        #     logger.error("Error closing database connection: %s", err)
-
-
-
-def load_data_db(db, data_path, logger, table_name=ACOUSTIC_TABLE_NAME):
-    cursor = db.cursor(dictionary=True)
+def acoustic_processing(folder_days,folder,db,logger, all_info, query_acoustic_folder, processed_acoustics, processed_folder_acoustic_txt):
     
-    query_load = f"""
-        LOAD DATA LOCAL INFILE '{data_path}'
-            INTO TABLE {table_name}
-            FIELDS TERMINATED BY ',' 
-            OPTIONALLY ENCLOSED BY '"'
-            LINES TERMINATED BY '\n'
-        IGNORE 1 LINES
-        (LA, LC, LZ, LAmax, LAmin, `12.40Hz`, `15.62Hz`, `19.69Hz`, `24.80Hz`, `31.25Hz`, `39.37Hz`, `49.61Hz`, `62.50Hz`, `78.75Hz`, `99.21Hz`, `125.00Hz`, `157.49Hz`, `198.43Hz`, `250.00Hz`, `314.98Hz`, `396.85Hz`, `500.00Hz`, `629.96Hz`, `793.70Hz`, `1000.00Hz`, `1259.92Hz`, `1587.40Hz`, `2000.00Hz`, `2519.84Hz`, `3174.80Hz`, `4000.00Hz`, `5039.68Hz`, `6349.60Hz`, `8000.00Hz`, `10079.37Hz`, `12699.21Hz`, `16000.00Hz`, `20158.74Hz`, Filename, Timestamp, sensor_id);
-    """
-
+    folder_days = get_desired_query_folder(folder_days,folder)                  
+    logger.info("Starting ACOUSTIC FOLDER processing")
+    start_time = time.time()                 
+    process_acoustic_folder(db,logger,folder_days, all_info, query_acoustic_folder, processed_acoustics, processed_folder_acoustic_txt)                 
     
-    try:
-        # execute the query to load data.
-        cursor.execute(query_load)
-        # commit the transaction so changes are saved.
-        db.commit()
-        logger.info("Data loaded successfully")
-    except mysql.connector.Error as err:
-        logger.error("Error loading data: %s", err)
-        db.rollback()
-    finally:
-        cursor.close()
-        # db.close()  
+    end_time =  round(time.time() - start_time,2)
+    return end_time
 
+def wav_processing(folder_days,folder,db,logger, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt):
 
-
-def power_laeq_avg(db, logger, table_name=ACOUSTIC_TABLE_NAME):
-    """
-    Execute a query that calculates the LAeq averages and returns the result.
-    """
-    cursor = db.cursor(dictionary=True)
-    query = f"""
-    SELECT 
-        sensor_id,
-        CONCAT(DATE_FORMAT(Timestamp, '%Y-%m-%d %H:00:00'), ' CET') AS hour,
-        10 * LOG10(AVG(POWER(10, LA/10))) AS AVG_LAeq,
-        MAX(LAmax) AS max_LAmax,
-        MIN(LAmin) AS min_LAmin
-    FROM {table_name}
-    GROUP BY sensor_id, hour;
-    """
-
-    try:
-        cursor.execute(query)
-        rows = cursor.fetchall()
-        logger.info("Query executed successfully.")
-        return rows
-    except mysql.connector.Error as err:
-        logger.error("Error executing query: %s", err)
-        return None
-    finally:
-        cursor.close()
-
-
-
-def send_mqtt_data(data, logger, broker=MQTT_BROKER, port=MQTT_PORT):
-    payload = json.dumps(data, default=str)
+    folder_days = get_desired_query_folder(folder_days,folder)                   
+    logger.info("Starting WAV FOLDER processing")
+    start_time = time.time()                   
+    process_wav_folder(db,logger,folder_days, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)                   
     
-    try:
-        if data and isinstance(data, list) and isinstance(data[0], dict) and "sensor_id" in data[0]:
-            sensor_id = data[0]["sensor_id"]
-        else:
-            sensor_id = "unknown"
-    except Exception as e:
-        logger.error("Error extracting sensor_id: %s", e)
-        sensor_id = "unknown"
-    
-    # topic using the sensor_id
-    topic = f"aacacustica/{sensor_id}"
-    
-    # ensure port is an integer 
-    port = int(port)
-    
-    #MQTT client and connect.
-    client = mqtt.Client()
-    client.connect(broker, port, 60)
-    
-    # Publish payload to the topic
-    client.publish(topic, payload)
-    logger.info("Published data to topic '%s': %s", topic, payload)
-    
-    client.disconnect()
+    end_time =  round(time.time() - start_time,2)
+    return end_time
 
+def prediction_processing(folder_days,folder,db,logger, all_info, query_pred_folder, processed_predictions, processed_folder_predictions_txt):
+    
+    folder_days = get_desired_query_folder(folder_days,folder)                 
+    logger.info("Starting PREDICTION FOLDER processing")
+    start_time = time.time()
+    process_pred_folder(db,logger,folder_days, all_info, query_pred_folder, processed_predictions, processed_folder_predictions_txt)                 
+    end_time =  round(time.time() - start_time,2)
+    return end_time
+
+def sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed_folder_sonometer_txt):
+    
+    sonometer_path = point + f'/{folder}'                    
+    logger.info("Starting PREDICTION FOLDER processing")
+    start_time = time.time()
+    process_sonometer_folder(db,logger,sonometer_path,query_sonometer_folder,processed_folder_sonometer_txt)
+    end_time =  round(time.time() - start_time,2)
+    return end_time
 
 
 
@@ -157,6 +77,7 @@ def main():
     # ------------------------------------
     # INITIALIZATION
     # ------------------------------------
+<<<<<<< HEAD
     # logger
     logger = setup_logging('query_automatize')
 
@@ -241,65 +162,210 @@ def main():
     resultados_folder = os.path.join(home_dir, "RESULTADOS")
     processed_list='processed_csv.txt'
         
+=======
+    
+    
+    
+    db = mysql.connector.connect(
+            host=HOST,
+            user=USER,
+            password=PASSWORD,
+            allow_local_infile=True)
 
-    # ------------------------------------
-    # PROCESSING
-    # ------------------------------------
-    logger.info("Processing!")
-    already_processed = set()
-    if os.path.exists(processed_list):
-        with open(processed_list, 'r') as f:
-            for line in f:
-                already_processed.add(line.strip())
+    logger.info("[Queries] Initializing database!")
+    
+    if DB_INIT_SWITCH: initialize_database(db, logger)
+>>>>>>> dev_martin
 
-
-    # LOOPING OVER THE CSV FILES TO MAKE THEM HOURLY AND UPLOADING INTO THE TABLE
-    # ACOUSTIC PARAMETERS
-    for root, dirs, files in os.walk(resultados_folder):
-        for folder in dirs:
-            if folder == 'hourly':
-                full_path = os.path.join(root, folder)
-                csv_files = os.listdir(full_path)
-                logger.info("CSV files in %s: %s", full_path, csv_files)
-
-                for csv_file in csv_files:
-                    # processing files that are not already processed
-                    if csv_file not in already_processed:
-                        full_csv_file = os.path.join(full_path, csv_file)
-                        logger.info("Processing file: %s", full_csv_file)
-
-                        df = pd.read_csv(full_csv_file)
-                        
-                        logger.info("Loading data into TABLE")
-                        load_data_db(db, full_csv_file, logger)
-
-                        # mark file as processed
-                        # with open(processed_list, 'a') as f:
-                        #     f.write(csv_file + "\n")
-
-
-                    else:
-                        logger.info("Skipping already processed file: %s", csv_file)
-
-
-
-    # ------------------------------------
-    # Query and Convert Results to JSON
-    # ------------------------------------
-    logger.info("Query and Convert Results to JSON")
-    avg_results = power_laeq_avg(db, logger)
-    if avg_results is not None:
-        print("Power LAeq Average Results:")
-        print(avg_results)
-        
-        # send the data via MQTT
-        send_mqtt_data(avg_results, logger)
+    logger.info("[Queries] Starting!!")
+     
+    if ISDIR:
+        logger.info(f"PATH exists --> {PATH}")
     else:
-        logger.warning("No results returned from power_laeq_avg query.")
+        raise ValueError(f'PATH ({PATH}) doesnt exist.')
+    
+    points = load_points()
+    logger.info(f"[Queries] Points to query: {points}")
+
+    all_info = []
+    for point in tqdm.tqdm(points, desc="Processing points", unit="point"):
+        if "TENERIFE_SEND_MQTT" in point:
+            try:
+                
+                # ---------------------------
+                # GET ACOUSTIC FOLDER PATH AND POINT NAME STRING
+                # ---------------------------
+                (
+                    point_str,
+                    acoust_folder
+
+                ) = get_acoust_and_point(logger,point)
+              
+                if os.path.isdir(acoust_folder):
+                    logger.info(f"Folder exists: {acoust_folder}")
+                else:
+                    logger.warning(f"Folder does not exist: {acoust_folder}")
+                    continue
+                
+                # ---------------------------
+                # CREATING QUERY FOLDERS IF THEY DONT EXIST
+                # ---------------------------
+
+                (
+                    query_acoustic_folder,
+                    query_pred_folder,
+                    query_wav_folder,
+                    query_sonometer_folder
+
+                ) = create_query_folders(point,logger)
+
+                # ---------------------------
+                # INIZIALATIN PROCESSING FILES
+                # ---------------------------
+        
+                (
+                    processed_folder_acoustic_txt,
+                    processed_folder_predictions_txt,
+                    processed_folder_wav_txt,processed_folder_sonometer_txt,
+                    processed_acoustics,
+                    processed_predictions,
+                    processed_wavs,
+                    processed_sonometers
+
+                 )  = initialize_process_files(query_acoustic_folder,query_pred_folder,query_wav_folder,query_sonometer_folder,logger)
+
+                logger.info(f"Saving the processed list of predictions files txt here --> {processed_folder_predictions_txt}")
+                logger.info(f"Saving the processed list of acoustics files txt here -->  {processed_folder_acoustic_txt}")
+                logger.info(f"Saving the processed list of wav files txt here -->  {processed_folder_predictions_txt}")
+                logger.info(f"Saving the processed list of sonometer files txt here -->  {processed_folder_sonometer_txt}")
+
+            except Exception as e:
+                logger.error(f"Error setting up folders: {e}")
+                continue
 
 
-    # NOW --> CLOSING THE DB
+
+            try:
+
+                # ------------------------------------
+                #   Filter the FILES, JUST THE FOLDERS
+                #   Filter the FILES, JUST THE FOLDERS
+                # ------------------------------------
+
+                logger.info("")
+                folder_days = os.listdir(acoust_folder)
+                folder_days = [day_folder for day_folder in folder_days if os.path.isdir(os.path.join(acoust_folder, day_folder))]
+                logger.info("Folder days in %s: %s", acoust_folder, folder_days)
+                
+                folder_days_acoustics_predictions = [os.path.join(acoust_folder, day_folder) for day_folder in folder_days if 'fixed' in day_folder]
+                
+                folder_days_wavs = [os.path.join(acoust_folder,day_folder) for day_folder in folder_days ]
+                folder_days_wavs = [file.replace('acoustic_params','wav_files') for file in folder_days_wavs]
+                folder_days_wavs = [file.replace('fixed_','') for file in folder_days_wavs]
+                
+                folder_days_acoustics_predictions = [os.path.join(acoust_folder, day_folder) for day_folder in folder_days if 'fixed' in day_folder]
+                
+                folder_days_wavs = [os.path.join(acoust_folder,day_folder) for day_folder in folder_days ]
+                folder_days_wavs = [file.replace('acoustic_params','wav_files') for file in folder_days_wavs]
+                folder_days_wavs = [file.replace('fixed_','') for file in folder_days_wavs]
+            except Exception as e:
+                logger.error(f"Error listing folder days: {e}")
+                continue
+
+
+
+            try:
+
+                # --------------------------------------------------
+                #   FIX OF THE EXTRA SECONDS IN MINUTE PROBLEM     
+                # --------------------------------------------------
+                time_slop_fix(point)
+            
+            except Exception as e:
+
+                logger.error(f"Error while applying the time slop fix to csv records: {e}")
+                continue
+
+                # -.--------------------
+                # PROCESSING
+                # ----------------------
+            
+            try:
+
+                whole_start_time = time.time()
+                
+                for folder in os.listdir(point):
+                    
+                    
+                    if folder == 'acoustic_params'  and ACOUSTIC_QUERY_SWITCH:
+                        
+                        logger.info("Starting ACOUSTIC processing")
+                        end_time = 0
+                        #end_time = acoustic_processing(folder_days_acoustics_predictions,folder,db,logger, all_info, query_acoustic_folder, processed_wavs, processed_folder_acoustic_txt)
+                        print(" --- %s seconds in execution ---" %end_time)                      
+                    
+                    if folder == 'predictions_litle' and PREDICT_QUERY_SWITCH:
+                        
+                        logger.info("Starting PREDICTIONS processing")
+                        end_time = 0
+                        #end_time = prediction_processing(folder_days_acoustics_predictions,folder,db,logger, all_info, query_pred_folder, processed_wavs, processed_folder_predictions_txt)
+                        print(" --- %s seconds in execution ---" %end_time)  
+                    
+                    if folder == 'wav_files' and WAV_QUERY_SWITCH:
+                        
+                        logger.info("Starting WAV FILES processing")
+                        end_time = 0 
+                        #wav_processing(folder_days_wavs,folder,db,logger, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)
+                        print(" --- %s seconds in execution ---" %end_time)  
+            
+                    if folder == 'sonometer_files' and SONOMETER_QUERY_SWITCH:  
+                        
+                        logger.info("Starting SONOMETER FOLDER processing")
+                        end_time = sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed_folder_sonometer_txt)
+                    
+                        power_avg_results = power_laeq_avg(db,logger,table_name=SONOMETER_TABLE_NAME) 
+                        records_sent_txt = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/5-Resultados/TENERIFE_SEND_MQTT/SPL/SONOMETER/sonometer_acoustics_query/records_sent.txt"
+                        send_mqtt_data(power_avg_results,logger,records_sent_txt)
+                        
+                        print(" --- %s seconds in execution ---" %end_time)
+                
+                    print(" --- %s seconds in total execution ---" % round(time.time() - whole_start_time,2))
+        
+            except Exception as e:
+                logger.error(f"Error while processing folders: {e}")
+        
+        
+        else:
+            logger.info("Folder not found")
+            continue
+
+    # ------------------------------------
+    #   Save all_info to json
+    # ------------------------------------
+    
+    logger.info("")
+    logger.info("Saving all_info to JSON")
+    logger.info("all_info: %s", all_info)
+    json.dump(all_info, sys.stdout, indent=4, default=decimal_to_native)
+    json.dump(all_info, sys.stdout, indent=4, default=decimal_to_native)
+
+    # ------------------------------------
+    #   Adding the folder processed to the all_info
+    # ------------------------------------
+    
+    all_info_path = os.path.join(query_acoustic_folder, f"{point_str}_all.json")
+    with open(all_info_path, "w") as f:
+        json.dump(all_info, f, indent=4, default=decimal_to_native)
+    logger.info("Saved all_info to: %s", all_info_path)
+
+        
+
+    # ------------------------------------
+    #   Closing DB
+    # ------------------------------------
+    
     try:
+        logger.info("")
         db.close()
         logger.info("Database connection closed")
     except mysql.connector.Error as err:
