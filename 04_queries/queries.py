@@ -13,8 +13,7 @@ import re
 import shutil
 import re
 
-sys.path.insert(0, "/home/aac_s3_test/noisePort_server/04_queries")
-
+sys.path.insert(0, "/home/martin/NoisePort_server/04_queries")
 from processing import *
 from logging_config import *
 from utils import *
@@ -22,7 +21,7 @@ from config import *
 from utils_queries import *
 from time_slop_fix import *
 
-PATH = SANDISK_PATH_LINUX
+PATH = SANDISK_PATH_LINUX_NEW
 ISDIR = os.path.isdir(PATH)
 
 ID_MICRO, LOCATION_RECORD, LOCATION_PLACE, LOCATION_POINT, \
@@ -77,105 +76,19 @@ def main():
     # ------------------------------------
     # INITIALIZATION
     # ------------------------------------
-<<<<<<< HEAD
-    # logger
-    logger = setup_logging('query_automatize')
-
-    # database
-    db = mysql.connector.connect(
-            host=HOST,
-            user=USER,
-            password=PASSWORD,
-            allow_local_infile=True
-    )
-
-    logger.info("Initializing database!")
-    # testing the query database
-    initialize_database(db, logger)
-
-
-    # paths and processed csv_files
-    logger.info("Starting!!")
-    logger.info("")
-
-    try:
-        # config
-        logger.info("Getting the element form the yamnl file")
-        id_micro, location_record, location_place, location_point, \
-        audio_sample_rate, audio_window_size, audio_calibration_constant,\
-        storage_s3_bucket_name, storage_output_wav_folder, \
-        storage_output_acoust_folder = load_config_acoustic('config.yaml')
-        logger.info("Config loaded successfully")   
-    except Exception as e:
-        logger.error(f"Error loading config: {e}")
-        return
-
-
-    # [1] setup the folder to process
-    path = SANDISK_PATH_LINUX
-    
-    # check if it exist
-    isdir = os.path.isdir(path)
-    if isdir:
-        logger.info(f"Path exists --> {path}")
-    else:
-        logger.warning(f"Path does not exist --> {path}")
-        path = SANDISK_PATH_WINDOWS
-        isdir = os.path.isdir(path)
-        if isdir:
-            logger.info(f"Path exists --> {path}")
-        else:
-            raise ValueError(f'Path ({path}) doesnt exist.')
-
-    
-    logger.info("")
-    points = [point for point in os.listdir(path)]
-    points = [os.path.join(path, point) for point in points]
-    for point in points:
-        if "P2_CONTENEDORES" in point:
-            print("P2_CONTENEDORES")
-
-            acoust_folder = os.path.join(point, storage_output_acoust_folder)
-            logger.info(f"Acoustic params folder: {acoust_folder}")
-            print(f"Acoustic params folder: {acoust_folder}")
-
-            # checking if the folder exist
-            if os.path.isdir(acoust_folder):
-                logger.info(f"Folder exists: {acoust_folder}")
-            else:
-                logger.warning(f"Folder does not exist: {acoust_folder}")
-                continue
-
-            csv_files = os.listdir(acoust_folder)
-            logger.info("CSV files in %s: %s", acoust_folder, csv_files)
-
-    
-    
-    
-    
-    exit()  
-
-
-
-
-    home_dir = os.getenv("HOME")
-    resultados_folder = os.path.join(home_dir, "RESULTADOS")
-    processed_list='processed_csv.txt'
-        
-=======
     
     
     
     db = mysql.connector.connect(
-            host=HOST,
-            user=USER,
-            password=PASSWORD,
+            host=HOST_NEW,
+            user=USER_NEW,
+            password=PASSWORD_NEW,
             allow_local_infile=True)
-
+    if DB_INIT_SWITCH: initialize_database(db, logger)
+    
     logger.info("[Queries] Initializing database!")
     
-    if DB_INIT_SWITCH: initialize_database(db, logger)
->>>>>>> dev_martin
+    
 
     logger.info("[Queries] Starting!!")
      
@@ -189,7 +102,7 @@ def main():
 
     all_info = []
     for point in tqdm.tqdm(points, desc="Processing points", unit="point"):
-        if "TENERIFE_SEND_MQTT" in point:
+        if "P5_TEST" in point.split('/'):
             try:
                 
                 # ---------------------------
@@ -249,7 +162,6 @@ def main():
 
                 # ------------------------------------
                 #   Filter the FILES, JUST THE FOLDERS
-                #   Filter the FILES, JUST THE FOLDERS
                 # ------------------------------------
 
                 logger.info("")
@@ -300,22 +212,19 @@ def main():
                     if folder == 'acoustic_params'  and ACOUSTIC_QUERY_SWITCH:
                         
                         logger.info("Starting ACOUSTIC processing")
-                        end_time = 0
-                        #end_time = acoustic_processing(folder_days_acoustics_predictions,folder,db,logger, all_info, query_acoustic_folder, processed_wavs, processed_folder_acoustic_txt)
+                        end_time = acoustic_processing(folder_days_acoustics_predictions,folder,db,logger, all_info, query_acoustic_folder, processed_wavs, processed_folder_acoustic_txt)
                         print(" --- %s seconds in execution ---" %end_time)                      
                     
                     if folder == 'predictions_litle' and PREDICT_QUERY_SWITCH:
                         
                         logger.info("Starting PREDICTIONS processing")
-                        end_time = 0
-                        #end_time = prediction_processing(folder_days_acoustics_predictions,folder,db,logger, all_info, query_pred_folder, processed_wavs, processed_folder_predictions_txt)
+                        end_time = prediction_processing(folder_days_acoustics_predictions,folder,db,logger, all_info, query_pred_folder, processed_wavs, processed_folder_predictions_txt)
                         print(" --- %s seconds in execution ---" %end_time)  
                     
                     if folder == 'wav_files' and WAV_QUERY_SWITCH:
                         
                         logger.info("Starting WAV FILES processing")
-                        end_time = 0 
-                        #wav_processing(folder_days_wavs,folder,db,logger, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)
+                        wav_processing(folder_days_wavs,folder,db,logger, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)
                         print(" --- %s seconds in execution ---" %end_time)  
             
                     if folder == 'sonometer_files' and SONOMETER_QUERY_SWITCH:  
@@ -323,13 +232,13 @@ def main():
                         logger.info("Starting SONOMETER FOLDER processing")
                         end_time = sonometer_processing(folder,point,db,logger,query_sonometer_folder,processed_folder_sonometer_txt)
                     
-                        power_avg_results = power_laeq_avg(db,logger,table_name=SONOMETER_TABLE_NAME) 
-                        records_sent_txt = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/5-Resultados/TENERIFE_SEND_MQTT/SPL/SONOMETER/sonometer_acoustics_query/records_sent.txt"
-                        send_mqtt_data(power_avg_results,logger,records_sent_txt)
+                        #power_avg_results = power_laeq_avg(db,logger,table_name=SONOMETER_TABLE_NAME) 
+                        #records_sent_txt = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/5-Resultados/TENERIFE_SEND_MQTT/SPL/SONOMETER/sonometer_acoustics_query/records_sent.txt"
+                        #send_mqtt_data(power_avg_results,logger,records_sent_txt)
                         
                         print(" --- %s seconds in execution ---" %end_time)
                 
-                    print(" --- %s seconds in total execution ---" % round(time.time() - whole_start_time,2))
+                print(" --- %s seconds in total execution ---" % round(time.time() - whole_start_time,2))
         
             except Exception as e:
                 logger.error(f"Error while processing folders: {e}")

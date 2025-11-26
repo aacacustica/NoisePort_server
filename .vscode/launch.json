@@ -6,6 +6,7 @@
     "configurations": [
 
 
+
         
 
         {
@@ -14,6 +15,7 @@
             "module": "04_queries.queries",
             "request": "launch",
             "console": "integratedTerminal",
+            "python" : "/home/martin/.conda/envs/s3_env/bin/python",
             "args": [
                 "-m", "04_queries.queries"
             ]

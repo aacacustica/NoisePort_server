@@ -19,17 +19,12 @@ MERGED_QUERY = "merged_csv_query"
 # ----------------------------------------
 #  SANDISK PATH
 # ----------------------------------------
-<<<<<<< HEAD
-SANDISK_PATH_LINUX = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/"
+SANDISK_PATH_LINUX = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/3-Medidas/"
 SANDISK_PATH_WINDOWS = r"\\192.168.205.122\Contenedores"
 MOUNTED_PATH = "/run/user/1000/gvfs/smb-share:server=192.168.205.122,share=contenedores/3-Medidas"
 
-=======
->>>>>>> dev_martin
-
-SANDISK_PATH_LINUX = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/3-Medidas/"
-SANDISK_PATH_WINDOWS = r"\\192.168.205.122\Contenedores"
-
+SANDISK_PATH_LINUX_NEW = "/srv/contenedores/CONTENEDORES/CONTENEDORES/3-Medidas/"
+SANDISK_PATH_WINDOWS_NEW = "\\192.168.205.124\Contenedores"
 # -------------------------
 # ID MICRO
 # -------------------------
@@ -121,6 +116,13 @@ HOST = "localhost"
 USER = "santi"
 PASSWORD = "Mysql_Pssw2025!"
 
+HOST_NEW = "localhost"
+USER_NEW = "local_admin"
+PASSWORD_NEW = "AdminDBPassword123!" 
+####Workbench#####
+#User: wb_user
+#Password:WorkbenchPassword123!
+
 
 # ----------------------------------------
 # DATABASE ATTRIBUTES 
@@ -132,7 +134,7 @@ PREDICT_TABLE_NAME = "noise_port_test.predict_data"
 WAV_TABLE_NAME = "noise_port_test.wav_data"
 SONOMETER_TABLE_NAME = "noise_port_test.sonometer_acoustic_data"
 
-DB_INIT_SWITCH = False
+DB_INIT_SWITCH = True
 
 ACOUSTIC_QUERY_SWITCH = True
 PREDICT_QUERY_SWITCH = True

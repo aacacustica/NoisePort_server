@@ -16,6 +16,7 @@ from ast import literal_eval
 from pathlib import Path
 from queries import *
 from config import *
+from utils_queries import *
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -639,14 +640,14 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
             logger.error(f"[Acoustics] Error loading data into database: {e}")
             continue
 
-
+        """
         try:
             
             # ------------------------------------
             # 6-query and convert results to json
             # ------------------------------------            
             
-            logger.info("")
+                        logger.info("")
             logger.info("[Acoustics] Query and Convert Results to JSON")
             avg_results = power_laeq_avg(db, logger)
             logger.info(avg_results)
@@ -661,13 +662,13 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
                 send_mqtt_data(avg_results, logger)
             else:
                 logger.warning("[Acoustics] No results returned from power_laeq_avg query.")
-        
+            
         except Exception as e:
             logger.error(f"[Acoustics] Error querying and converting results to JSON: {e}")
             continue
 
         all_info.append(avg_results)
-
+        """
 
         try:          
 
@@ -820,7 +821,7 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
         except Exception as e:
             logger.error(f"[Predictions] Error loading data into database: {e}")
             continue
-
+        """
         try:
 
             # ------------------------------------
@@ -847,7 +848,7 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
         except Exception as e:
             logger.error(f"[Predictions] Error querying and converting results to JSON: {e}")
             continue
-
+        """
         try:
 
             # ------------------------------------
@@ -966,7 +967,7 @@ def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_
         except Exception as e:
             logger.error(f"[Wave Files] Error loading data into database: {e}")
             continue
-
+        """
         try:
 
             # ------------------------------------
@@ -996,6 +997,7 @@ def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_
         except Exception as e:
             logger.error(f"[Wave Files] Error querying and converting results to JSON: {e}")
             continue
+        """
         # ------------------------------------
         # 7-    Update processed folder 
         # ------------------------------------

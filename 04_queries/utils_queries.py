@@ -2,10 +2,18 @@ import mysql
 import json
 import os
 import decimal
-
+import ssl
 import paho.mqtt.client as mqtt
 
 from config import * 
+from utils import * 
+from utils_queries import * 
+PATH = SANDISK_PATH_LINUX_NEW
+
+ID_MICRO, LOCATION_RECORD, LOCATION_PLACE, LOCATION_POINT, \
+AUDIO_SAMPLE_RATE, AUDIO_WINDOW_SIZE, AUDIO_CALIBRATION_CONSTANT,\
+STORAGE_S3_BUCKET_NAME, STORAGE_OUTPUT_WAV_FOLDER, \
+STORAGE_OUTPUT_ACOUSTIC_FOLDER = load_config_acoustic('config.yaml')
 
 def send_mqtt_data(data, logger, sent_Records_txt):
 
@@ -209,23 +217,31 @@ def load_data_db(db, data_path, logger, table_name=ACOUSTIC_TABLE_NAME):
 
 def initialize_process_files(query_acoustic_folder,query_pred_folder,query_wav_folder,query_sonometer_folder,logger):
 
-    processed_folder_acoustic_txt = os.path.join(query_acoustic_folder, "processed_acoustics.txt")
-    processed_folder_predictions_txt = os.path.join(query_pred_folder, "processed_predictions.txt")
-    processed_folder_wav_txt = os.path.join(query_wav_folder, "processed_wavs.txt")
-    processed_folder_sonometer_txt = os.path.join(query_sonometer_folder,"processed_sonometers.txt")
+    processed_folder_acoustic_txt       = os.path.join(query_acoustic_folder, "processed_acoustics.txt")
+    processed_folder_predictions_txt    = os.path.join(query_pred_folder, "processed_predictions.txt")
+    processed_folder_wav_txt            = os.path.join(query_wav_folder, "processed_wavs.txt")
+    processed_folder_sonometer_txt      = os.path.join(query_sonometer_folder,"processed_sonometers.txt")
+    processed_mqtt_data_txt_sonometer   = os.path.join(query_sonometer_folder,"records_sent.txt")
+    #processed_mqtt_data_txt_spl         = os.path.join()
 
-    logger.info(f"Saving the proicessed file txt here --> {processed_folder_acoustic_txt}")
+    logger.info(f"[Acoustics] Saving the processed file txt here -->    {processed_folder_acoustic_txt}")
+    logger.info(f"[Predictions] Saving the processed file txt here -->  {processed_folder_acoustic_txt}")
+    logger.info(f"[WAVs] Saving the processed file txt here -->         {processed_folder_acoustic_txt}")
+    logger.info(f"[Sonometers] Saving the processed file txt here -->   {processed_folder_acoustic_txt}")
+    logger.info(f"[MQTT] Saving the processed file txt here -->         {processed_folder_acoustic_txt}")
+    logger.info(f"[MQTT SPL] Saving the processed file txt here -->     {processed_folder_acoustic_txt}")
+
+    processed_acoustics                 = load_processed_folder(processed_folder_acoustic_txt)
+    processed_predictions               = load_processed_folder(processed_folder_predictions_txt)
+    processed_wavs                      = load_processed_folder(processed_folder_wav_txt)
+    processed_sonometers                = load_processed_folder(processed_folder_sonometer_txt)
     
-    processed_acoustics = load_processed_folder(processed_folder_acoustic_txt)
-    processed_predictions = load_processed_folder(processed_folder_predictions_txt)
-    processed_wavs = load_processed_folder(processed_folder_wav_txt)
-    processed_sonometers = load_processed_folder(processed_folder_sonometer_txt)
 
     return processed_folder_acoustic_txt,processed_folder_predictions_txt,processed_folder_wav_txt,processed_folder_sonometer_txt,processed_acoustics,processed_predictions,processed_wavs,processed_sonometers
 
 def create_query_folders(point,logger):
         
-        point_path_results = point.replace("3-Medidas","5-Resultados")
+        point_path_results = point.replace('3-Medidas','5-Resultados')
 
         query_acoustic_folder = os.path.join(point_path_results,'SPL', "acoustic_params_query")
         query_pred_folder = os.path.join(point_path_results,'AI_MODEL', "predictions_litle_query")
