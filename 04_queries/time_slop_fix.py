@@ -175,8 +175,14 @@ def get_last_minute_leftovers(df):
 
 
 def get_measurement_folders(point):
-    folders = sorted([d for d in os.listdir(point) if os.path.isdir(os.path.join(point, d))])
-    return [m for m in folders if m in ('acoustic_params', 'predictions_litle')]
+    point = point.replace('3-Medidas','5-Resultados')
+    point_SPL = os.path.join(point,'SPL')
+    point_AI = os.path.join(point,'AI_MODEL')
+
+    acoustic_path  = os.path.join(point_SPL,'measurements','acoustic_params')
+    prediction_path = os.path.join(point_AI,'predictions_litle')
+
+    return acoustic_path,prediction_path
 
 
 def get_bucket_list(measurement_path):

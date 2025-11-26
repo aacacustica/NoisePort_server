@@ -247,9 +247,12 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
         # 6-    Saving  whole DF
         # ------------------------------------
 
-    
-        file_name = output_folder + f"/{point}_Processed.csv"
-        df_final.to_csv(file_name,index = False)
+        if count == 0:
+            file_name = output_folder + f"/{point}_Processed.csv"
+            df_final.to_csv(file_name,index = False)
+        else:
+            file_name = output_folder + f"/{point}_Processed_{count}.csv"
+            df_final.to_csv(file_name,index = False)
     
     except Exception as e:
         logger.error(f'[CSV Sonometer]Error eaving per day CSV files from whole DF, and whole DF: {e}')
@@ -1018,28 +1021,28 @@ def process_sonometer_folder(db,logger,files_folder,query_folder,processed_sonom
         
         for point in tqdm.tqdm(os.listdir(files_folder), desc="[Sonometers] Processing Points"):
                 
-                    point_folder = os.path.join(files_folder,point)
-                    file_count = 0
+            point_folder = os.path.join(files_folder,point)
+            file_count = 0
+            
+            lxt_files = [f for f in os.listdir(point_folder) if f.endswith('.xlsx')]                    
+            csvs_files = [f for f in os.listdir(point_folder) if f.endswith('_CSV')]
+            
+            if csvs_files != []:
+                
+                for file in tqdm.tqdm(csvs_files, desc=f"Processing files in {point}"):
                     
-                    lxt_files = [f for f in os.listdir(point_folder) if f.endswith('.xlsx')]                    
-                    csvs_files = [f for f in os.listdir(point_folder) if f.endswith('_CSV')]
-                    
-                    if csvs_files != []:
-                        
-                        for file in tqdm.tqdm(csvs_files, desc=f"Processing files in {point}"):
-                            
-                            file_path = os.path.join(point_folder,file)                        
-                            logger.info(f"[SONOMETER] -> Processing file: {file_path}")                            
-                            process_sonometer_csv(db,file_path,logger,point,output_folder,processed_sonometers_txt,file_count)                                                    
-                            file_count += 1
-                            logger.info(f"[SONOMETER] -> Processed data saved at: {output_folder}")
-                    
-                    else:
+                    file_path = os.path.join(point_folder,file)                        
+                    logger.info(f"[SONOMETER] -> Processing file: {file_path}")                            
+                    process_sonometer_csv(db,file_path,logger,point,output_folder,processed_sonometers_txt,file_count)                                                    
+                    file_count += 1
+                    logger.info(f"[SONOMETER] -> Processed data saved at: {output_folder}")
+            
+            else:
 
-                        for file in tqdm.tqdm(lxt_files,desc = f'Processing files in {point}'):
+                for file in tqdm.tqdm(lxt_files,desc = f'Processing files in {point}'):
 
-                            file_path = os.path.join(files_folder,point, file)
-                            logger.info(f"[SONOMETER] -> Processing file: {file_path}")                            
-                            process_sonometer_xlsx(db,file_path,logger,point,output_folder,file_count,processed_sonometers_txt)
-                            file_count += 1
-                            logger.info(f"[SONOMETER] -> Processed data saved at: {output_folder}")
+                    file_path = os.path.join(files_folder,point, file)
+                    logger.info(f"[SONOMETER] -> Processing file: {file_path}")                            
+                    process_sonometer_xlsx(db,file_path,logger,point,output_folder,file_count,processed_sonometers_txt)
+                    file_count += 1
+                    logger.info(f"[SONOMETER] -> Processed data saved at: {output_folder}")

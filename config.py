@@ -9,6 +9,7 @@ RESULTADOS_FOLDER = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/5-Resultados/"
 #  SUBFOLDERS
 # ----------------------------------------
 
+
 ACOUSTICS_QUERY = "acoustic_params_query"
 PEAKS_QUERY = "peaks_query"
 WAV_FILES_QUERY = "wav_files_query"
@@ -33,7 +34,7 @@ ID_MICROPHONE = {
     "P2_CONTENEDORES": "RPI_2",
     "P3_CONTENEDORES": "RPI_3",
     "P4_CONTENEDORES": "RPI_4",
-    "P5_TEST": "RPI_5",
+    "P5_TEST":         "RPI_5"
 }
 
 # -------------------------
@@ -118,7 +119,7 @@ PASSWORD = "Mysql_Pssw2025!"
 
 HOST_NEW = "localhost"
 USER_NEW = "local_admin"
-PASSWORD_NEW = "AdminDBPassword123!" 
+PASSWORD_NEW = "AdminDBPassword123!"
 ####Workbench#####
 #User: wb_user
 #Password:WorkbenchPassword123!
@@ -134,7 +135,7 @@ PREDICT_TABLE_NAME = "noise_port_test.predict_data"
 WAV_TABLE_NAME = "noise_port_test.wav_data"
 SONOMETER_TABLE_NAME = "noise_port_test.sonometer_acoustic_data"
 
-DB_INIT_SWITCH = True
+DB_INIT_SWITCH = False
 
 ACOUSTIC_QUERY_SWITCH = True
 PREDICT_QUERY_SWITCH = True
