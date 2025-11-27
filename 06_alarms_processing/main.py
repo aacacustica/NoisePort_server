@@ -47,7 +47,7 @@ def collect_folders(input_folder,label_source_type, logger,point_filter=None):
         for root, dirs, _ in os.walk(input_folder):
             if point_filter is not None:
                 parts = root.split(os.sep)
-                if point_filter not in parts:
+                if point_filter not in root:
                     continue
 
             if config_vi.MERGED_FOLDER in dirs:

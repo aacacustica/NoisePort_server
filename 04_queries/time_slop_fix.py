@@ -179,7 +179,7 @@ def get_measurement_folders(point):
     point_SPL = os.path.join(point,'SPL')
     point_AI = os.path.join(point,'AI_MODEL')
 
-    acoustic_path  = os.path.join(point_SPL,'measurements','acoustic_params')
+    acoustic_path  = os.path.join(point,'acoustic_params')
     prediction_path = os.path.join(point_AI,'predictions_litle')
 
     return acoustic_path,prediction_path
@@ -192,9 +192,11 @@ def get_bucket_list(measurement_path):
 
 
 def copy_original_csvs(bucket_path, fixed_folder, measurement_folder):
-    csv_files = [f for f in os.listdir(bucket_path) if f.lower().endswith('.csv')]
+    
     if measurement_folder == 'predictions_litle':
-        csv_files = [f for f in csv_files if f.endswith('w_1.0.csv')]
+        csv_files = [f for f in os.listdir(bucket_path) if f.endswith('w_1.0.csv')]
+    else:
+        csv_files = [f for f in os.listdir(bucket_path) if f.lower().endswith('.csv')]
 
     os.makedirs(fixed_folder, exist_ok=True)
 
@@ -258,12 +260,31 @@ def handle_last_csv_leftovers(fixed_folder, bucket, leftover_buckets, measuremen
         ignore_index=True
     ).sort_values('Timestamp')
 
+def handle_already_fixed_pairs(processed_folder_txt,day_csv):
+    if not os.path.exists(processed_folder_txt):
+        open(processed_folder_txt, 'w').close()
 
-def time_slop_fix(point):
+    with open(processed_folder_txt, "r+") as myfile:
+        content = myfile.read()
 
-    measurement_folders = get_measurement_folders(point)
+        if day_csv in content:
+            return False
+        
+        myfile.seek(0, os.SEEK_END)
+        myfile.write(day_csv + "\n")
+
+        return True
+
+def time_slop_fix(point,acoustic_folder,pred_litle_folder):
+
+    measurement_folders = [acoustic_folder,pred_litle_folder]
 
     for measurement_folder in measurement_folders:
+        if 'acoustic_params' in measurement_folder:
+            processed_folders_txt_path = os.path.join(measurement_folder,'processed_acoustic.txt')
+        elif 'predictions_litle' in measurement_folder:
+            processed_folders_txt_path = os.path.join(measurement_folder,'processed_acoustic.txt')
+
         measurement_path = os.path.join(point, measurement_folder)
         leftover_buckets = {}
 
@@ -285,6 +306,14 @@ def time_slop_fix(point):
                 prev_path = os.path.join(fixed_folder, prev_name)
                 curr_path = os.path.join(fixed_folder, curr_name)
 
+                if 'acoustic_params' in measurement_folder:
+                    processed_folders_txt_path = os.path.join(measurement_folder,'processed_acoustic.txt')
+                elif 'predictions_litle' in measurement_folder:
+                    processed_folders_txt_path = os.path.join(measurement_folder,'processed_acoustic.txt')
+
+                if not handle_already_fixed_pairs(processed_folders_txt_path,prev_name):
+                    continue
+                
                 handle_minute_jumps(prev_path, curr_path, leftover_buckets, measurement_folder)
 
                 _, extra_idx = get_extra_seconds_indices(prev_path)

@@ -539,75 +539,6 @@ def main():
 
         try:
 
-<<<<<<< HEAD:02_acoustic_params/acoustic_params_test.py
-        if args.path:
-            path = args.path
-        else:
-            path = SANDISK_PATH_LINUX
-        
-        
-        # check if it exist
-        isdir = os.path.isdir(path)
-        if isdir:
-            logging.info(f"Path exists --> {path}")
-            # continue
-        else:
-            raise ValueError(f'Path ({path}) doesnt exist.')
-        
-        
-        # find the folder called "storage_output_wav_folder" with walk in the point_folders
-        for root, dirs, files in os.walk(path):
-            if storage_output_wav_folder in dirs:
-                logging.info(f"Found folder: {storage_output_wav_folder} in {root}")
-                point = os.path.basename(root)
-                logging.info(f"Point: {point}")
-
-
-                if point == "P2_CONTENEDORES":
-                    ##########################################################
-                    ##########################################################
-                    ##########################################################
-                    # select the calibration constant for the point
-                    if point in CALIBRATION_CONSTANTS:
-                        calib = CALIBRATION_CONSTANTS[point]
-                        logging.info(f"Calibration constant: {calib}")
-                    else:
-                        raise ValueError(f"Calibration constant for {point} not found in CALIBRATION_CONSTANTS.")
-                    
-                    if point in ID_MICROPHONE:
-                        id_micro = ID_MICROPHONE[point]
-                        logging.info(f"ID Microphone: {id_micro}")
-                    else:
-                        raise ValueError(f"ID Microphone for {point} not found in ID_MICROPHONE.")
-                    
-                    
-                    ##########################################################
-                    ##########################################################
-                    ##########################################################
-                    wav_files_folder = os.path.join(root, storage_output_wav_folder)
-                    logging.info(f"WAV files folder: {wav_files_folder}")
-
-
-                    ##########################################################
-                    ##########################################################
-                    ##########################################################
-                    logging.info("Creating the leq_processor")
-                    leq_processor = LeqLevelOct(
-                            audio_path=wav_files_folder,
-
-                            id_micro=id_micro,
-                            fs=audio_sample_rate,
-                            window_size=audio_window_size,
-                            calibration_constant=calib,
-                            
-                            acoustic_params=storage_output_acoust_folder,
-                            wav_files=storage_output_wav_folder,
-                            s3_bucket_name=storage_s3_bucket_name,
-                            
-                            upload_s3=upload_s3,
-                            logging=logging
-                        )
-=======
             #-------------------------------
             #   3- Set base path from arguments or config
             #-------------------------------
@@ -662,21 +593,16 @@ def main():
                         logging
                     )
 
->>>>>>> dev_martin:02_acoustic_params/acoustic_params_Pyoctave.py
                     logging.info("Processing audio files...")
                     leq_processor.process_audio_files(wav_files_folder)
                 
                 
                 else:
-<<<<<<< HEAD:02_acoustic_params/acoustic_params_test.py
-                    logging.info(f"Skipping point: {point}")
-=======
                     
                     
                     logging.info(f"Skipping point: {point}")
                     
                     
->>>>>>> dev_martin:02_acoustic_params/acoustic_params_Pyoctave.py
                     continue
 
     except KeyboardInterrupt:

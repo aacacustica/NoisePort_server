@@ -7,6 +7,8 @@
 
 
 
+
+
         
 
         {
@@ -26,20 +28,22 @@
             "type": "debugpy",
             "module": "05_peak.peak_detection_L50",
             "request": "launch",
+            "python" : "/home/martin/.conda/envs/s3_env/bin/python",
             "console": "integratedTerminal",
             "args": [
-
+                    "-m","05_peak.peak_decetection_L50"
             ]
         }        
         
         ,{
-            "name": "Python Debugger: acoustic params debugging",
+            "name": "Python Debugger: alarms debugging",
             "type": "debugpy",
-            "module": "02_acoustic_params.acoustic_params_Pyoctave",
+            "module": "06_alarms_processing.main",
             "request": "launch",
+            "python" : "/home/martin/.conda/envs/s3_env/bin/python",
             "console": "integratedTerminal",
             "args": [
-                 
+                 "-f","/srv/contenedores/CONTENEDORES/CONTENEDORES/5-Resultados", "--raspbery","--port","--point","P5_TEST"
             ]
         }
         

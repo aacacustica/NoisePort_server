@@ -35,8 +35,7 @@ def acoustic_processing(folder_days,folder,db,logger, all_info, query_acoustic_f
     
     logger.info("Starting ACOUSTIC FOLDER processing")
     start_time = time.time()                 
-    process_acoustic_folder(db,logger,folder_days, all_info, query_acoustic_folder, processed_acoustics, processed_folder_acoustic_txt)                 
-    
+    process_acoustic_folder(db,logger,folder_days, all_info, query_acoustic_folder, processed_acoustics, processed_folder_acoustic_txt)                   
     end_time =  round(time.time() - start_time,2)
     return end_time
 
@@ -45,7 +44,6 @@ def wav_processing(folder_days,folder,db,logger, all_info, query_wav_folder, pro
     logger.info("Starting WAV FOLDER processing")
     start_time = time.time()                   
     process_wav_folder(db,logger,folder_days, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)                   
-    
     end_time =  round(time.time() - start_time,2)
     return end_time
 
@@ -104,6 +102,7 @@ def main():
                 # ---------------------------
                 # GET ACOUSTIC FOLDER PATH AND POINT NAME STRING
                 # ---------------------------
+                #OK
                 (
                     point_str,
                     acoust_folder
@@ -119,7 +118,7 @@ def main():
                 # ---------------------------
                 # CREATING QUERY FOLDERS IF THEY DONT EXIST
                 # ---------------------------
-
+                #OK
                 (
                     query_acoustic_folder,
                     query_pred_folder,
@@ -131,7 +130,7 @@ def main():
                 # ---------------------------
                 # INIZIALATIN PROCESSING FILES
                 # ---------------------------
-        
+                #OK
                 (
                     processed_folder_acoustic_txt,
                     processed_folder_predictions_txt,
@@ -162,22 +161,19 @@ def main():
 
 
                 (
-                    sonometer_folder_path,
-                    raspberry_folder_path,
-                    spl_folder_path,
-                    AI_MODEL_folder_path,
-                    measurements_folder_path,
-                    wavs_folder_path,
-                    sonometer_files_folder_path,
-                    acoustics_params_folder_path, 
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
                     predictions_litle_folder_path,
-                    days_folders_wavs,
-                    days_folders_acoustics,
-                    days_folders_predictions,
-                    points_folders_sonometer
+                    _,
+                    _,
+                    _,
+                    _
 
-                ) =  get_sonometer_rasp_and_acoustics_preds_days_and_paths(logger,point)
-
+                ) =  get_sonometer_rasp_acoustics_preds_days_and_paths(logger,point) 
+                #No queremos aún el resto de rutas porque recoge los archivos fixed y aun no se han generado
             except Exception as e:
                 logger.error(f"Error listing folder days: {e}")
                 continue
@@ -189,8 +185,21 @@ def main():
                 # --------------------------------------------------
                 #   FIX OF THE EXTRA SECONDS IN MINUTE PROBLEM     
                 # --------------------------------------------------
-                time_slop_fix(point)
-            
+                time_slop_fix(point,acoust_folder,predictions_litle_folder_path)
+
+                (
+                    spl_folder_path,
+                    AI_MODEL_folder_path,
+                    wavs_folder_path,
+                    sonometer_files_folder_path,
+                    acoustics_params_folder_path,
+                    predictions_litle_folder_path,
+                    days_folders_wavs,
+                    days_folders_acoustics,
+                    days_folders_predictions,
+                    points_folders_sonometer
+
+                ) =  get_sonometer_rasp_acoustics_preds_days_and_paths(logger,point)
             except Exception as e:
 
                 logger.error(f"Error while applying the time slop fix to csv records: {e}")
@@ -208,19 +217,19 @@ def main():
                     
                     logger.info("Starting ACOUSTIC processing")
                     end_time = acoustic_processing(days_folders_acoustics,acoustics_params_folder_path,db,logger, all_info, query_acoustic_folder, processed_wavs, processed_folder_acoustic_txt)
-                    print(" --- %s seconds in execution ---" %end_time)                      
+                    print("[acoustic_processing] --- %s seconds in execution ---" %end_time)                      
                 
-                if  PREDICT_QUERY_SWITCH:
+                if PREDICT_QUERY_SWITCH:
                     
                     logger.info("Starting PREDICTIONS processing")
                     end_time = prediction_processing(days_folders_predictions,predictions_litle_folder_path,db,logger, all_info, query_pred_folder, processed_wavs, processed_folder_predictions_txt)
-                    print(" --- %s seconds in execution ---" %end_time)  
+                    print("[preditions_processing] --- %s seconds in execution ---" %end_time)  
                 
                 if WAV_QUERY_SWITCH:
                     
                     logger.info("Starting WAV FILES processing")
-                    wav_processing(days_folders_wavs,wavs_folder_path,db,logger, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)
-                    print(" --- %s seconds in execution ---" %end_time)  
+                    end_time = wav_processing(days_folders_wavs,wavs_folder_path,db,logger, all_info, query_wav_folder, processed_wavs, processed_folder_wav_txt)
+                    print("[wavs_processing] --- %s seconds in execution ---" %end_time)  
         
                 if SONOMETER_QUERY_SWITCH:  
                     
@@ -231,9 +240,12 @@ def main():
                     #records_sent_txt = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/5-Resultados/TENERIFE_SEND_MQTT/SPL/SONOMETER/sonometer_acoustics_query/records_sent.txt"
                     #send_mqtt_data(power_avg_results,logger,records_sent_txt)
                     
-                    print(" --- %s seconds in execution ---" %end_time)
+                    print("[sonometer_processing] --- %s seconds in execution ---" %end_time)
                 
-                print(" --- %s seconds in total execution ---" % round(time.time() - whole_start_time,2))
+                print(  "\n"
+                        "\n"
+                        " --- %s seconds in total execution ---" "\n"
+                         % round(time.time() - whole_start_time,2))
         
             except Exception as e:
                 logger.error(f"Error while processing folders: {e}")

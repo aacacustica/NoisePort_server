@@ -7,7 +7,7 @@ import argparse
 import logging
 import sys
 import time
-sys.path.insert(0, "/home/aac_s3_test/noisePort_server/05_peak")
+sys.path.insert(0, "/home/martin/NoisePort_server/05_peak")
 
 from logging_config import *
 from config_peak import *
@@ -37,15 +37,15 @@ def get_hourly_folders():
     hour_path_predictions = []
     hour_path_peaks = []
     
-    for point in os.listdir(RESULTADOS_FOLDER):
+    for point in os.listdir(RESULTADOS_FOLDER_NEW):
         if point == 'P5_TEST':
             
-            spl_folder = os.path.join(RESULTADOS_FOLDER,point,'SPL')
-            ai_folder = os.path.join(RESULTADOS_FOLDER,point,'AI_MODEL')
+            spl_folder = os.path.join(RESULTADOS_FOLDER_NEW,point,'SPL')
+            ai_folder = os.path.join(RESULTADOS_FOLDER_NEW,point,'AI_MODEL')
             
             predictions_params_query = os.path.join(ai_folder,PREDICTIONS_QUERY)
-            peaks_params_query = os.path.join(spl_folder,PEAKS_QUERY)
-            acoustic_params_query = os.path.join(spl_folder,ACOUSTICS_QUERY)
+            peaks_params_query = os.path.join(spl_folder,'peaks',PEAKS_QUERY)
+            acoustic_params_query = os.path.join(spl_folder,'queries',ACOUSTICS_QUERY)
 
             if not os.path.exists(peaks_params_query): os.makedirs(peaks_params_query)
 
@@ -99,7 +99,7 @@ def merge_peaks(df_pk: pd.DataFrame, df_final: pd.DataFrame) -> pd.DataFrame:
 
 def assign_folder_paths(csv_file):
     title = csv_file.split("/")[-1]
-    point = csv_file.split("/")[-4]
+    point = csv_file.split("/")[-5]
 
     output_folder = csv_file.replace(ACOUSTICS_QUERY,PEAKS_QUERY)
 
@@ -111,10 +111,9 @@ def assign_folder_paths(csv_file):
 
 
 def merge_acoustics_predictions_and_peaks(point,acoustics_paths,predictions_paths,peaks_paths,logger):
-    base_path = RESULTADOS_FOLDER
+    base_path = RESULTADOS_FOLDER_NEW
     point_path = os.path.join(base_path,point)
-    spl_path = os.path.join(point_path,'SPL')
-    output_path = os.path.join(spl_path,MERGED_QUERY)
+    output_path = os.path.join(point_path,'SPL','peaks',MERGED_QUERY)
 
     peaks_paths = [f for f in peaks_paths if 'fixed' in f]
     predictions_paths = [f for f in predictions_paths if 'fixed' in f]
@@ -171,15 +170,15 @@ def main():
     # python -m 05_peak.peak_detection_L50
     
     logger = setup_logging('peak_detection')
-    args = argument_parser()
+    #args = argument_parser()
     logging.info(f"Inizializing")
 
-
+    """
     if not args.path:
         base_path = SANDISK_PATH_LINUX
     else:
         base_path = args.path
-    
+    """
 
     ################
     # inizializating

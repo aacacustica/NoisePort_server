@@ -247,7 +247,7 @@ def create_query_folders(point,logger):
         query_pred_folder = os.path.join(point_path_results,'AI_MODEL', "predictions_litle_query")
         query_acoustic_folder = os.path.join(point_path_results,'SPL','queries', "acoustic_params_query")
         query_wav_folder = os.path.join(point_path_results,'SPL','queries', "wav_files_query")
-        query_sonometer_folder = os.path.join(point_path_results,'SPL',"queries","sonometer_acoustics_query") #TEMPORAL FILE PATHING, CHANGE THIS WHEN FINAL STRUCTURE IS DONE
+        query_sonometer_folder = os.path.join(point_path_results,'SPL',"queries","sonometer_acoustics_query")
 
         if not os.path.exists(query_acoustic_folder):
             os.makedirs(query_acoustic_folder)
@@ -307,33 +307,34 @@ def load_points():
 def get_acoust_and_point(logger,point):
     
     point_str = point.split("/")[-1]
-    acoust_folder = os.path.join(point.replace('3-Medidas','5-Resultados'),'SPL','measurements', STORAGE_OUTPUT_ACOUSTIC_FOLDER)
+    acoust_folder = os.path.join(point, STORAGE_OUTPUT_ACOUSTIC_FOLDER)
     logger.info(f"Acoustic params folder: {acoust_folder}")
 
     return point_str,acoust_folder
 
-def get_sonometer_rasp_and_acoustics_preds_days_and_paths(logger,point):
+def get_sonometer_rasp_acoustics_preds_days_and_paths(logger,point):
 
 
-    sonometer_folder_path = os.path.join(point,'SONOMETRO')
-    raspberry_folder_path = os.path.join(point,'RASPBERRY')
+    #sonometer_folder_path = os.path.join(point,'SONOMETRO')
+    #raspberry_folder_path = os.path.join(point,'RASPBERRY')
+
     spl_folder_path = os.path.join(point.replace('3-Medidas','5-Resultados'),'SPL')
     AI_MODEL_folder_path = os.path.join(point.replace('3-Medidas','5-Resultados'),'AI_MODEL')
 
-    measurements_folder_path = os.path.join(point,'SPL','measurements')
+    #measurements_folder_path = os.path.join(point,'SPL','measurements')
     
     
-    wavs_folder_path = os.path.join(raspberry_folder_path,'wav_files')
-    sonometer_files_folder_path = os.path.join(sonometer_folder_path,'sonometer_files')
-    acoustics_params_folder_path = os.path.join(measurements_folder_path,'acoustic_params')
+    wavs_folder_path = os.path.join(point,'wav_files')
+    sonometer_files_folder_path = os.path.join(point,'sonometer_files')
+    acoustics_params_folder_path = os.path.join(point,'acoustic_params')
     predictions_litle_folder_path = os.path.join(AI_MODEL_folder_path,'predictions_litle')
 
-    days_folders_wavs = [file for file in os.listdir(wavs_folder_path)]
+    days_folders_wavs = [os.path.join(wavs_folder_path,file) for file in os.listdir(wavs_folder_path) if os.path.isdir(os.path.join(wavs_folder_path,file))]
     days_folders_acoustics = [os.path.join(acoustics_params_folder_path,file) for file in os.listdir(acoustics_params_folder_path) if 'fixed_' in file]
     days_folders_predictions = [os.path.join(predictions_litle_folder_path,file)  for file in os.listdir(predictions_litle_folder_path) if 'fixed_' in file]
     points_folders_sonometer = [os.path.join(sonometer_files_folder_path,file) for file in os.listdir(sonometer_files_folder_path)]
 
-    return sonometer_folder_path,raspberry_folder_path,spl_folder_path,AI_MODEL_folder_path,measurements_folder_path,wavs_folder_path,sonometer_files_folder_path,acoustics_params_folder_path, \
+    return spl_folder_path,AI_MODEL_folder_path,wavs_folder_path,sonometer_files_folder_path,acoustics_params_folder_path, \
             predictions_litle_folder_path,days_folders_wavs,days_folders_acoustics,days_folders_predictions,points_folders_sonometer
 
     

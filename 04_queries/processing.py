@@ -121,7 +121,14 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
                 df_time = pd.read_csv(csv_file_path,header = 0)
                 csv_time_history_path = csv_file_path
                 df_final = pd.DataFrame(columns = base_cols + THIRD_OCTAVES + tail_cols)
-
+            elif 'Measurement History' in fname:
+                df_measurement = pd.read_csv(csv_file_path,header = 0)
+                csv_measurement_path = csv_file_path
+                df_final = pd.DataFrame(columns = base_cols + THIRD_OCTAVES + tail_cols)
+            elif 'Summary' in fname:
+                df_summary = pd.read_csv(csv_file_path,header=0)
+                csv_summary_path = csv_file_path
+    
     except Exception as e:
         logger.error(f'[CSV Sonometer] Error checking for available sheets in CSV: {e}')
 

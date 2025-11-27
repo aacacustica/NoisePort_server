@@ -5,6 +5,8 @@
 MEDIDAS_FOLDER = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/3-Medidas/"
 RESULTADOS_FOLDER = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/5-Resultados/"
 
+RESULTADOS_FOLDER_NEW = "/srv/contenedores/CONTENEDORES/CONTENEDORES/5-Resultados/"
+MEDIDAS_FOLDER_NEW = "/srv/contenedores/CONTENEDORES/CONTENEDORES/3-Medidas/"
 # ----------------------------------------
 #  SUBFOLDERS
 # ----------------------------------------
