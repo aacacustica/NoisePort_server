@@ -82,7 +82,7 @@ def get_days_in_df(result_df):
     
     return days_list
 
-def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,count):
+def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,count,window):
 
         # ------------------------------------
         # 1-    Check if file is in processed txt list
@@ -126,7 +126,7 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
                 csv_measurement_path = csv_file_path
                 df_final = pd.DataFrame(columns = base_cols + THIRD_OCTAVES + tail_cols)
             elif 'Summary' in fname:
-                df_summary = pd.read_csv(csv_file_path,header=0)
+                df_summary = pd.read_csv(csv_file_path,header=0,encoding="latin-1")
                 csv_summary_path = csv_file_path
     
     except Exception as e:
@@ -138,51 +138,10 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
         # ------------------------------------
         # 4-    Reading hourly rows in CSV data sheet
         # ------------------------------------
-        
-        if not df_measurement.empty:
-            
-            row_indexs = np.arange(start=1,stop=df_measurement.shape[0],step = 60)
-            csv_length = df_measurement.shape[0]
-            
-            df_measurement = pd.read_csv(csv_measurement_path,header = 0,skiprows = lambda x: x not in np.append(row_indexs,[0]))
-            
-            
+        #prior to df_time data as it has per second records
+        if not df_time.empty:
 
-            try:
-
-                df_final[THIRD_OCTAVES] = df_measurement[THIRD_OCTAVES]
-                df_final[THIRD_OCTAVES] = df_final[THIRD_OCTAVES].astype(str).replace(',','.',regex=True)
-                df_final = df_final.iloc[1:]
-                df_final[THIRD_OCTAVES].apply(pd.to_numeric)
-            
-            except KeyError as e:
-                
-                df_final[THIRD_OCTAVES_TIME_HISTORY] = df_measurement[THIRD_OCTAVES_TIME_HISTORY]
-                df_final[THIRD_OCTAVES_TIME_HISTORY] = df_final[THIRD_OCTAVES_TIME_HISTORY].astype(str).replace(',','.',regex=True)
-                df_final = df_final.iloc[1:]
-                df_final[THIRD_OCTAVES_TIME_HISTORY].apply(pd.to_numeric)
-            
-            df_final['LAeq'] = df_measurement['LAeq']
-            df_final['LCeq'] = df_measurement[' LCeq']
-            
-            df_final = df_final.dropna(subset=['LAeq'])
-            df_final['LAeq'] = df_final['LAeq'].astype(str).str.replace(',','.')
-            
-            df_final['LAeq'].apply(pd.to_numeric)
-            df_final['LAmax'] = df_final['LAeq'].max()
-            df_final['LAmin'] = df_final['LAeq'].min()
-            df_final['LAmax'].fillna(df_final['LAmax'],inplace=True)
-            df_final['LAmin'].fillna(df_final['LAmin'],inplace=True)
-            
-            first_row = pd.read_csv(csv_time_history_path,header = None,skiprows=1,nrows=1)
-            last_row = df_time.tail(1)
-        
-            initial_date = handle_not_finished_minute(pd.to_datetime(f'{first_row.iloc[0,2]}' +' '+ f'{first_row.iloc[0,3]}'))
-            final_date = pd.to_datetime(f'{last_row.iloc[0,2]}' +' '+ f'{last_row.iloc[0,3]}')
-
-        else:
-            
-            row_indexs = np.arange(start=1,stop=df_time.shape[0],step = 3600)
+            row_indexs = np.arange(start=1,stop=df_time.shape[0],step = window)
             csv_length = df_time.shape[0]
             
             df_time = pd.read_csv(csv_time_history_path,header = 0,skiprows = lambda x: x not in np.append(row_indexs,[0]))
@@ -197,7 +156,7 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
             except KeyError as e:
                 
                 df_final[THIRD_OCTAVES_TIME_HISTORY] = df_time[THIRD_OCTAVES_TIME_HISTORY]
-                df_final[THIRD_OCTAVES_TIME_HISTORY] = df_final[THIRD_OCTAVES_TIME_HISTORY].astype(str).replace(',','.',regex=True)
+                df_final[THIRD_OCTAVES_TIME_HISTORY] = df_final[THIRD_OCTAVES_TIME_HISTORY].astype(str).replace(',','.',regex=True) #No haria falta si el sonometro esta configurado con el estilo europeo
                 df_final = df_final.iloc[1:]
                 df_final[THIRD_OCTAVES_TIME_HISTORY].apply(pd.to_numeric)
         
@@ -218,6 +177,60 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
         
             initial_date = handle_not_finished_minute(pd.to_datetime(f'{first_row.iloc[0,2]}' +' '+ f'{first_row.iloc[0,3]}'))
             final_date = pd.to_datetime(f'{last_row.iloc[0,2]}' +' '+ f'{last_row.iloc[0,3]}')
+
+        else:
+            #in the measurements csv sheet the data is split in 60 seconds intervals, so this checking is necessary
+            if window != 1: window = window/60 
+                
+            row_indexs = np.arange(start=1,stop=df_measurement.shape[0],step = window )
+            csv_length = df_measurement.shape[0]
+            
+            df_measurement = pd.read_csv(csv_measurement_path,header = 0,skiprows = lambda x: x not in np.append(row_indexs,[0]))
+            
+            
+
+            try:
+
+                df_final[THIRD_OCTAVES] = df_measurement[THIRD_OCTAVES]
+                df_final[THIRD_OCTAVES] = df_final[THIRD_OCTAVES].astype(str).replace(',','.',regex=True)
+                df_final = df_final.iloc[1:]
+                df_final[THIRD_OCTAVES].apply(pd.to_numeric)
+
+                df_final['LAmax'] = round(np.max(df_final[THIRD_OCTAVES]),2)
+                df_final['LAmin'] = round(np.min(df_final[THIRD_OCTAVES]),2)
+                df_final['LAmax'].fillna(df_final['LAmax'],inplace=True)
+                df_final['LAmin'].fillna(df_final['LAmin'],inplace=True)
+            
+            except KeyError as e:
+                
+                df_final[THIRD_OCTAVES_TIME_HISTORY] = df_measurement[THIRD_OCTAVES_TIME_HISTORY]
+                df_final[THIRD_OCTAVES_TIME_HISTORY] = df_final[THIRD_OCTAVES_TIME_HISTORY].astype(str).replace(',','.',regex=True)
+                df_final = df_final.iloc[1:]
+                df_final[THIRD_OCTAVES_TIME_HISTORY].apply(pd.to_numeric)
+
+                df_final['LAmax'] = round(np.max(df_final[THIRD_OCTAVES_TIME_HISTORY]),2)
+                df_final['LAmin'] = round(np.min(df_final[THIRD_OCTAVES_TIME_HISTORY]),2)
+                df_final['LAmax'].fillna(df_final['LAmax'],inplace=True)
+                df_final['LAmin'].fillna(df_final['LAmin'],inplace=True)
+            
+            df_final['LAeq'] = df_measurement['LAeq']
+            df_final['LCeq'] = df_measurement[' LCeq']
+            
+            df_final = df_final.dropna(subset=['LAeq'])
+            df_final['LAeq'] = df_final['LAeq'].astype(str).str.replace(',','.')
+            
+            df_final['LAeq'].apply(pd.to_numeric)
+
+            
+            first_row = pd.read_csv(csv_time_history_path,header = None,skiprows=1,nrows=1)
+            last_row = df_time.tail(1)
+        
+            initial_date = handle_not_finished_minute(pd.to_datetime(f'{first_row.iloc[0,2]}' +' '+ f'{first_row.iloc[0,3]}'))
+            final_date = pd.to_datetime(f'{last_row.iloc[0,2]}' +' '+ f'{last_row.iloc[0,3]}')
+
+
+            
+
     
     except Exception as e:
         logger.error(f'[CSV Sonometer] Error reading hourly rows in CSV data sheet: {e}')
@@ -230,9 +243,12 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
         
         df_final['sensor_id'] = df_summary.iloc[2,1]
         df_final['Filename'] = df_summary.iloc[1,1]
-
-        row_content_list = pd.Series(pd.date_range(initial_date,final_date,freq = 'H')
-                                            .strftime('%Y-%m-%d %H:%M:%S'))
+        if window != 1:
+            row_content_list = pd.Series(pd.date_range(initial_date,final_date,freq = 'H')
+                                                .strftime('%Y-%m-%d %H:%M:%S'))
+        else:
+            row_content_list = pd.Series(pd.date_range(initial_date,final_date,freq = 's')
+                                    .strftime('%Y-%m-%d %H:%M:%S'))
 
         df_final['Timestamp'] = row_content_list
         
@@ -253,12 +269,14 @@ def process_sonometer_csv(db,csv_path,logger,point,output_folder,processed_txt,c
         # ------------------------------------
         # 6-    Saving  whole DF
         # ------------------------------------
+        if window == 1: window_str = '1.0w' 
+        else: window_str = ''
 
         if count == 0:
-            file_name = output_folder + f"/{point}_Processed.csv"
+            file_name = output_folder + f"/{point}_{window_str}_Processed.csv"
             df_final.to_csv(file_name,index = False)
         else:
-            file_name = output_folder + f"/{point}_Processed_{count}.csv"
+            file_name = output_folder + f"/{point}_{window_str}_Processed_{count}.csv"
             df_final.to_csv(file_name,index = False)
     
     except Exception as e:
@@ -518,7 +536,7 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
         
         with open(processed_folder_txt) as myfile:
             if day in myfile.read():
-                return
+                continue
       
         try:
 
@@ -559,8 +577,9 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
             
             logger.info("")
             logger.info("[Acoustics] Trying to concatenate the csv files to process one hour of audio data recordings")
+            
             df_day = pd.concat([pd.read_csv(csv_file) for csv_file in csv_files], ignore_index=True)
-        
+
         except Exception as e:
             logger.error(f"[Acoustics] Error concatenating CSV files: {e}")
             continue
@@ -574,35 +593,28 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
             df_day = df_day.sort_values(by=["Timestamp"])
             df_day["LA"] = df_day["LA"].round(1)
 
-            # -------------------------------
-            # Truncar los minutos iniciales incompletos
-            # -------------------------------
             if not df_day.empty:
                 logger.info("[Acoustics] Converting 'Timestamp' to datetime and handling timezone.")
                 
                 # 1. Convertir a datetime (esto es lo que puede crear datetimes tz-aware)
                 df_day['Timestamp'] = pd.to_datetime(df_day['Timestamp'], errors='coerce')
                 
-                # Intentamos la naivización usando el accesor .dt de Pandas.
+                
                 try:
-                    # Si la columna ya es datetime y tiene TZ, la naivizamos.
+                    
                     if df_day['Timestamp'].dt.tz is not None:
                         logger.warning("[Acoustics] Timestamp column is tz-aware. Naivizing using tz_localize(None).")
-                        # Esta línea es la que necesitamos para quitar la TZ sin cambiar la hora.
+                        
                         df_day['Timestamp'] = df_day['Timestamp'].dt.tz_localize(None)
                 except AttributeError:
-                    # Si falla al acceder a .dt (porque es una Serie 'object' mezclada)
-                    # o si el paso anterior no fue suficiente, naivizamos usando una función lambda
-                    # que maneja los objetos datetime individuales de Python.
+
                     logger.warning("[Acoustics] Direct naivization failed. Applying lambda to strip timezone from elements.")
 
                     df_day['Timestamp'] = df_day['Timestamp'].apply(strip_tz)
 
-                # 3. Forzar el tipo final para asegurar que .dt.second funcione
-                # Ya que hemos quitado la TZ, este .astype no debería fallar con ValueError.
+
                 df_day['Timestamp'] = df_day['Timestamp'].astype('datetime64[ns]')
-                
-                # 4. La lógica de truncado, que ahora es segura
+
                 mask_sec0 = df_day['Timestamp'].dt.second == 0
                 
                 if mask_sec0.any():
@@ -618,10 +630,9 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
                                 "Timestamp","Filename","Unixtimestamp","id_micro"]
             csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
             
-            # 5. Limpiar NaT y formatear antes de guardar
             df_day = df_day.dropna(subset=['Timestamp'])
+            
             df_day['Timestamp'] = df_day['Timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
-
             df_day = df_day[columns]
             df_day.to_csv(csv_concat_path, index=False)
             logger.info("[Acoustics] Concatenated CSV files, saved as: %s", csv_concat_path)
@@ -766,7 +777,7 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
             # rearranging df columns so it fits in the table
             # ------------------------------------
 
-
+            df_day.rename(columns={'date': 'Timestamp'}, inplace=True)
             df_day = df_day.sort_values(by=["Timestamp"])
             df_day["prediction1"],df_day["prediction2"],df_day["prediction3"] = zip(*list(df_day['class'].values))
             df_day['probability1'],df_day['probability2'],df_day['probability3'] = zip(*list(df_day['probability'].values))
@@ -778,7 +789,7 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
             if not df_day.empty:
                 # Asegurarse de que 'Timestamp' sea datetime
                 df_day['Timestamp'] = pd.to_datetime(df_day['Timestamp'], errors='coerce')
-
+                
                 # Crear máscara: True donde el segundo es 0
                 mask_sec0 = df_day['Timestamp'].dt.second == 0
                 if mask_sec0.any():  # si hay algún segundo = 0
@@ -800,8 +811,9 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
 
             cols = ['Prediction_1','Prediction_2','Prediction_3',
                     'Prob_1','Prob_2','Prob_3',
-                    'Filename','Timestamp']
+                    'filename','Timestamp']
             df_out = df_out[cols]
+            df_out.rename(columns={'filename': 'Filename'}, inplace=True)
             csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
             logger.info("[Predictions] Concatenated CSV file path: %s", csv_concat_path)
             df_out.to_csv(csv_concat_path, index=False)
@@ -1022,7 +1034,7 @@ def process_wav_folder(db,logger,folder_days, all_info, query_folder, processed_
 
 
 
-def process_sonometer_folder(db,logger,files_folder,query_folder,processed_sonometers_txt):
+def process_sonometer_folder(db,logger,files_folder,query_folder,processed_sonometers_txt,window):
         
         output_folder = query_folder.replace('sonometer_files','sonometer_acoustics_query')
         
@@ -1040,7 +1052,7 @@ def process_sonometer_folder(db,logger,files_folder,query_folder,processed_sonom
                     
                     file_path = os.path.join(point_folder,file)                        
                     logger.info(f"[SONOMETER] -> Processing file: {file_path}")                            
-                    process_sonometer_csv(db,file_path,logger,point,output_folder,processed_sonometers_txt,file_count)                                                    
+                    process_sonometer_csv(db,file_path,logger,point,output_folder,processed_sonometers_txt,file_count,window)                                                    
                     file_count += 1
                     logger.info(f"[SONOMETER] -> Processed data saved at: {output_folder}")
             

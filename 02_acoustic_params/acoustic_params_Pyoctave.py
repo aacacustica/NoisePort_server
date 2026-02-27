@@ -116,7 +116,7 @@ class LeqLevelOct:
 
         try:
             # get all sub-folders in 'path'
-            wav_folders = [os.path.join(path, f)for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
+            wav_folders = [os.path.join(path, f)for f in os.listdir(path) if os.path.isdir(os.path.join(path, f)) ]
             len_folders = len(wav_folders)
             self.logging.info(f"Found {len_folders} folders in {path}")
             
@@ -126,10 +126,11 @@ class LeqLevelOct:
                 self.logging.info(f"Processing folder: {wav_folder}")
                 wav_folder_strs.append(os.path.basename(wav_folder))
 
+                #The processed files filter is applied here
                 wav_files = [f for f in os.listdir(wav_folder)if f.lower().endswith('.wav')]
-                full_paths.extend(os.path.join(wav_folder, f) for f in wav_files)
+                full_paths.extend(os.path.join(wav_folder, f) for f in wav_files if os.path.join(wav_folder, f) not in processed_files)
 
-                found = len(wav_files)
+                found = len(full_paths)
                 if found == 60:
                     self.logging.info(f"Found {found} audio files. Folder complete.")
                 else:
@@ -379,9 +380,7 @@ class LeqLevelOct:
                 # MARKING FILE AS PROICESSED
                 # ----------------------------
                 update_processed_files(processed_files_txt, audio_file)
-                update_processed_files(processed_files_txt, csv_acoustic_path)
                 processed_files.add(audio_file)
-                processed_files.add(csv_acoustic_path)
                 logging.info(f"Final CSV file added to the processed file. {audio_file}")
                 self.logging.info("")
 
@@ -406,7 +405,7 @@ def load_processed_files(processed_file_path):
  
     if os.path.exists(processed_file_path):
         with open(processed_file_path, "r") as f:
-            return {line.strip() for line in f if line.strip()}
+            return {line.strip() for line in f if line.strip() and os.path.basename(line.strip()).lower().endswith('.wav')}
     return set()
 
 
@@ -478,8 +477,10 @@ def point_iteration_acoustics(point, root, storage_output_wav_folder,audio_sampl
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Make prediction with YAMNet model for audio files')
-    parser.add_argument('-p', '--path', type=str, required=False,
+    parser.add_argument('-f', '--path', type=str, required=False,
                         help='Folder containing WAV files to process')
+    parser.add_argument('-p','--point', type=str, required=True,
+                        help='Point to process')
     parser.add_argument('-c', '--calib-const', type=str, required=False, default=0,
                         help='Calibration constant to setup for each audio device.')
     parser.add_argument('-u', '--upload-S3', action='store_true',default=False,
@@ -490,7 +491,7 @@ def parse_arguments():
 
 def main():
     """
-    usage: python.exe -m 02_acoustic_params.acoustic_params_test -p '\\192.168.205.122\Contenedores'
+    usage: python.exe -m 02_acoustic_params.acoustic_params_test -p '\\192.168.205.122\Contenedores' 
     """
     try:
         
@@ -547,7 +548,7 @@ def main():
             else:
 
                 if os.name == 'posix':
-                    path = SANDISK_PATH_LINUX
+                    path = SANDISK_PATH_LINUX_NEW
                     logging.info(f"Using path: {path}")
                 elif os.name == 'nt':
                     path = SANDISK_PATH_WINDOWS
@@ -579,7 +580,7 @@ def main():
                 logging.info(f"Point: {point}")
 
 
-                if point == "P5_TEST":
+                if point == str(args.point):
 
                     leq_processor, wav_files_folder = point_iteration_acoustics(
                         point,

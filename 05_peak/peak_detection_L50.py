@@ -51,31 +51,30 @@ def leq(levels):
 
 
 
-def get_hourly_folders():
+def get_hourly_folders(point):
     hour_path_acoustics = []
     hour_path_predictions = []
     hour_path_peaks = []
     
-    for point in os.listdir(RESULTADOS_FOLDER_NEW):
-        if point == 'P1_CONTENEDORES':
-            
-            spl_folder = os.path.join(RESULTADOS_FOLDER_NEW,point,'SPL')
-            ai_folder = os.path.join(RESULTADOS_FOLDER_NEW,point,'AI_MODEL')
-            
-            predictions_params_query = os.path.join(ai_folder,PREDICTIONS_QUERY)
-            peaks_params_query = os.path.join(spl_folder,'queries',PEAKS_QUERY)
-            acoustic_params_query = os.path.join(spl_folder,'queries',ACOUSTICS_QUERY)
 
-            if not os.path.exists(peaks_params_query): os.makedirs(peaks_params_query)
+            
+    spl_folder = os.path.join(RESULTADOS_FOLDER_NEW,point,'SPL')
+    ai_folder = os.path.join(RESULTADOS_FOLDER_NEW,point,'AI_MODEL')
+    
+    predictions_params_query = os.path.join(ai_folder,PREDICTIONS_QUERY)
+    peaks_params_query = os.path.join(spl_folder,'queries',PEAKS_QUERY)
+    acoustic_params_query = os.path.join(spl_folder,'queries',ACOUSTICS_QUERY)
 
-            for file in os.listdir(acoustic_params_query):
-                if file.endswith('.csv') and 'fixed' in file:
-                    hour_path_acoustics.append(os.path.join(acoustic_params_query,file))        
-            for file in os.listdir(predictions_params_query):
-                if file.endswith('.csv') and 'fixed' in file:
-                    hour_path_predictions.append(os.path.join(predictions_params_query,file))
-            for file in os.listdir(peaks_params_query):
-                if file.endswith('.csv'):
+    if not os.path.exists(peaks_params_query): os.makedirs(peaks_params_query)
+
+    for file in os.listdir(acoustic_params_query):
+        if file.endswith('.csv') and 'fixed' in file:
+            hour_path_acoustics.append(os.path.join(acoustic_params_query,file))        
+    for file in os.listdir(predictions_params_query):
+        if file.endswith('.csv') and 'fixed':
+            hour_path_predictions.append(os.path.join(predictions_params_query,file))
+    for file in os.listdir(peaks_params_query):
+        if file.endswith('.csv') and 'fixed' in file:
                     hour_path_peaks.append(os.path.join(peaks_params_query,file))
                     
     return hour_path_acoustics,hour_path_predictions,hour_path_peaks
@@ -145,9 +144,9 @@ def merge_acoustics_predictions_and_peaks(point,
     point_path = os.path.join(base_path, point)
     output_path = os.path.join(point_path, 'SPL', 'peaks', MERGED_QUERY)
 
-    # Filtrado inicial (si quieres mantener solo ficheros 'fixed')
+    # Filtrado inicial (el tag de fixed se propaga en toda la cadena y llega hasta peaks también)
     peaks_paths = [f for f in peaks_paths if 'fixed' in f]
-    predictions_paths = [f for f in predictions_paths if 'fixed' in f]
+    predictions_paths = [f for f in predictions_paths if 'fixed' in f ]
     acoustics_paths = [f for f in acoustics_paths if 'fixed' in f]
 
     # Indexar por clave YYYYMMDD_HH
@@ -171,8 +170,6 @@ def merge_acoustics_predictions_and_peaks(point,
     for f in peaks_paths:
         k = _extract_key_from_filename(f)
         if k:
-            # si hay múltiples archivos de peaks para la misma hora,
-            # podríamos concatenarlos — aquí guardamos una lista.
             pk_dict.setdefault(k, []).append(f)
         else:
             logger.warning(f"Unable to extract key from peaks file: {f}")
@@ -200,8 +197,9 @@ def merge_acoustics_predictions_and_peaks(point,
             logger.exception(f"Failed reading acoustic/prediction files for key {key}: {e}")
             continue
 
-        logger.debug(f"Read files for {key}: acoustics={acoustic_path}, predictions={pred_path}, peaks={peak_files_for_key or 'NONE'}")
-
+        if '20251212' in acoustic_path:
+            logger.debug(f"Read files for {key}: acoustics={acoustic_path}, predictions={pred_path}, peaks={peak_files_for_key or 'NONE'}")
+        
         # Normalizar Timestamp en ambos DF
         if 'Timestamp' not in df_ac.columns or 'Timestamp' not in df_pr.columns:
             logger.error(f"Missing 'Timestamp' column for key {key}. Skipping.")
@@ -210,7 +208,7 @@ def merge_acoustics_predictions_and_peaks(point,
         df_ac['Timestamp'] = _to_datetime_no_tz(df_ac['Timestamp'])
         df_pr['Timestamp'] = _to_datetime_no_tz(df_pr['Timestamp'])
 
-        # Drop NaT timestamps (si los hay), con log
+        # Drop NaT timestamps
         n_ac_nat = df_ac['Timestamp'].isna().sum()
         n_pr_nat = df_pr['Timestamp'].isna().sum()
         if n_ac_nat > 0 or n_pr_nat > 0:
@@ -273,7 +271,7 @@ def merge_acoustics_predictions_and_peaks(point,
         else:
             df_with_peaks = df_final
 
-        # Guardar CSV resultante
+        # Guardar CSV 
         merged_filename = os.path.join(output_path, f"merged_{key}.csv")
         try:
             df_with_peaks.to_csv(merged_filename, index=False)
@@ -290,7 +288,7 @@ def merge_acoustics_predictions_and_peaks(point,
 
 def argument_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-p", "--path", type=str, required=False, help="Path to the csv file")
+    parser.add_argument("-p", "--point", type=str, required=False, help="Point to process")
     return parser.parse_args()
 
 
@@ -299,7 +297,9 @@ def main():
     # python -m 05_peak.peak_detection_L50
     
     logger = setup_logging('peak_detection')
-    #args = argument_parser()
+    args = argument_parser()
+
+    point_to_process = args.point
     logging.info(f"Inizializing")
 
     """
@@ -312,13 +312,15 @@ def main():
     ################
     # inizializating
     ################
-    hourly_acoustics_folders,hourly_predictions_folders,_ = list(get_hourly_folders())
+    hourly_acoustics_folders,hourly_predictions_folders,_ = list(get_hourly_folders(point_to_process))
+    
     for csv_file in tqdm(hourly_acoustics_folders, desc='Processing csv files'):
         df = pd.read_csv(csv_file)
 
 
         #folder paths
         title, point, output_folder = assign_folder_paths(csv_file)
+        
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
         df['Timestamp'] = pd.to_datetime(df['Timestamp'])
@@ -378,7 +380,7 @@ def main():
     # CONCAT AND SAVE
     ################
     try:
-        hourly_acoustics_folders,hourly_predictions_folders,hourly_peaks_folders = list(get_hourly_folders())
+        hourly_acoustics_folders,hourly_predictions_folders,hourly_peaks_folders = list(get_hourly_folders(point_to_process))
         merge_acoustics_predictions_and_peaks(point,hourly_acoustics_folders,hourly_predictions_folders,hourly_peaks_folders,logger)
     
     except Exception as e:

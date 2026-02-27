@@ -1,7 +1,10 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+import sys
+
 plt.style.use("bmh")
+
 from visualization import *
 from reading import *
 from utils_vi import *
@@ -135,9 +138,11 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
         #####################################
         try:
             reg_folder = os.path.join(input_folder, folder) # \\192.168.205.117\AAC_Server\INDUSTRIA\23132-IRUÑA_OCA_CANTERA\5-Resultados\FAA205-P1_CAMPAÑA1\SPL
-            folder = folder.split("\\")[:-1]
-            folder = os.path.join('\\\\', *folder)
-            actual_folder_name = folder.split("\\")[-1]
+            folder = folder.split("/")[:-1]
+            actual_folder_name = folder.split("/")[-1]
+            #folder = folder.split("\\")[:-1]
+            #folder = os.path.join('\\\\', *folder)
+            #actual_folder_name = folder.split("\\")[-1]
             logger.info(f"Processing folder: {actual_folder_name}")
             logger.info(f"Entering folder: {folder}")
 

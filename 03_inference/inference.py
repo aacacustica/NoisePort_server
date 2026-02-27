@@ -5,6 +5,7 @@ import argparse
 import numpy as np
 import datetime
 import csv
+import tqdm
 
 import resampy
 import soundfile as sf
@@ -24,8 +25,10 @@ warnings.filterwarnings("ignore",
                         message="FNV hashing is not implemented in Numba",
                         category=UserWarning)
 
+print(f"Current GPU: {tf.config.list_physical_devices('GPU')}")
 
 (
+    ID_MICRO,
     S3_BUCKET_NAME,
     PLACE,
     POINT,
@@ -34,14 +37,15 @@ warnings.filterwarnings("ignore",
     OUTPUT_ACOUST_FOLDER,
     OUTPUT_PREDICT_FOLDER,
     _,
+    YAMNET_CLASS_MAP_CSV,
     SAMPLE_RATE,
     CHUNK_SIZE,
     MODEL_TF,
     _,
-    YAMNET_CLASS_MAP_CSV
+    
 
 ) = load_config_inference('config.yaml', os.getcwd())
-
+"id_micro, location_record, location_place, location_point, storage_s3_bucket_name, storage_output_wav_folder, storage_output_acoust_folder, storage_output_predict_folder, storage_output_predict_lt_folder, prediction_yamnet_class_map_csv, prediction_sample_rate, prediction_chunk_size, prediction_model_tf, prediction_model_tflt"
 
 def concatenate_prediction_csvs_to_daily(prediction_folder,logging):
 
@@ -68,9 +72,32 @@ def concatenate_prediction_csvs_to_daily(prediction_folder,logging):
                 output_file = os.path.join(prediction_folder, f"{day}_concatenated.csv")
                 df_day.to_csv(output_file, index=False)
     
+def get_audio_files(path):
+    
+    
+    predictions_done_txt = path.replace('wav_files',f'AI_MODEL/prediction_files/predictions_done.txt')
+    predictions_done_txt = predictions_done_txt.replace('3-Medidas',f'5-Resultados')
+
+    day_files = [os.path.join(path,f) for f in os.listdir(path) if os.path.isdir(os.path.join(path,f))]
 
 
-def inference(file_list, model_path, sample_rate, chunk_size, window_size, threshold, upload_s3, logging, output_wav_folder, output_predict_folder, s3_bucket_name, cwd, yamnet_class_map_csv):
+    predictions_done = load_predictions_done(predictions_done_txt)
+
+    audio_files = [
+        f for day in day_files
+        for f in os.listdir(day)
+        if f.lower().endswith('.wav') and os.path.basename(f) not in predictions_done
+    ]
+
+    full_paths = [
+        os.path.join(day, f) for day in day_files
+        for f in os.listdir(day)
+        if f.lower().endswith('.wav') and f not in predictions_done
+    ]
+
+    return predictions_done_txt,audio_files,full_paths
+
+def inference(path,model_path, sample_rate, chunk_size, window_size, threshold, upload_s3, logging, output_wav_folder, output_predict_folder, s3_bucket_name, cwd, yamnet_class_map_csv):
     """Perform inference on one or more audio files.
     Args:
         file_list (list[str]): List of file paths to process.
@@ -91,11 +118,24 @@ def inference(file_list, model_path, sample_rate, chunk_size, window_size, thres
 
     logging.info("Model and Classes map loaded")
 
+    # -------------------------------------
+    # 2 - GETTING NOT PROCESSED AUDIO FILES
+    # -------------------------------------
 
+    (
+        predictions_done_txt,
+        audio_files,
+        full_paths
+
+    ) = get_audio_files(path)
+
+
+    
+    logging.info(f"Found {len(audio_files)} audio files: {audio_files}")
     # --------------------
-    # Processing audio files
+    # 3 - Processing audio files
     # --------------------
-    for audio_file in file_list:
+    for audio_file in tqdm.tqdm(full_paths,desc="Inferencing on audio files..."):
         logging.info("")
         logging.info(f"Processing --> {audio_file}")
         
@@ -108,13 +148,15 @@ def inference(file_list, model_path, sample_rate, chunk_size, window_size, thres
         wav_file_raw = os.path.splitext(wav_filename)[0]
         start_timestamp = datetime.datetime.strptime(wav_file_raw, '%Y%m%d_%H%M%S')
         if window_size is None:
-            csv_filename = wav_filename.replace(".wav", "_tf.csv")  # e.g. 20250108_142606.csv
+            csv_filename = wav_filename.replace(".wav", "_tf.csv")  # e.g. 20250108_142606_tf.csv
         else:
-            csv_filename = wav_filename.replace(".wav", f"_tf_w_{window_size}.csv")  # e.g. 20250108_142606.csv
+            csv_filename = wav_filename.replace(".wav", f"_tf_w_{window_size}.csv")  # e.g. 20250108_142606_tf_w_1.0.csv
             
         logging.info(f"CSV filename --> {csv_filename}")
 
         prediction_folder = os.path.dirname(audio_file).replace(output_wav_folder, output_predict_folder)
+        prediction_folder = prediction_folder.replace("3-Medidas","5-Resultados")
+        prediction_folder = prediction_folder.replace("prediction_files","AI_MODEL/prediction_files")
         os.makedirs(prediction_folder, exist_ok=True)
         logging.info(f"Making TF prediction folder --> {prediction_folder}")
 
@@ -202,11 +244,16 @@ def inference(file_list, model_path, sample_rate, chunk_size, window_size, thres
         # -----------------------------------------------------------
         # Save CSV
         # -----------------------------------------------------------
+
+        if not os.path.exists(csv_full_path):
+            os.makedirs(os.path.dirname(csv_full_path), exist_ok=True)
+        
         with open(csv_full_path, mode="w", newline="") as final_csv:
             writer = csv.writer(final_csv)
             writer.writerows(csv_data)
         logging.info(f"Final CSV file saved at {csv_full_path}")
 
+        update_predictions_file(predictions_done_txt, csv_full_path)
 
         # -------------
         # UPLOAD TO BUCKET S3
@@ -235,10 +282,10 @@ def inference(file_list, model_path, sample_rate, chunk_size, window_size, thres
         except Exception as e:
             logging.error(f"Error concatenating prediction CSVs into DAILY format: {e}")
         """
-def load_args_config(model_path,window_size,threshold,upload_s3,home_dir,path):
+def load_args_config(model_path,point,window_size,threshold,upload_s3,home_dir,path):
 
         if path: path = path       
-        else: path = os.path.join(home_dir, PLACE, POINT, OUTPUT_WAV_FOLDER)
+        else: path = os.path.join('/srv/contenedores/CONTENEDORES/CONTENEDORES/3-Medidas', point, OUTPUT_WAV_FOLDER)
               
         if os.path.exists(path):
             logging.info(f"Path exists --> {path}")
@@ -261,8 +308,10 @@ def load_args_config(model_path,window_size,threshold,upload_s3,home_dir,path):
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Make prediction with YAMNet model for audio files')
-    parser.add_argument('-p', '--path', type=str, required=False,
+    parser.add_argument('-f', '--path', type=str, required=False,
                         help='Folder containing WAV files to process')
+    parser.add_argument('-p', '--point', type=str, required=True,
+                        help='Point to process')
 
     parser.add_argument('-w', '--window-size', type=float, default=None,
                         help='Window size in seconds for processing audio files. '
@@ -279,6 +328,36 @@ def parse_arguments():
 
     return parser.parse_args()
 
+def load_predictions_done(workingdir):
+
+    txt_path = workingdir
+    
+    preds = []
+    if os.path.exists(txt_path):
+        with open(txt_path, 'r') as f:
+            for line in f:
+                filename = os.path.basename(line.strip())
+                if 'tf_w_1.0.csv' in filename or 'tf.csv in filename':
+                    filename = filename.replace('_tf_w_1.0.csv','.wav').replace('_tf.csv','.wav')
+                preds.append(filename)
+    return preds
+
+
+
+def update_predictions_file(workingdir,file):
+
+    txt_path = workingdir
+    
+    os.makedirs(os.path.dirname(txt_path), exist_ok=True)
+    
+    existing = set()
+
+    with open(txt_path, 'r') as f:
+        existing = set(line.strip() for line in f)
+    
+    with open(txt_path, 'a') as f:
+        if file not in existing:
+            f.write(file + '\n')
 
 def main():
     
@@ -293,8 +372,8 @@ def main():
         args = parse_arguments()
         cwd = os.path.dirname(os.path.realpath(__file__))
         home_dir = os.getenv("HOME")
-        model_path,window_size,threshold,upload_s3,path = load_args_config(args.model_path,args.window_size,args.threshold,args.upload_S3,home_dir)
-        
+        model_path,window_size,threshold,upload_s3,path = load_args_config(args.model_path,args.point,args.window_size,args.threshold,args.upload_S3,home_dir,args.path)
+        "model_path,point,window_size,threshold,upload_s3,home_dir,path"
         logging.info(f"Path: {path}")
         logging.info(f"Model path: {model_path}")
         logging.info(f"Window size: {window_size}")
@@ -305,17 +384,7 @@ def main():
         logging.error(f"Errorgetting the config info: {e}")
 
 
-    try:
 
-    # -----------------------
-    # 2 - GETTING AUDIO FILES
-    # -----------------------
-        audio_files = [f for f in os.listdir(path) if f.lower().endswith('.wav')]
-        full_paths = [os.path.join(path, file) for file in audio_files] 
-        
-        logging.info(f"Found {len(audio_files)} audio files: {audio_files}")
-    except Exception as e:
-        logging.error(f"Errorgetting the audio files: {e}")
 
 
     try:
@@ -325,8 +394,7 @@ def main():
     # -----------------------
         
         inference(
-
-            file_list=full_paths,
+            path = path,
             model_path=model_path,
             sample_rate=SAMPLE_RATE,
             chunk_size=CHUNK_SIZE,

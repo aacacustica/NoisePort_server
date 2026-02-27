@@ -275,8 +275,8 @@ def load_config_inference(yaml_path: str, cwd: str) -> dict:
         prediction_model_tflt = config['prediction']['model_tflt']
 
         # join the paths
-        prediction_model_tf = os.path.join(cwd, prediction_model_tf)
-        prediction_model_tflt = os.path.join(cwd,prediction_model_tflt)
+        prediction_model_tf = os.path.join(cwd,'03_inference', prediction_model_tf)
+        prediction_model_tflt = os.path.join(cwd,'03_inference',prediction_model_tflt)
 
 
     return id_micro, location_record, location_place, location_point, storage_s3_bucket_name, storage_output_wav_folder, storage_output_acoust_folder, storage_output_predict_folder, storage_output_predict_lt_folder, prediction_yamnet_class_map_csv, prediction_sample_rate, prediction_chunk_size, prediction_model_tf, prediction_model_tflt

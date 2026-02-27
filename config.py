@@ -36,7 +36,8 @@ ID_MICROPHONE = {
     "P2_CONTENEDORES": "RPI_2",
     "P3_CONTENEDORES": "RPI_3",
     "P4_CONTENEDORES": "RPI_4",
-    "P5_TEST":         "RPI_5"
+    "P5_TEST":         "RPI_5",
+    "P6_TEST_AUTOMATIZE":"RPI_6"
 }
 
 # -------------------------
@@ -84,6 +85,7 @@ CALIBRATION_CONSTANTS = {
     # "P4_CONTENEDORES": -82.24,
     "P4_CONTENEDORES": 0,
     "P5_TEST": 0,
+    "P6_TEST_AUTOMATIZE":0
 }
 
 

@@ -4,6 +4,7 @@ import os
 import decimal
 import ssl
 import paho.mqtt.client as mqtt
+import pandas as pd
 
 from config import * 
 from utils import * 
@@ -16,6 +17,7 @@ STORAGE_S3_BUCKET_NAME, STORAGE_OUTPUT_WAV_FOLDER, \
 STORAGE_OUTPUT_ACOUSTIC_FOLDER = load_config_acoustic('config.yaml')
 
 def send_mqtt_data(data, logger, sent_Records_txt):
+
 
     # Asegurarse de que el archivo exista
     if not os.path.exists(sent_Records_txt):
@@ -43,6 +45,9 @@ def send_mqtt_data(data, logger, sent_Records_txt):
         client.tls_insecure_set(True)
         client.connect(MQTT_BROKER_MUUTECH, port, keepalive=60)
         logger.info("Connected to MQTT broker MUUTECH at %s:%s", MQTT_BROKER_MUUTECH, port)
+
+    #Ordenar data por unixtimestamp
+    data = sorted(data, key=lambda x: x['unixtimestamp'])
 
     # Iniciar loop en background
     client.loop_start()
@@ -116,30 +121,36 @@ def get_columns_for_table(table_name):
     else:
         return []
     
-def power_laeq_avg(db, logger, table_name=ACOUSTIC_TABLE_NAME):
+def power_laeq_avg(db, logger,sensor_id, table_name=ACOUSTIC_TABLE_NAME):
     cursor = db.cursor(dictionary=True)
     if table_name == SONOMETER_TABLE_NAME:
             query = f""" 
         SELECT
         record_id,
         sensor_id,
-        MIN(Unixtimestamp)                  AS unixtimestamp,
-        10 * LOG10 ( AVG(POWER(10,LAeq/10))) AS AVG_LAeq,
-        MAX(LAmax)                          AS max_LAmax,
-        MIN(LAmin)                          AS min_LAmin
+        MIN(Unixtimestamp)                      AS unixtimestamp,
+        10 * LOG10 ( AVG(POWER(10,LAeq/10)))    AS AVG_LAeq,
+        MAX(LAmax)                              AS max_LAmax,
+        MIN(LAmin)                              AS min_LAmin
         FROM {table_name}
         GROUP BY record_id,sensor_id,Timestamp
         """
     else:
-            query = f"""
+        query = f"""
         SELECT
-        sensor_id,
-        MIN(Unixtimestamp)                  AS unixtimestamp,
-        10 * LOG10 (AVG(POWER(10, LA/10)))   AS AVG_LAeq,
-        MAX(LAmax)                          AS max_LAmax,
-        MIN(LAmin)                          AS min_LAmin
+            MIN(record_id)                              AS first_record_id,
+            MAX(record_id)                              AS last_record_id,
+            sensor_id,
+            DATE_FORMAT(Timestamp, '%Y-%m-%d %H:00:00') AS hour,
+            MIN(Unixtimestamp)                          AS unixtimestamp,
+            10 * LOG10(AVG(POWER(10, LA/10)))           AS AVG_LAeq,
+            MAX(LAmax)                                  AS max_LAmax,
+            MIN(LAmin)                                  AS min_LAmin
         FROM {table_name}
-        GROUP BY sensor_id;
+        WHERE sensor_id = '{sensor_id}'
+        GROUP BY
+            sensor_id,
+            hour;
         """
     try:
         cursor.execute(query)
@@ -222,6 +233,7 @@ def initialize_process_files(query_acoustic_folder,query_pred_folder,query_wav_f
     processed_folder_wav_txt            = os.path.join(query_wav_folder, "processed_wavs.txt")
     processed_folder_sonometer_txt      = os.path.join(query_sonometer_folder,"processed_sonometers.txt")
     processed_mqtt_data_txt_sonometer   = os.path.join(query_sonometer_folder,"records_sent.txt")
+    processed_mqtt_data_txt_acoustics   = os.path.join(query_acoustic_folder,'records_sent.txt')
     #processed_mqtt_data_txt_spl         = os.path.join()
 
     logger.info(f"[Acoustics] Saving the processed file txt here -->    {processed_folder_acoustic_txt}")
@@ -237,7 +249,7 @@ def initialize_process_files(query_acoustic_folder,query_pred_folder,query_wav_f
     processed_sonometers                = load_processed_folder(processed_folder_sonometer_txt)
     
 
-    return processed_folder_acoustic_txt,processed_folder_predictions_txt,processed_folder_wav_txt,processed_folder_sonometer_txt,processed_acoustics,processed_predictions,processed_wavs,processed_sonometers
+    return processed_folder_acoustic_txt,processed_folder_predictions_txt,processed_folder_wav_txt,processed_folder_sonometer_txt,processed_mqtt_data_txt_sonometer,processed_mqtt_data_txt_acoustics,processed_acoustics,processed_predictions,processed_wavs,processed_sonometers
 
 def create_query_folders(point,logger):
         
@@ -312,6 +324,13 @@ def get_acoust_and_point(logger,point):
 
     return point_str,acoust_folder
 
+def get_sensor_id_and_filter_query(day_folder):
+    csv_file = os.path.join(day_folder, os.listdir(day_folder)[0])
+
+    csv_file = pd.read_csv(csv_file)
+    sensor_id = csv_file['id_micro'][0]
+    return sensor_id
+
 def get_sonometer_rasp_acoustics_preds_days_and_paths(logger,point):
 
 
@@ -327,10 +346,10 @@ def get_sonometer_rasp_acoustics_preds_days_and_paths(logger,point):
     wavs_folder_path = os.path.join(point,'wav_files')
     sonometer_files_folder_path = os.path.join(point,'sonometer_files')
     acoustics_params_folder_path = os.path.join(point,'acoustic_params')
-    predictions_litle_folder_path = os.path.join(AI_MODEL_folder_path,'predictions_litle')
+    predictions_litle_folder_path = os.path.join(AI_MODEL_folder_path,'prediction_files')
 
     days_folders_wavs = [os.path.join(wavs_folder_path,file) for file in os.listdir(wavs_folder_path) if os.path.isdir(os.path.join(wavs_folder_path,file))]
-    days_folders_acoustics = [os.path.join(acoustics_params_folder_path,file) for file in os.listdir(acoustics_params_folder_path) if 'fixed_' in file]
+    days_folders_acoustics = [os.path.join(acoustics_params_folder_path,file) for file in os.listdir(acoustics_params_folder_path) if 'fixed_' in file and os.path.exists(os.path.join(acoustics_params_folder_path,".fix_done"))]
     days_folders_predictions = [os.path.join(predictions_litle_folder_path,file)  for file in os.listdir(predictions_litle_folder_path) if 'fixed_' in file]
     points_folders_sonometer = [os.path.join(sonometer_files_folder_path,file) for file in os.listdir(sonometer_files_folder_path)]
 

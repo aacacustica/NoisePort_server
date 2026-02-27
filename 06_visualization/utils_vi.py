@@ -164,7 +164,7 @@ def remove_unnamed_columns(df_preds):
 
 def yamnet_class_map_csv():
     home_dir = os.path.expanduser('~')
-    yammnet_class_map_path = os.path.join(home_dir, RELATIVE_PATH_YAMNET_MAP.lstrip('\\'))
+    yammnet_class_map_path = os.path.join(home_dir, RELATIVE_PATH_YAMNET_MAP.lstrip('/'))
     df_audioset = pd.read_csv(yammnet_class_map_path,sep=';')
     df_audioset = remove_unnamed_columns(df_audioset)
     return df_audioset
@@ -172,11 +172,11 @@ def yamnet_class_map_csv():
 
 def taxonomy_json():
     home_dir = os.path.expanduser('~')
-    urban_taxonomy_map_path = os.path.join(home_dir, RELATIVE_PATH_TAXONOMY_URBAN.lstrip('\\'))
+    urban_taxonomy_map_path = os.path.join(home_dir, RELATIVE_PATH_TAXONOMY_URBAN.lstrip('/'))
     urban_taxonomy_map = pd.read_json(urban_taxonomy_map_path, typ='series').to_dict()
     
     
-    port_taxonomy_map_path = os.path.join(home_dir, RELATIVE_PATH_TAXONOMY_PORT.lstrip('\\'))
+    port_taxonomy_map_path = os.path.join(home_dir, RELATIVE_PATH_TAXONOMY_PORT.lstrip('/'))
     port_taxonomy_map = pd.read_json(port_taxonomy_map_path, typ='series').to_dict()
     return urban_taxonomy_map, port_taxonomy_map
 

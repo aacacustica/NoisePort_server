@@ -240,7 +240,13 @@ def handle_last_csv_leftovers(fixed_folder, bucket, leftover_buckets, measuremen
 
     last_path = os.path.join(fixed_folder, fixed_csvs[-1])
     df_last = pd.read_csv(last_path)
-    df_last['Timestamp'] = pd.to_datetime(df_last['Timestamp'], errors='coerce')
+    if 'prediction_files' in last_path:
+        df_last['date'] = pd.to_datetime(df_last['date'], errors='coerce')
+
+    else:
+        df_last['Timestamp'] = pd.to_datetime(df_last['Timestamp'], errors='coerce')
+
+        
 
     minute_leftovers = get_last_minute_leftovers(df_last)
     if minute_leftovers.empty:
@@ -261,29 +267,130 @@ def handle_last_csv_leftovers(fixed_folder, bucket, leftover_buckets, measuremen
     ).sort_values('Timestamp')
 
 def handle_already_fixed_pairs(processed_folder_txt,day_csv):
+    """
+    Handling fixed pairs.
+
+    Cases:
+
+    - If prev_csv in already processed txt:
+        -Return false
+    - If prev_csv not in already processed txt:
+        -Return true
+
+    """
+    current_csv = os.path.basename(day_csv)
     if not os.path.exists(processed_folder_txt):
         open(processed_folder_txt, 'w').close()
 
     with open(processed_folder_txt, "r+") as myfile:
-        content = myfile.read()
-
-        if day_csv in content:
-            return False
         
-        myfile.seek(0, os.SEEK_END)
-        myfile.write(day_csv + "\n")
+        content = myfile.read()
+        complete_paths = [path for path in content.split("\n")]
+        
+        if current_csv in complete_paths:
+            return False #Already processed
+        else:
+            return True #Not processed yet
 
-        return True
+def mark_fix_done(fixed_folder):
+    open(os.path.join(fixed_folder, ".fix_done"), "w").close()
 
-def time_slop_fix(point,acoustic_folder,pred_litle_folder):
 
-    measurement_folders = [acoustic_folder,pred_litle_folder]
+def is_fix_done(fixed_folder):
+    return os.path.exists(os.path.join(fixed_folder, ".fix_done"))
+
+def load_fingerprint(fixed_folder):
+    path = os.path.join(fixed_folder, ".fingerprint")
+    if not os.path.exists(path):
+        return None
+
+    with open(path) as f:
+        return tuple(f.read().strip().split("|"))
+
+
+def save_fingerprint(fixed_folder, fingerprint):
+    path = os.path.join(fixed_folder, ".fingerprint")
+    with open(path, "w") as f:
+        f.write("|".join(map(str, fingerprint)))
+
+
+
+def bucket_fingerprint_predictions(fixed_folder):
+    total_rows = 0
+    min_ts = None
+    max_ts = None
+
+    for f in os.listdir(fixed_folder):
+        if not f.endswith(".csv"):
+            continue
+
+        path = os.path.join(fixed_folder, f)
+
+        try:
+            df = pd.read_csv(path, usecols=["Timestamp"])
+        except Exception:
+            continue
+
+        if df.empty:
+            continue
+
+        ts = pd.to_datetime(df["Timestamp"], errors="coerce").dropna()
+        if ts.empty:
+            continue
+
+        total_rows += len(ts)
+
+        cur_min = ts.min()
+        cur_max = ts.max()
+
+        min_ts = cur_min if min_ts is None else min(min_ts, cur_min)
+        max_ts = cur_max if max_ts is None else max(max_ts, cur_max)
+
+    return total_rows, str(min_ts), str(max_ts)
+
+def time_slop_fix(point, acoustic_folder, pred_litle_folder):
+    """
+    Aplica correcciones temporales ("time slop fix") a CSVs de minuto (≈60 registros)
+    tanto para acústica como para predicciones.
+
+    Funcionamiento general:
+    -----------------------
+    - Cada carpeta-hora contiene CSVs de minuto que pueden tener:
+        * segundos ausentes presentes en otro csv ( normalmente al principio o al final)
+        * deslizamientos temporales entre minutos
+    - El algoritmo de fix puede necesitar varias pasadas para estabilizar los datos.
+    - Para evitar consumir datos a medio corregir, se introduce:
+        * un fingerprint temporal por bucket (fixed_<hora>)
+        * un marker '.fix_done' cuando el fix converge
+
+    Convergencia:
+    -------------
+    - Tras cada pasada se calcula un fingerprint:
+        (nº total de filas, timestamp mínimo, timestamp máximo)
+    - Si el fingerprint no cambia respecto a la pasada anterior:
+        → el bucket se considera estable
+        → se crea el marker '.fix_done'
+    - Los buckets marcados como '.fix_done' no se vuelven a procesar
+      y son los únicos que pueden ser consumidos por las queries posteriores.
+
+    Casos cubiertos:
+    ----------------
+    - Fix que requiere múltiples pasadas
+    - Leftovers que pasan a la hora siguiente
+    - Evitar procesar horas parcialmente arregladas
+    - Evitar re-fixear horas ya estables
+    """
+    measurement_folders = [acoustic_folder, pred_litle_folder]
 
     for measurement_folder in measurement_folders:
+
         if 'acoustic_params' in measurement_folder:
-            processed_folders_txt_path = os.path.join(measurement_folder,'processed_acoustic.txt')
-        elif 'predictions_litle' in measurement_folder:
-            processed_folders_txt_path = os.path.join(measurement_folder,'processed_acoustic.txt')
+            processed_folders_txt_path = os.path.join(measurement_folder, 'processed_acoustic.txt')
+            is_prediction = False
+
+        elif 'prediction_files' in measurement_folder:
+            processed_folders_txt_path = os.path.join(measurement_folder, 'processed_predictions.txt')
+            is_prediction = True
 
         measurement_path = os.path.join(point, measurement_folder)
         leftover_buckets = {}
@@ -291,41 +398,68 @@ def time_slop_fix(point,acoustic_folder,pred_litle_folder):
         buckets = get_bucket_list(measurement_path)
 
         for bucket in tqdm.tqdm(buckets, desc=f'Fixing time slops {measurement_folder}'):
+
             bucket_path = os.path.join(measurement_path, bucket)
             fixed_folder = os.path.join(measurement_path, f'fixed_{bucket}')
+
+            # Skip si ya convergió
+            if is_fix_done(fixed_folder):
+                continue
 
             csv_files = copy_original_csvs(bucket_path, fixed_folder, measurement_folder)
             if not csv_files:
                 continue
 
-            # Ordenar CSVs por contenido temporal
+            # Ordenar CSVs por timestamp interno
             fixed_csvs = sort_csvs_by_content_timestamp(fixed_folder)
 
             # Procesar pares consecutivos
             for prev_name, curr_name in zip(fixed_csvs, fixed_csvs[1:]):
+
                 prev_path = os.path.join(fixed_folder, prev_name)
                 curr_path = os.path.join(fixed_folder, curr_name)
 
-                if 'acoustic_params' in measurement_folder:
-                    processed_folders_txt_path = os.path.join(measurement_folder,'processed_acoustic.txt')
-                elif 'predictions_litle' in measurement_folder:
-                    processed_folders_txt_path = os.path.join(measurement_folder,'processed_acoustic.txt')
-
-                if not handle_already_fixed_pairs(processed_folders_txt_path,prev_name):
+                if not handle_already_fixed_pairs(processed_folders_txt_path, prev_path):
                     continue
-                
-                handle_minute_jumps(prev_path, curr_path, leftover_buckets, measurement_folder)
+
+                handle_minute_jumps(
+                    prev_path,
+                    curr_path,
+                    leftover_buckets,
+                    measurement_folder
+                )
 
                 _, extra_idx = get_extra_seconds_indices(prev_path)
                 if extra_idx:
-                    append_extra_seconds(fixed_folder, prev_name, curr_name, extra_idx)
+                    append_extra_seconds(
+                        fixed_folder,
+                        prev_name,
+                        curr_name,
+                        extra_idx
+                    )
 
-            # Último archivo del bucket
-            handle_last_csv_leftovers(fixed_folder, bucket, leftover_buckets, measurement_folder)
+            # Último CSV del bucket
+            handle_last_csv_leftovers(
+                fixed_folder,
+                bucket,
+                leftover_buckets,
+                measurement_folder
+            )
 
-        # Distribuir TODOS los leftovers acumulados
+            # fingerprint + convergencia
+            if is_prediction:
+                fp_now = bucket_fingerprint_predictions(fixed_folder)
+                fp_prev = load_fingerprint(fixed_folder)
+
+                if fp_prev == tuple(map(str, fp_now)):
+                    mark_fix_done(fixed_folder)
+                else:
+                    save_fingerprint(fixed_folder, fp_now)
+
+        # Distribuir leftovers acumulados
         for (bucket_key, m_folder), leftover_df in leftover_buckets.items():
             next_folder = os.path.join(point, m_folder, f"fixed_{bucket_key}")
             os.makedirs(next_folder, exist_ok=True)
             append_leftover_rows_to_next_bucket(leftover_df, next_folder)
+
 

@@ -4,22 +4,41 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
-
-
-
-
+    
         
+    
+    
+
+
+
+    
+
+
+
 
         {
+            "name": "Python Debugger: acoustic params debugging",
+            "type": "debugpy",
+            "module": "02_acoustic_params.acoustic_params_Pyoctave",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "python" : "/home/aac/.conda/envs/s3_env/bin/python",
+            "args": [
+                "-p","P6_TEST_AUTOMATIZE"
+            ]
+        }
+
+
+
+        ,{
             "name": "Python Debugger: queries debugging",
             "type": "debugpy",
             "module": "04_queries.queries",
             "request": "launch",
             "console": "integratedTerminal",
-            "python" : "/home/martin/.conda/envs/s3_env/bin/python",
+            "python" : "/home/aac/.conda/envs/s3_env/bin/python",
             "args": [
-                "-m", "04_queries.queries"
+                "-p","P6_TEST_AUTOMATIZE","-w","1","-t"
             ]
         }
 
@@ -28,10 +47,10 @@
             "type": "debugpy",
             "module": "05_peak.peak_detection_L50",
             "request": "launch",
-            "python" : "/home/martin/.conda/envs/s3_env/bin/python",
+            "python" : "/home/aac/.conda/envs/s3_env/bin/python",
             "console": "integratedTerminal",
             "args": [
-                    "-m","05_peak.peak_decetection_L50"
+                    "-p","P6_TEST_AUTOMATIZE"
             ]
         }        
         
@@ -40,12 +59,55 @@
             "type": "debugpy",
             "module": "06_alarms_processing.main",
             "request": "launch",
-            "python" : "/home/martin/.conda/envs/s3_env/bin/python",
+            "python" : "/home/aac/.conda/envs/s3_env/bin/python",
             "console": "integratedTerminal",
             "args": [
-                 "-f","/srv/contenedores/CONTENEDORES/CONTENEDORES/5-Resultados", "--raspbery","--port","--point","P5_TEST"
+                 "-f","/srv/contenedores/CONTENEDORES/CONTENEDORES/5-Resultados", "--raspbery","--port","--point","P2_CONTENEDORES"
+            ]
+        },
+
+                {
+            "name": "Python Debugger: retrieve debugging",
+            "type": "debugpy",
+            "module": "01_retrieve_data.retrieve_data",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "python" : "/home/aac/.conda/envs/s3_env/bin/python",
+            "args": [
+                "-m","01_retrieve_data.retrieve_data"
             ]
         }
+
+            ,{
+                "name": "Python Debugger: inference debugging",
+                "type": "debugpy",
+                "module": "03_inference.inference",
+                "request": "launch",
+                "console": "integratedTerminal",
+                "python" : "/home/aac/.conda/envs/s3_env/bin/python",
+                "args": ["-p", "P6_TEST_AUTOMATIZE","-w","1"],
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}",
+                    "PATH": "/usr/local/cuda/bin:${env:PATH}",
+                    "LD_LIBRARY_PATH": "/usr/local/cuda/lib64:${env:LD_LIBRARY_PATH}"
+                }
+            }
+
+            ,{
+                "name": "Python Debugger: vis debugging",
+                "type": "debugpy",
+                "module": "06_visualization.main",
+                "request": "launch",
+                "console": "integratedTerminal",
+                "python" : "/home/aac/.conda/envs/s3_env/bin/python",
+                "args": [ "-f" ,"/srv/contenedores/CONTENEDORES/CONTENEDORES/5-Resultados","--raspbery", "--filterpoint","P6_TEST_AUTOMATIZE"],
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}",
+                    "PATH": "/usr/local/cuda/bin:${env:PATH}",
+                    "LD_LIBRARY_PATH": "/usr/local/cuda/lib64:${env:LD_LIBRARY_PATH}"
+                }
+
+            }
         
     ]
 }

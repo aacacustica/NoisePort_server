@@ -4098,13 +4098,17 @@ def plot_peak_distribution_week(df_peaks: pd.DataFrame, folder_output_dir: str, 
 
 ###################################################################
 def plot_density_distribution_peaks(df_merged: pd.DataFrame, folder_output_dir: str, logger, plotname: str):
+    
     try:
+    
         sns.set_style("whitegrid")
+
         df_merged = df_merged.copy()
 
         hourly_peaks = df_merged.groupby('hour').size()
 
         plt.figure(figsize=(12, 6))
+        
         hourly_peaks.plot(kind='bar')
 
         plt.xlabel('Hora del Día', fontsize=BIGGEST_SIZE)
