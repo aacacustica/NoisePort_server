@@ -2,7 +2,7 @@
 set -euo pipefail
 
 
-BASE="/home/aac/NoisePort_server/[Automatize]_Pipeline"
+BASE="/home/aac/CODIGOS/NoisePort_server/[Automatize]_Pipeline"
 LOG_DIR="$BASE/logs"
 mkdir -p "$LOG_DIR"
 

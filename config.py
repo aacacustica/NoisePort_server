@@ -1,4 +1,21 @@
 # ----------------------------------------
+#  FOLDERS LOCATION SERVER VERSION
+# ----------------------------------------
+
+INBOX_FOLDER="/srv/services/inbox"
+ACOUSTICS_FOLDER_NAME="acoustics"
+PREDICTIONS_FOLDER_NAME="predictions"
+
+DEVICES_FOLDERS = {
+    "ccmp13-dvk-1" : "ccmp13-dvk-1_records",
+    "ccmp13-dvk-2" : "ccmp13-dvk-2_records",
+    "ccmp13-dvk-3" : "ccmp13-dvk-3_records",
+    "ccmp13-dvk-4" : "ccmp13-dvk-4_records",
+    "ccmp13-dvk-5" : "ccmp13-dvk-5_records",
+}
+
+
+# ----------------------------------------
 #  FOLDERS
 # ----------------------------------------
 
@@ -7,6 +24,7 @@ RESULTADOS_FOLDER = "/mnt/sandisk/CONTENEDORES/CONTENEDORES/5-Resultados/"
 
 RESULTADOS_FOLDER_NEW = "/srv/contenedores/CONTENEDORES/CONTENEDORES/5-Resultados/"
 MEDIDAS_FOLDER_NEW = "/srv/contenedores/CONTENEDORES/CONTENEDORES/3-Medidas/"
+
 # ----------------------------------------
 #  SUBFOLDERS
 # ----------------------------------------

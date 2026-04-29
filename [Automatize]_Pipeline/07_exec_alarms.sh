@@ -4,7 +4,7 @@ set -euo pipefail
 ENV_NAME="s3_env"
 containers=("P6_TEST_AUTOMATIZE")
 DEST_BASE="/srv/contenedores/CONTENEDORES/CONTENEDORES"
-SCRIPT_DIR="/home/aac/NoisePort_server"
+SCRIPT_DIR="/home/aac/CODIGOS/NoisePort_server"
 
 MODULE_PATH="06_alarms_processing.main"
 

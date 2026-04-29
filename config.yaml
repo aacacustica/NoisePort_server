@@ -11,6 +11,8 @@ location:
   point: "P1_CONTENEDORES"
 
 
+
+
 # audio capture parameters
 audio:
   format: pyaudio.paInt16

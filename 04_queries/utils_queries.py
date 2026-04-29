@@ -16,6 +16,34 @@ AUDIO_SAMPLE_RATE, AUDIO_WINDOW_SIZE, AUDIO_CALIBRATION_CONSTANT,\
 STORAGE_S3_BUCKET_NAME, STORAGE_OUTPUT_WAV_FOLDER, \
 STORAGE_OUTPUT_ACOUSTIC_FOLDER = load_config_acoustic('config.yaml')
 
+def load_devices():
+
+    devices_folders = []
+    for key in DEVICES_FOLDERS.keys():
+        device_folder = os.path.join(INBOX_FOLDER, DEVICES_FOLDERS[key])
+        if not os.path.exists(device_folder):
+            os.makedirs(device_folder)
+            print(f"Created device folder: {device_folder}")
+        else:
+            print(f"Device folder already exists: {device_folder}")
+
+        devices_folders.append(device_folder)
+    return devices_folders
+        
+def load_folders(devices):
+
+    devices_full_path = [os.path.join(f,INBOX_FOLDER) for f in devices]
+
+    acoust_folders = [os.path.join(f,ACOUSTICS_FOLDER_NAME) for f in devices_full_path]
+    prediction_folders = [os.path.join(f,PREDICTIONS_FOLDER_NAME) for f in devices_full_path]
+
+    return acoust_folders,prediction_folders
+
+
+
+
+
+
 def send_mqtt_data(data, logger, sent_Records_txt):
 
 
@@ -352,6 +380,24 @@ def get_sonometer_rasp_acoustics_preds_days_and_paths(logger,point):
     days_folders_acoustics = [os.path.join(acoustics_params_folder_path,file) for file in os.listdir(acoustics_params_folder_path) if 'fixed_' in file and os.path.exists(os.path.join(acoustics_params_folder_path,".fix_done"))]
     days_folders_predictions = [os.path.join(predictions_litle_folder_path,file)  for file in os.listdir(predictions_litle_folder_path) if 'fixed_' in file]
     points_folders_sonometer = [os.path.join(sonometer_files_folder_path,file) for file in os.listdir(sonometer_files_folder_path)]
+
+    return spl_folder_path,AI_MODEL_folder_path,wavs_folder_path,sonometer_files_folder_path,acoustics_params_folder_path, \
+            predictions_litle_folder_path,days_folders_wavs,days_folders_acoustics,days_folders_predictions,points_folders_sonometer
+
+
+def get_sonometer_rasp_acoustics_preds_days_and_paths_server_version(logger,point):
+
+    spl_folder_path = ""
+    AI_MODEL_folder_path = ""
+    wavs_folder_path = ""
+    sonometer_files_folder_path = ""
+    acoustics_params_folder_path = ""
+    predictions_litle_folder_path = ""
+
+    days_folders_wavs = []
+    days_folders_acoustics = []
+    days_folders_predictions = []
+    points_folders_sonometer = []
 
     return spl_folder_path,AI_MODEL_folder_path,wavs_folder_path,sonometer_files_folder_path,acoustics_params_folder_path, \
             predictions_litle_folder_path,days_folders_wavs,days_folders_acoustics,days_folders_predictions,points_folders_sonometer

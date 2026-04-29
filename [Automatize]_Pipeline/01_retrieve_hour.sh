@@ -5,9 +5,9 @@ set -euo pipefail
 # Configuration
 #-----------------------------------------
 ENV_NAME="s3_env"
-SCRIPT_DIR="/home/aac/NoisePort_server"
+SCRIPT_DIR="/home/aac/CODIGOS/NoisePort_server"
 MODULE_PATH="01_retrieve_data.retrieve_data"
-ENVIRONMENT_PATH="/home/aac/NoisePort_server/environment.yml"
+ENVIRONMENT_PATH="/home/aac/CODIGOS/NoisePort_server/environment.yml"
 
 echo "============================================================"
 echo "INITIALIZING CONDA FOR THIS SCRIPT"
