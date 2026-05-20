@@ -181,4 +181,4 @@ test/
 /*.txt/
 
 #ignore files with PASSWORDS ON GOD
-config.py
+config.pyconfig.py
