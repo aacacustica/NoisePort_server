@@ -11,10 +11,9 @@ import sys
 
 
 sys.path.insert(0, "/home/aac_s3_test/noisePort_server/04_queries")
-from queries import *
+from queries_server import *
 from ast import literal_eval
 from pathlib import Path
-from queries import *
 from config import *
 from utils_queries import *
 
@@ -530,7 +529,7 @@ def process_sonometer_xlsx(db,xlsx_path,logger,point, output_folder,count,proces
         logger.error(f"Error reading Measurement History sheet from {xlsx_path} ,  trying Time History sheet")
 
 
-def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processed_folder,processed_folder_txt):
+def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processed_folder,processed_folder_txt,device):
     if not os.path.exists(processed_folder_txt): open(processed_folder_txt, 'w').close()
     for day in tqdm.tqdm(folder_days, desc="[Acoustics] Processing days", unit="day"):
         
@@ -625,15 +624,43 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
                     df_day = df_day.iloc[0:0]
                     logger.warning("[Acoustics] No records starting at second :00 found. DataFrame truncated to empty.")
                 
+            if 'ccmp' in device:
+                columns = ["LA", "LC", "LZ", "LAmax", "LAmin"] + THIRD_OCTAVES_SENSOR_FORMAT + [
+                    "Timestamp","Filename","Unixtimestamp","id_micro"]
+
+            else:
+                columns = ["LA", "LC", "LZ", "LAmax", "LAmin"] + THIRD_OCTAVES_SECOND_FORMAT + [
+                    "Timestamp","Filename","Unixtimestamp","id_micro"]
             
-            columns = ["LA", "LC", "LZ", "LAmax", "LAmin"] + THIRD_OCTAVES_SECOND_FORMAT + [
-                                "Timestamp","Filename","Unixtimestamp","id_micro"]
+
             csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
-            
-            df_day = df_day.dropna(subset=['Timestamp'])
-            
-            df_day['Timestamp'] = df_day['Timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
+
+            df_day = df_day.dropna(subset=["Timestamp"])
+
+            # Crear Filename si no existe
+            if "Filename" not in df_day.columns:
+                if "filename" in df_day.columns:
+                    df_day["Filename"] = df_day["filename"]
+                else:
+                    df_day["Filename"] = None
+
+            # Asegurar Timestamp como datetime
+            df_day["Timestamp"] = pd.to_datetime(df_day["Timestamp"], errors="coerce")
+            df_day = df_day.dropna(subset=["Timestamp"])
+
+            # Crear Unixtimestamp si no existe
+            if "Unixtimestamp" not in df_day.columns:
+                df_day["Unixtimestamp"] = df_day["Timestamp"].astype("int64") // 10**9
+
+            # Crear id_micro ANTES de df_day[columns]
+            df_day["id_micro"] = device
+
+            # Formatear Timestamp después de crear Unixtimestamp
+            df_day["Timestamp"] = df_day["Timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S")
+
+            # Seleccionar columnas finales
             df_day = df_day[columns]
+
             df_day.to_csv(csv_concat_path, index=False)
             logger.info("[Acoustics] Concatenated CSV files, saved as: %s", csv_concat_path)
         
@@ -649,13 +676,17 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
             # ------------------------------------
             
             logger.info("")
-            logger.info("[Acoustics] Loading data into TABLE")
-            load_data_db(db, csv_concat_path, logger,table_name=ACOUSTIC_TABLE_NAME)
-            cur = db.cursor()
-            cur.execute(f"SELECT COUNT(*) FROM {ACOUSTIC_TABLE_NAME}")
-            n = cur.fetchone()[0]
-            logger.info(f"[Acoustics] → {ACOUSTIC_TABLE_NAME} contains {n} rows after LOAD DATA")
-            cur.close()
+            load_data = False
+            if load_data:
+                logger.info("[Acoustics] Loading data into TABLE")
+                load_data_db(db, csv_concat_path, logger,table_name=ACOUSTIC_TABLE_NAME)
+                cur = db.cursor()
+                cur.execute(f"SELECT COUNT(*) FROM {ACOUSTIC_TABLE_NAME}")
+                n = cur.fetchone()[0]
+                logger.info(f"[Acoustics] → {ACOUSTIC_TABLE_NAME} contains {n} rows after LOAD DATA")
+                cur.close()
+            else:
+                logger.info("Not loading data into DB")
         
         except Exception as e:
             logger.error(f"[Acoustics] Error loading data into database: {e}")
@@ -708,7 +739,7 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
 
 
 
-def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed_folder, processed_folder_txt):
+def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed_folder, processed_folder_txt,device):
     if not os.path.exists(processed_folder_txt): open(processed_folder_txt, 'w').close()
     for day in tqdm.tqdm(folder_days, desc="[Predictions] Processing days", unit="day"):
         with open(processed_folder_txt) as myfile:
@@ -755,14 +786,18 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
 
             logger.info("")
             logger.info("[Predictions] Trying to concatenate the csv files to process one hour of audio data recordings")
+
             df_day = pd.concat([
-                pd.read_csv(
-                    csv_file,
-                    converters={'class': literal_eval, 'probability': literal_eval}
-                )
+                pd.read_csv(csv_file)
                 for csv_file in csv_files
                 if csv_file.endswith("1.0.csv")
             ], ignore_index=True)
+
+            df_day["class"] = df_day["class"].apply(safe_literal_list)
+            df_day["probability"] = df_day["probability"].apply(safe_literal_list)
+
+            df_day["class"] = df_day["class"].apply(lambda x: pad_list(x, size=3, fill_value=None))
+            df_day["probability"] = df_day["probability"].apply(lambda x: pad_list(x, size=3, fill_value=None))
         
         except Exception as e:
             logger.error(f"[Predictions] Error concatenating CSV files: {e}")
@@ -811,7 +846,7 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
 
             cols = ['Prediction_1','Prediction_2','Prediction_3',
                     'Prob_1','Prob_2','Prob_3',
-                    'filename','Timestamp']
+                    'Filename','Timestamp']
             df_out = df_out[cols]
             df_out.rename(columns={'filename': 'Filename'}, inplace=True)
             csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")

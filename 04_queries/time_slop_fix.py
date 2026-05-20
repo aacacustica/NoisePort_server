@@ -4,337 +4,576 @@ import tqdm
 
 import pandas as pd
 
-from config import * 
-from logging_config import * 
+from config import *
+from logging_config import *
 
-logger = setup_logging('query_automatize')
+logger = setup_logging("query_automatize")
+
+
+TIMESTAMP_CANDIDATES = (
+    "Timestamp",
+    "timestamp",
+    "date",
+    "Date",
+    "datetime",
+    "Datetime",
+)
+
+SOURCE_FILE_COL = "_source_file_path"
+
+
+def get_time_column(df):
+    for col in TIMESTAMP_CANDIDATES:
+        if col in df.columns:
+            return col
+    return None
+
+
+def normalize_timestamp_column(df, csv_path=None, logger=None):
+    if df is None or df.empty:
+        return None
+
+    time_col = get_time_column(df)
+
+    if time_col is None:
+        return None
+
+    df = df.copy()
+    df["Timestamp"] = pd.to_datetime(df[time_col], errors="coerce")
+
+    if df["Timestamp"].dropna().empty:
+        return None
+
+    return df
+
 
 def safe_read_timestamp_series(csv_path, nrows=10):
-    """Read up to nrows timestamps from csv_path and return pd.Series."""
     try:
         df = pd.read_csv(csv_path, nrows=nrows)
-    except Exception as e:
-        logger.debug(f"safe_read_timestamp_series: error reading {csv_path}: {e}")
+    except Exception:
         return None
-    if df.empty or 'Timestamp' not in df.columns:
-        logger.debug(f"safe_read_timestamp_series: {csv_path} empty or missing 'Timestamp'.")
+
+    df = normalize_timestamp_column(df, csv_path, logger)
+
+    if df is None:
         return None
-    ts = pd.to_datetime(df['Timestamp'], errors='coerce')
-    if ts.isna().all():
-        logger.debug(f"safe_read_timestamp_series: {csv_path} all Timestamps NaT after parsing.")
+
+    ts = df["Timestamp"].dropna()
+
+    if ts.empty:
         return None
+
     return ts
+
 
 def get_csv_first_valid_timestamp(csv_path):
     ts_series = safe_read_timestamp_series(csv_path, nrows=10)
-    if ts_series is None:
+
+    if ts_series is None or ts_series.empty:
         return None
-    return ts_series.dropna().iloc[0]
+
+    return ts_series.iloc[0]
+
 
 def get_csv_last_valid_timestamp(csv_path):
     try:
-        df = pd.read_csv(csv_path, usecols=['Timestamp'])
-    except Exception as e:
-        logger.debug(f"get_csv_last_valid_timestamp: error reading {csv_path}: {e}")
+        df = pd.read_csv(csv_path)
+    except Exception:
         return None
-    if df.empty or 'Timestamp' not in df.columns:
+
+    df = normalize_timestamp_column(df, csv_path, logger)
+
+    if df is None:
         return None
-    ts = pd.to_datetime(df['Timestamp'], errors='coerce').dropna()
+
+    ts = df["Timestamp"].dropna()
+
     if ts.empty:
         return None
+
     return ts.iloc[-1]
 
+
 def sort_csvs_by_content_timestamp(folder):
-    csvs = [f for f in os.listdir(folder) if f.lower().endswith('.csv')]
+    csvs = [
+        f for f in os.listdir(folder)
+        if f.lower().endswith(".csv")
+    ]
+
     def _key(fname):
         ts = get_csv_first_valid_timestamp(os.path.join(folder, fname))
         return ts.timestamp() if ts is not None else float("inf")
+
     return sorted(csvs, key=_key)
 
-def detect_minute_jump_by_content(prev_path, curr_path, threshold_seconds=70):
-    tprev = get_csv_last_valid_timestamp(prev_path)
-    tcurr = get_csv_first_valid_timestamp(curr_path)
-    if tprev is None or tcurr is None:
-        return False
-    return (tcurr - tprev).total_seconds() > threshold_seconds
 
-def get_extra_seconds_indices(csv_path):
-    try:
-        df = pd.read_csv(csv_path)
-    except Exception as e:
-        logger.error(f"get_extra_seconds_indices: error reading {csv_path}: {e}")
-        return 0, []
+def parse_bucket(bucket):
+    parts = bucket.split("_")
 
-    if df.empty or 'Timestamp' not in df.columns:
-        return 0, []
+    if len(parts) == 1:
+        return parts[0], None
 
-    # Parsear a datetime (NaT donde no sea posible)
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'], errors='coerce')
+    if len(parts) == 2:
+        try:
+            return parts[0], int(parts[1])
+        except ValueError:
+            return None, None
 
-    # Eliminar timezone sin cambiar la hora
-    df['Timestamp'] = df['Timestamp'].apply(lambda x: x.replace(tzinfo=None) if pd.notnull(x) else x)
+    return None, None
 
-    # Evitar que un NaT rompa .dt
-    timestamps_valid = df['Timestamp'].dropna()
-    if timestamps_valid.empty:
-        return 0, []
 
-    official_minute = timestamps_valid.iloc[0].minute
-    idxs = df[timestamps_valid.dt.minute != official_minute].index.tolist()
-    return len(idxs), idxs
+def build_bucket_key_from_timestamp(ts, original_bucket):
+    _, original_hour = parse_bucket(original_bucket)
 
-def append_extra_seconds(fixed_folder_path, prev_name, curr_name, row_indices):
-    if not row_indices:
-        return
-    prev_path = os.path.join(fixed_folder_path, prev_name)
-    curr_path = os.path.join(fixed_folder_path, curr_name)
-    df_prev = pd.read_csv(prev_path)
-    df_curr = pd.read_csv(curr_path)
-    rows_to_move = df_prev.loc[row_indices].copy()
-    df_prev = df_prev.drop(index=row_indices).reset_index(drop=True)
-    df_curr = pd.concat([df_curr, rows_to_move], ignore_index=True).sort_values('Timestamp')
-    df_prev.to_csv(prev_path, index=False)
-    df_curr.to_csv(curr_path, index=False)
-    logger.info(f"append_extra_seconds: moved {len(rows_to_move)} rows from {prev_name} -> {curr_name}")
+    day = ts.strftime("%Y%m%d")
 
-def last_file_trim_overflow(last_csv_path):
-    try:
-        df = pd.read_csv(last_csv_path)
-    except Exception as e:
-        logger.error(f"last_file_trim_overflow: error reading {last_csv_path}: {e}")
-        return pd.DataFrame()
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'], errors='coerce')
-    first_hour = df['Timestamp'].iloc[0].hour
-    overflow_mask = df['Timestamp'].dt.hour != first_hour
-    extra_rows = df[overflow_mask].copy()
-    df[~overflow_mask].to_csv(last_csv_path, index=False)
-    return extra_rows
+    if original_hour is None:
+        return day
 
-def build_bucket_key_from_df_rows(rows_df):
-    if rows_df.empty or 'Timestamp' not in rows_df.columns:
-        return None, None
-    ts0 = rows_df['Timestamp'].dropna().iloc[0]
-    bucket_day = ts0.strftime('%Y%m%d')
-    bucket_hour = ts0.hour
-    return f"{bucket_day}_{bucket_hour:02d}", ts0
+    return f"{day}_{ts.hour:02d}"
 
-def append_leftover_rows_to_next_bucket(leftover_df, next_fixed_folder_path):
-    """
-    Prepend leftover_df to first CSV in next_fixed_folder_path, filtered by next hour.
-    """
-    if leftover_df.empty:
-        return
-    os.makedirs(next_fixed_folder_path, exist_ok=True)
-    next_hour = int(os.path.basename(next_fixed_folder_path).split('_')[-1])
-    
-    # Convert leftover timestamps
-    leftover_df['Timestamp'] = pd.to_datetime(leftover_df['Timestamp'], errors='coerce')
-    rows_for_hour = leftover_df[leftover_df['Timestamp'].dt.hour == next_hour].copy()
-    if rows_for_hour.empty:
-        return
-
-    csvs = sort_csvs_by_content_timestamp(next_fixed_folder_path)
-    if not csvs:
-        fname = f"generated_{rows_for_hour.iloc[0]['Timestamp'].strftime('%Y%m%d_%H%M%S')}_tflt_w_1.0.csv"
-        rows_for_hour.to_csv(os.path.join(next_fixed_folder_path, fname), index=False)
-        logger.info(f"append_leftover_rows_to_next_bucket: created {fname} with {len(rows_for_hour)} rows")
-        return
-
-    first_csv_path = os.path.join(next_fixed_folder_path, csvs[0])
-    df_next = pd.read_csv(first_csv_path)
-
-    # Ensure Timestamp is converted in df_next too!
-    df_next['Timestamp'] = pd.to_datetime(df_next['Timestamp'], errors='coerce')
-    rows_for_hour['Timestamp'] = pd.to_datetime(rows_for_hour['Timestamp'], errors='coerce')
-    
-    merged = pd.concat([rows_for_hour, df_next], ignore_index=True).sort_values('Timestamp').reset_index(drop=True)
-    merged.to_csv(first_csv_path, index=False)
-    logger.info(f"append_leftover_rows_to_next_bucket: prepended {len(rows_for_hour)} rows to {first_csv_path}")
 
 def get_next_hour_bucket(bucket):
-    day, hour = bucket.split('_')
-    hour = int(hour)
+    day, hour = parse_bucket(bucket)
+
+    if day is None:
+        return None
+
+    if hour is None:
+        next_day = (pd.to_datetime(day) + pd.Timedelta(days=1)).strftime("%Y%m%d")
+        return next_day
+
     if hour < 23:
-        return f"{day}_{hour+1:02d}"
-    # rollover
-    next_day = (pd.to_datetime(day) + pd.Timedelta(days=1)).strftime('%Y%m%d')
+        return f"{day}_{hour + 1:02d}"
+
+    next_day = (pd.to_datetime(day) + pd.Timedelta(days=1)).strftime("%Y%m%d")
     return f"{next_day}_00"
-
-def get_last_minute_leftovers(df):
-    if df.empty or 'Timestamp' not in df.columns:
-        return pd.DataFrame()
-
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'], errors='coerce')
-
-    # si todo es NaT → no se puede sacar el último minuto
-    if df['Timestamp'].dropna().empty:
-        return pd.DataFrame()
-
-    last_minute = df['Timestamp'].dropna().iloc[-1].minute
-    return df[df['Timestamp'].dt.minute == last_minute].copy()
-
-
-def get_measurement_folders(point):
-    point = point.replace('3-Medidas','5-Resultados')
-    point_SPL = os.path.join(point,'SPL')
-    point_AI = os.path.join(point,'AI_MODEL')
-
-    acoustic_path  = os.path.join(point,'acoustic_params')
-    prediction_path = os.path.join(point_AI,'predictions_litle')
-
-    return acoustic_path,prediction_path
 
 
 def get_bucket_list(measurement_path):
-    return sorted([b for b in os.listdir(measurement_path)
-                   if os.path.isdir(os.path.join(measurement_path, b))
-                   and 'fixed' not in b and not b.endswith('.txt')])
+    return sorted([
+        b for b in os.listdir(measurement_path)
+        if os.path.isdir(os.path.join(measurement_path, b))
+        and not b.startswith("fixed_")
+        and "fixed" not in b
+        and not b.endswith(".txt")
+    ])
 
 
 def copy_original_csvs(bucket_path, fixed_folder, measurement_folder):
-    
-    if measurement_folder == 'predictions_litle':
-        csv_files = [f for f in os.listdir(bucket_path) if f.endswith('w_1.0.csv')]
+    if measurement_folder in ("predictions", "predictions_litle"):
+        csv_files = [
+            f for f in os.listdir(bucket_path)
+            if f.endswith("w_1.0.csv")
+        ]
     else:
-        csv_files = [f for f in os.listdir(bucket_path) if f.lower().endswith('.csv')]
+        csv_files = [
+            f for f in os.listdir(bucket_path)
+            if f.lower().endswith(".csv")
+        ]
 
     os.makedirs(fixed_folder, exist_ok=True)
 
     for fname in csv_files:
+        src = os.path.join(bucket_path, fname)
         dst = os.path.join(fixed_folder, fname)
+
         if not os.path.exists(dst):
-            shutil.copy(os.path.join(bucket_path, fname), dst)
+            shutil.copy(src, dst)
 
     return csv_files
+
+
+def detect_minute_jump_by_content(prev_path, curr_path, threshold_seconds=70):
+    tprev = get_csv_last_valid_timestamp(prev_path)
+    tcurr = get_csv_first_valid_timestamp(curr_path)
+
+    if tprev is None or tcurr is None:
+        return False
+
+    return (tcurr - tprev).total_seconds() > threshold_seconds
+
+
+def get_extra_seconds_indices(csv_path):
+    try:
+        df = pd.read_csv(csv_path)
+    except Exception:
+        return 0, []
+
+    df = normalize_timestamp_column(df, csv_path, logger)
+
+    if df is None:
+        return 0, []
+
+    df["Timestamp"] = df["Timestamp"].apply(
+        lambda x: x.replace(tzinfo=None) if pd.notnull(x) else x
+    )
+
+    timestamps_valid = df["Timestamp"].dropna()
+
+    if timestamps_valid.empty:
+        return 0, []
+
+    official_minute = timestamps_valid.iloc[0].minute
+
+    idxs = df[
+        df["Timestamp"].notna()
+        & (df["Timestamp"].dt.minute != official_minute)
+    ].index.tolist()
+
+    return len(idxs), idxs
+
+
+def drop_internal_columns(df):
+    if SOURCE_FILE_COL in df.columns:
+        return df.drop(columns=[SOURCE_FILE_COL])
+    return df
+
+
+def log_row_move(n_rows, src_path, dst_path):
+    logger.info(f"Moving {n_rows} rows from {src_path} to {dst_path}")
+
+
+def append_extra_seconds(fixed_folder_path, prev_name, curr_name, row_indices):
+    if not row_indices:
+        return
+
+    prev_path = os.path.join(fixed_folder_path, prev_name)
+    curr_path = os.path.join(fixed_folder_path, curr_name)
+
+    try:
+        df_prev = pd.read_csv(prev_path)
+        df_curr = pd.read_csv(curr_path)
+    except Exception:
+        return
+
+    df_prev = normalize_timestamp_column(df_prev, prev_path, logger)
+    df_curr = normalize_timestamp_column(df_curr, curr_path, logger)
+
+    if df_prev is None or df_curr is None:
+        return
+
+    rows_to_move = df_prev.loc[row_indices].copy()
+
+    if rows_to_move.empty:
+        return
+
+    df_prev = df_prev.drop(index=row_indices).reset_index(drop=True)
+
+    df_curr = (
+        pd.concat([df_curr, rows_to_move], ignore_index=True)
+        .sort_values("Timestamp")
+        .reset_index(drop=True)
+    )
+
+    drop_internal_columns(df_prev).to_csv(prev_path, index=False)
+    drop_internal_columns(df_curr).to_csv(curr_path, index=False)
+
+    log_row_move(len(rows_to_move), prev_path, curr_path)
+
+
+def build_bucket_key_from_df_rows(rows_df):
+    if rows_df.empty:
+        return None, None
+
+    rows_df = normalize_timestamp_column(rows_df, logger=logger)
+
+    if rows_df is None:
+        return None, None
+
+    ts_valid = rows_df["Timestamp"].dropna()
+
+    if ts_valid.empty:
+        return None, None
+
+    ts0 = ts_valid.iloc[0]
+    bucket_day = ts0.strftime("%Y%m%d")
+    bucket_hour = ts0.hour
+
+    return f"{bucket_day}_{bucket_hour:02d}", ts0
+
+
+def append_rows_to_bucket_store(leftover_buckets, key, rows, source_path):
+    if rows is None or rows.empty:
+        return
+
+    rows = rows.copy()
+    rows[SOURCE_FILE_COL] = source_path
+
+    leftover_buckets.setdefault(key, pd.DataFrame())
+    leftover_buckets[key] = (
+        pd.concat([leftover_buckets[key], rows], ignore_index=True)
+        .sort_values("Timestamp")
+        .reset_index(drop=True)
+    )
+
+
+def append_leftover_rows_to_next_bucket(leftover_df, next_fixed_folder_path):
+    if leftover_df is None or leftover_df.empty:
+        return
+
+    os.makedirs(next_fixed_folder_path, exist_ok=True)
+
+    bucket_name = os.path.basename(next_fixed_folder_path)
+
+    if bucket_name.startswith("fixed_"):
+        bucket = bucket_name.replace("fixed_", "", 1)
+    else:
+        bucket = bucket_name
+
+    bucket_day, bucket_hour = parse_bucket(bucket)
+
+    if bucket_day is None:
+        return
+
+    leftover_df = normalize_timestamp_column(
+        leftover_df,
+        next_fixed_folder_path,
+        logger
+    )
+
+    if leftover_df is None:
+        return
+
+    if bucket_hour is None:
+        rows_for_bucket = leftover_df[
+            leftover_df["Timestamp"].dt.strftime("%Y%m%d") == bucket_day
+        ].copy()
+    else:
+        rows_for_bucket = leftover_df[
+            (leftover_df["Timestamp"].dt.strftime("%Y%m%d") == bucket_day)
+            & (leftover_df["Timestamp"].dt.hour == bucket_hour)
+        ].copy()
+
+    if rows_for_bucket.empty:
+        return
+
+    csvs = sort_csvs_by_content_timestamp(next_fixed_folder_path)
+
+    if not csvs:
+        fname = (
+            f"generated_"
+            f"{rows_for_bucket.iloc[0]['Timestamp'].strftime('%Y%m%d_%H%M%S')}"
+            f"_tflt_w_1.0.csv"
+        )
+        dst_path = os.path.join(next_fixed_folder_path, fname)
+
+        rows_to_write = (
+            drop_internal_columns(rows_for_bucket)
+            .sort_values("Timestamp")
+            .reset_index(drop=True)
+        )
+
+        rows_to_write.to_csv(dst_path, index=False)
+
+        if SOURCE_FILE_COL in rows_for_bucket.columns:
+            for src_path, src_rows in rows_for_bucket.groupby(SOURCE_FILE_COL):
+                log_row_move(len(src_rows), src_path, dst_path)
+        else:
+            log_row_move(len(rows_for_bucket), "unknown", dst_path)
+
+        return
+
+    first_csv_path = os.path.join(next_fixed_folder_path, csvs[0])
+
+    try:
+        df_next = pd.read_csv(first_csv_path)
+    except Exception:
+        return
+
+    df_next = normalize_timestamp_column(df_next, first_csv_path, logger)
+
+    if df_next is None:
+        return
+
+    rows_to_merge = drop_internal_columns(rows_for_bucket)
+    df_next = drop_internal_columns(df_next)
+
+    merged = (
+        pd.concat([rows_to_merge, df_next], ignore_index=True)
+        .sort_values("Timestamp")
+        .reset_index(drop=True)
+    )
+
+    merged.to_csv(first_csv_path, index=False)
+
+    if SOURCE_FILE_COL in rows_for_bucket.columns:
+        for src_path, src_rows in rows_for_bucket.groupby(SOURCE_FILE_COL):
+            log_row_move(len(src_rows), src_path, first_csv_path)
+    else:
+        log_row_move(len(rows_for_bucket), "unknown", first_csv_path)
+
 
 def handle_minute_jumps(prev_path, curr_path, leftover_buckets, measurement_folder):
     if not detect_minute_jump_by_content(prev_path, curr_path):
         return
 
-    df_prev = pd.read_csv(prev_path)
-    df_prev['Timestamp'] = pd.to_datetime(df_prev['Timestamp'])
+    try:
+        df_prev = pd.read_csv(prev_path)
+    except Exception:
+        return
 
-    prev_hour = df_prev['Timestamp'].iloc[0].hour
-    leftover_rows = df_prev[df_prev['Timestamp'].dt.hour != prev_hour]
+    df_prev = normalize_timestamp_column(df_prev, prev_path, logger)
+
+    if df_prev is None:
+        return
+
+    prev_hour = df_prev["Timestamp"].dropna().iloc[0].hour
+
+    leftover_rows = df_prev[
+        df_prev["Timestamp"].notna()
+        & (df_prev["Timestamp"].dt.hour != prev_hour)
+    ].copy()
 
     if leftover_rows.empty:
         return
 
-    # Eliminar leftovers del archivo anterior
-    df_prev.drop(index=leftover_rows.index).to_csv(prev_path, index=False)
+    df_prev = df_prev.drop(index=leftover_rows.index).reset_index(drop=True)
+    drop_internal_columns(df_prev).to_csv(prev_path, index=False)
 
-    # Agregar leftovers al dict con el bucket al que pertenecen
     bucket_key, _ = build_bucket_key_from_df_rows(leftover_rows)
 
+    if bucket_key is None:
+        return
+
     key = (bucket_key, measurement_folder)
-    leftover_buckets.setdefault(key, pd.DataFrame())
-    leftover_buckets[key] = pd.concat(
-        [leftover_buckets[key], leftover_rows],
-        ignore_index=True
-    ).sort_values('Timestamp')
+    append_rows_to_bucket_store(leftover_buckets, key, leftover_rows, prev_path)
+
 
 def handle_last_csv_leftovers(fixed_folder, bucket, leftover_buckets, measurement_folder):
     fixed_csvs = sort_csvs_by_content_timestamp(fixed_folder)
+
     if not fixed_csvs:
         return
 
     last_path = os.path.join(fixed_folder, fixed_csvs[-1])
-    df_last = pd.read_csv(last_path)
-    if 'prediction_files' in last_path:
-        df_last['date'] = pd.to_datetime(df_last['date'], errors='coerce')
 
+    try:
+        df_last = pd.read_csv(last_path)
+    except Exception:
+        return
+
+    df_last = normalize_timestamp_column(df_last, last_path, logger)
+
+    if df_last is None:
+        return
+
+    bucket_day, bucket_hour = parse_bucket(bucket)
+
+    if bucket_day is None:
+        return
+
+    if bucket_hour is None:
+        overflow_mask = (
+            df_last["Timestamp"].dt.strftime("%Y%m%d") != bucket_day
+        )
     else:
-        df_last['Timestamp'] = pd.to_datetime(df_last['Timestamp'], errors='coerce')
+        overflow_mask = (
+            (df_last["Timestamp"].dt.strftime("%Y%m%d") != bucket_day)
+            | (df_last["Timestamp"].dt.hour != bucket_hour)
+        )
 
-        
+    overflow_rows = df_last[overflow_mask].copy()
 
-    minute_leftovers = get_last_minute_leftovers(df_last)
-    if minute_leftovers.empty:
+    if overflow_rows.empty:
         return
 
-    df_last.drop(index=minute_leftovers.index).to_csv(last_path, index=False)
+    df_last = df_last[~overflow_mask].reset_index(drop=True)
+    drop_internal_columns(df_last).to_csv(last_path, index=False)
 
-    next_bucket = get_next_hour_bucket(bucket)
-    if not next_bucket:
+    first_valid_ts = overflow_rows["Timestamp"].dropna()
+
+    if first_valid_ts.empty:
         return
+
+    next_bucket = build_bucket_key_from_timestamp(first_valid_ts.iloc[0], bucket)
 
     key = (next_bucket, measurement_folder)
+    append_rows_to_bucket_store(leftover_buckets, key, overflow_rows, last_path)
 
-    leftover_buckets.setdefault(key, pd.DataFrame())
-    leftover_buckets[key] = pd.concat(
-        [leftover_buckets[key], minute_leftovers],
-        ignore_index=True
-    ).sort_values('Timestamp')
 
-def handle_already_fixed_pairs(processed_folder_txt,day_csv):
-    """
-    Handling fixed pairs.
-
-    Cases:
-
-    - If prev_csv in already processed txt:
-        -Return false
-    - If prev_csv not in already processed txt:
-        -Return true
-
-    """
+def handle_already_fixed_pairs(processed_folder_txt, day_csv):
     current_csv = os.path.basename(day_csv)
+
     if not os.path.exists(processed_folder_txt):
-        open(processed_folder_txt, 'w').close()
+        open(processed_folder_txt, "w").close()
 
     with open(processed_folder_txt, "r+") as myfile:
-        
         content = myfile.read()
         complete_paths = [path for path in content.split("\n")]
-        
+
         if current_csv in complete_paths:
-            return False #Already processed
-        else:
-            return True #Not processed yet
+            return False
+
+        return True
+
 
 def mark_fix_done(fixed_folder):
+    os.makedirs(fixed_folder, exist_ok=True)
     open(os.path.join(fixed_folder, ".fix_done"), "w").close()
 
 
 def is_fix_done(fixed_folder):
     return os.path.exists(os.path.join(fixed_folder, ".fix_done"))
 
+
 def load_fingerprint(fixed_folder):
     path = os.path.join(fixed_folder, ".fingerprint")
+
     if not os.path.exists(path):
         return None
 
     with open(path) as f:
-        return tuple(f.read().strip().split("|"))
+        content = f.read().strip()
+
+    if not content:
+        return None
+
+    return tuple(content.split("|"))
 
 
 def save_fingerprint(fixed_folder, fingerprint):
+    os.makedirs(fixed_folder, exist_ok=True)
+
     path = os.path.join(fixed_folder, ".fingerprint")
+
     with open(path, "w") as f:
         f.write("|".join(map(str, fingerprint)))
 
 
+def remove_fingerprint(fixed_folder):
+    path = os.path.join(fixed_folder, ".fingerprint")
 
-def bucket_fingerprint_predictions(fixed_folder):
+    if os.path.exists(path):
+        os.remove(path)
+
+
+def bucket_fingerprint(fixed_folder):
     total_rows = 0
     min_ts = None
     max_ts = None
 
-    for f in os.listdir(fixed_folder):
-        if not f.endswith(".csv"):
+    for fname in os.listdir(fixed_folder):
+        if not fname.lower().endswith(".csv"):
             continue
 
-        path = os.path.join(fixed_folder, f)
+        path = os.path.join(fixed_folder, fname)
 
         try:
-            df = pd.read_csv(path, usecols=["Timestamp"])
+            df = pd.read_csv(path)
         except Exception:
             continue
 
         if df.empty:
             continue
 
-        ts = pd.to_datetime(df["Timestamp"], errors="coerce").dropna()
+        df = normalize_timestamp_column(df, path, logger)
+
+        if df is None:
+            continue
+
+        ts = df["Timestamp"].dropna()
+
         if ts.empty:
             continue
 
@@ -348,88 +587,134 @@ def bucket_fingerprint_predictions(fixed_folder):
 
     return total_rows, str(min_ts), str(max_ts)
 
-def time_slop_fix(point, acoustic_folder, pred_litle_folder):
-    """
-    Aplica correcciones temporales ("time slop fix") a CSVs de minuto (≈60 registros)
-    tanto para acústica como para predicciones.
 
-    Funcionamiento general:
-    -----------------------
-    - Cada carpeta-hora contiene CSVs de minuto que pueden tener:
-        * segundos ausentes presentes en otro csv ( normalmente al principio o al final)
-        * deslizamientos temporales entre minutos
-    - El algoritmo de fix puede necesitar varias pasadas para estabilizar los datos.
-    - Para evitar consumir datos a medio corregir, se introduce:
-        * un fingerprint temporal por bucket (fixed_<hora>)
-        * un marker '.fix_done' cuando el fix converge
+def last_file_trim_overflow(last_csv_path):
+    try:
+        df = pd.read_csv(last_csv_path)
+    except Exception:
+        return pd.DataFrame()
 
-    Convergencia:
-    -------------
-    - Tras cada pasada se calcula un fingerprint:
-        (nº total de filas, timestamp mínimo, timestamp máximo)
-    - Si el fingerprint no cambia respecto a la pasada anterior:
-        → el bucket se considera estable
-        → se crea el marker '.fix_done'
-    - Los buckets marcados como '.fix_done' no se vuelven a procesar
-      y son los únicos que pueden ser consumidos por las queries posteriores.
+    df = normalize_timestamp_column(df, last_csv_path, logger)
 
-    Casos cubiertos:
-    ----------------
-    - Fix que requiere múltiples pasadas
-    - Leftovers que pasan a la hora siguiente
-    - Evitar procesar horas parcialmente arregladas
-    - Evitar re-fixear horas ya estables
-    """
+    if df is None:
+        return pd.DataFrame()
+
+    first_hour = df["Timestamp"].dropna().iloc[0].hour
+    overflow_mask = df["Timestamp"].dt.hour != first_hour
+
+    extra_rows = df[overflow_mask].copy()
+
+    drop_internal_columns(df[~overflow_mask]).to_csv(last_csv_path, index=False)
+
+    return extra_rows
+
+
+def get_last_minute_leftovers(df):
+    if df is None or df.empty:
+        return pd.DataFrame()
+
+    df = normalize_timestamp_column(df, logger=logger)
+
+    if df is None:
+        return pd.DataFrame()
+
+    timestamps_valid = df["Timestamp"].dropna()
+
+    if timestamps_valid.empty:
+        return pd.DataFrame()
+
+    last_minute = timestamps_valid.iloc[-1].minute
+
+    return df[df["Timestamp"].dt.minute == last_minute].copy()
+
+
+def get_measurement_folders(point):
+    point = point.replace("3-Medidas", "5-Resultados")
+
+    point_AI = os.path.join(point, "AI_MODEL")
+
+    acoustic_path = os.path.join(point, "acoustic_params")
+    prediction_path = os.path.join(point_AI, "predictions_litle")
+
+    return acoustic_path, prediction_path
+
+
+def time_slop_fix(point, acoustic_folder, pred_litle_folder, logger):
     measurement_folders = [acoustic_folder, pred_litle_folder]
 
     for measurement_folder in measurement_folders:
 
-        if 'acoustic_params' in measurement_folder:
-            processed_folders_txt_path = os.path.join(measurement_folder, 'processed_acoustic.txt')
-            is_prediction = False
+        if os.path.isabs(measurement_folder):
+            measurement_path = measurement_folder
+        else:
+            measurement_path = os.path.join(point, measurement_folder)
 
-        elif 'prediction_files' in measurement_folder:
-            processed_folders_txt_path = os.path.join(measurement_folder, 'processed_predictions.txt')
-            is_prediction = True
+        measurement_name = os.path.basename(os.path.normpath(measurement_path))
 
-        measurement_path = os.path.join(point, measurement_folder)
+        if measurement_name == "acoustics":
+            processed_folders_txt_path = os.path.join(
+                measurement_path,
+                "processed_acoustic.txt"
+            )
+
+        elif measurement_name in ("predictions", "predictions_litle"):
+            processed_folders_txt_path = os.path.join(
+                measurement_path,
+                "processed_predictions.txt"
+            )
+
+        else:
+            continue
+
         leftover_buckets = {}
 
-        buckets = get_bucket_list(measurement_path)
+        try:
+            buckets = get_bucket_list(measurement_path)
+        except Exception:
+            continue
 
-        for bucket in tqdm.tqdm(buckets, desc=f'Fixing time slops {measurement_folder}'):
+        for bucket in tqdm.tqdm(
+            buckets,
+            desc=f"Fixing time slops {measurement_name}"
+        ):
 
             bucket_path = os.path.join(measurement_path, bucket)
-            fixed_folder = os.path.join(measurement_path, f'fixed_{bucket}')
+            fixed_folder = os.path.join(measurement_path, f"fixed_{bucket}")
 
-            # Skip si ya convergió
             if is_fix_done(fixed_folder):
                 continue
 
-            csv_files = copy_original_csvs(bucket_path, fixed_folder, measurement_folder)
+            csv_files = copy_original_csvs(
+                bucket_path,
+                fixed_folder,
+                measurement_name
+            )
+
             if not csv_files:
                 continue
 
-            # Ordenar CSVs por timestamp interno
             fixed_csvs = sort_csvs_by_content_timestamp(fixed_folder)
 
-            # Procesar pares consecutivos
             for prev_name, curr_name in zip(fixed_csvs, fixed_csvs[1:]):
 
                 prev_path = os.path.join(fixed_folder, prev_name)
                 curr_path = os.path.join(fixed_folder, curr_name)
 
-                if not handle_already_fixed_pairs(processed_folders_txt_path, prev_path):
+                if not handle_already_fixed_pairs(
+                    processed_folders_txt_path,
+                    prev_path
+                ):
                     continue
 
                 handle_minute_jumps(
                     prev_path,
                     curr_path,
                     leftover_buckets,
-                    measurement_folder
+                    measurement_name
                 )
 
                 _, extra_idx = get_extra_seconds_indices(prev_path)
+
                 if extra_idx:
                     append_extra_seconds(
                         fixed_folder,
@@ -438,28 +723,26 @@ def time_slop_fix(point, acoustic_folder, pred_litle_folder):
                         extra_idx
                     )
 
-            # Último CSV del bucket
             handle_last_csv_leftovers(
                 fixed_folder,
                 bucket,
                 leftover_buckets,
-                measurement_folder
+                measurement_name
             )
 
-            # fingerprint + convergencia
-            if is_prediction:
-                fp_now = bucket_fingerprint_predictions(fixed_folder)
-                fp_prev = load_fingerprint(fixed_folder)
+            fp_now = bucket_fingerprint(fixed_folder)
+            fp_prev = load_fingerprint(fixed_folder)
 
-                if fp_prev == tuple(map(str, fp_now)):
-                    mark_fix_done(fixed_folder)
-                else:
-                    save_fingerprint(fixed_folder, fp_now)
+            if fp_now[0] == 0:
+                remove_fingerprint(fixed_folder)
+                continue
 
-        # Distribuir leftovers acumulados
+            if fp_prev == tuple(map(str, fp_now)):
+                mark_fix_done(fixed_folder)
+            else:
+                save_fingerprint(fixed_folder, fp_now)
+
         for (bucket_key, m_folder), leftover_df in leftover_buckets.items():
             next_folder = os.path.join(point, m_folder, f"fixed_{bucket_key}")
             os.makedirs(next_folder, exist_ok=True)
             append_leftover_rows_to_next_bucket(leftover_df, next_folder)
-
-

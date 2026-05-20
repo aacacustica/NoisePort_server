@@ -2,7 +2,7 @@
 set -euo pipefail
 
 
-BASE="/home/aac/CODIGOS/NoisePort_server/[Automatize]_Pipeline"
+BASE="/home/aac/I+D/CODIGOS/NoisePort_server/[Automatize]_Pipeline"
 LOG_DIR="$BASE/logs"
 mkdir -p "$LOG_DIR"
 
@@ -26,10 +26,10 @@ echo "=== PIPELINE START: $(date) ===" | tee -a "$LOG_DIR/pipeline.log"
 
 # scripts y logs
 scripts=(
-    "01_retrieve_hour.sh"
-    "02_move_audio.sh"
-    "03_exec_acoustic_params.sh"
-    "04_exec_inference.sh"
+#    "01_retrieve_hour.sh"
+#    "02_move_audio.sh"
+#    "03_exec_acoustic_params.sh"
+#    "04_exec_inference.sh"
     "05_exec_queries.sh"
     "06_exec_peaks.sh"
     "07_exec_alarms.sh"

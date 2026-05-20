@@ -14,21 +14,24 @@ PATH = SANDISK_PATH_LINUX_NEW
 ID_MICRO, LOCATION_RECORD, LOCATION_PLACE, LOCATION_POINT, \
 AUDIO_SAMPLE_RATE, AUDIO_WINDOW_SIZE, AUDIO_CALIBRATION_CONSTANT,\
 STORAGE_S3_BUCKET_NAME, STORAGE_OUTPUT_WAV_FOLDER, \
-STORAGE_OUTPUT_ACOUSTIC_FOLDER = load_config_acoustic('config.yaml')
+STORAGE_OUTPUT_ACOUSTIC_FOLDER,DEVICES_FOLDER, INBOX_FOLDER,  \
+ACOUSTIC_QUERIES_FOLDER_NAME, PREDICTION_QUERIES_FOLDER_NAME = load_config_acoustic('config.yaml')
 
-def load_devices():
+def load_devices(devices_folder,logger):
+    """
+    devices_folder: str, path to the txt file that contains the names of the devices to process, one per line.
 
-    devices_folders = []
-    for key in DEVICES_FOLDERS.keys():
-        device_folder = os.path.join(INBOX_FOLDER, DEVICES_FOLDERS[key])
-        if not os.path.exists(device_folder):
-            os.makedirs(device_folder)
-            print(f"Created device folder: {device_folder}")
-        else:
-            print(f"Device folder already exists: {device_folder}")
 
-        devices_folders.append(device_folder)
-    return devices_folders
+    returns: list of str, full paths to the devices folders to process.
+    """
+    devices = []
+
+    with open(devices_folder, 'r') as f:
+        for line in f:
+            device = line.strip()
+            devices.append(os.path.join(INBOX_FOLDER, device))
+
+    return devices
         
 def load_folders(devices):
 
@@ -41,7 +44,44 @@ def load_folders(devices):
 
 
 
+def safe_literal_list(value):
+    if isinstance(value, list):
+        return value
 
+    if pd.isna(value):
+        return []
+
+    value = str(value).strip()
+
+    if value == "":
+        return []
+
+    try:
+        parsed = ast.literal_eval(value)
+
+        if isinstance(parsed, list):
+            return parsed
+
+        return [parsed]
+
+    except Exception:
+        # Caso tipo: noise
+        # Caso tipo: [noise, speech, music]
+        value = value.strip("[]")
+
+        if "," in value:
+            return [x.strip().strip("'").strip('"') for x in value.split(",")]
+
+        return [value.strip().strip("'").strip('"')]
+
+
+def pad_list(values, size=3, fill_value=None):
+    values = list(values)
+
+    if len(values) >= size:
+        return values[:size]
+
+    return values + [fill_value] * (size - len(values))
 
 
 def send_mqtt_data(data, logger, sent_Records_txt):
@@ -275,9 +315,27 @@ def initialize_process_files(query_acoustic_folder,query_pred_folder,query_wav_f
     processed_predictions               = load_processed_folder(processed_folder_predictions_txt)
     processed_wavs                      = load_processed_folder(processed_folder_wav_txt)
     processed_sonometers                = load_processed_folder(processed_folder_sonometer_txt)
-    
+    processed_mqtt_data                 = load_processed_folder(processed_mqtt_data_txt_acoustics)
 
     return processed_folder_acoustic_txt,processed_folder_predictions_txt,processed_folder_wav_txt,processed_folder_sonometer_txt,processed_mqtt_data_txt_sonometer,processed_mqtt_data_txt_acoustics,processed_acoustics,processed_predictions,processed_wavs,processed_sonometers
+
+def initialize_process_files_server(query_acoustic_folder,query_pred_folder,logger):
+
+    processed_folder_acoustic_txt       = os.path.join(query_acoustic_folder, "processed_acoustics.txt")
+    processed_folder_predictions_txt    = os.path.join(query_pred_folder, "processed_predictions.txt")
+    processed_mqtt_data_txt_acoustics   = os.path.join(query_acoustic_folder,'records_sent.txt')
+
+    logger.info(f"[Acoustics] Saving the processed file txt here -->    {processed_folder_acoustic_txt}")
+    logger.info(f"[Predictions] Saving the processed file txt here -->  {processed_folder_predictions_txt}")
+    #logger.info(f"[MQTT] Saving the processed file txt here -->         {processed_folder_acoustic_txt}")
+
+    processed_acoustics                 = load_processed_folder(processed_folder_acoustic_txt)
+    processed_predictions               = load_processed_folder(processed_folder_predictions_txt)
+    processed_mqtt_data                 = load_processed_folder(processed_mqtt_data_txt_acoustics)
+    
+
+    return processed_folder_acoustic_txt,processed_folder_predictions_txt,processed_mqtt_data_txt_acoustics,processed_acoustics,processed_predictions,processed_mqtt_data
+
 
 def create_query_folders(point,logger):
         
@@ -315,13 +373,38 @@ def create_query_folders(point,logger):
 
         return query_acoustic_folder, query_pred_folder, query_wav_folder,query_sonometer_folder
 
+def create_query_folders_server(device_folder,logger):
+        
+
+
+        query_acoustic_folder = os.path.join(device_folder,ACOUSTIC_QUERIES_FOLDER_NAME)
+        query_pred_folder = os.path.join(device_folder, PREDICTION_QUERIES_FOLDER_NAME)
+
+        if not os.path.exists(query_acoustic_folder):
+            os.makedirs(query_acoustic_folder)
+            logger.info(f"Created query_acoustic folder : {query_acoustic_folder}")
+        else:
+            logger.info(f"Folder query_acoustic already exists: {query_acoustic_folder}")
+        
+        if not os.path.exists(query_pred_folder):
+            os.makedirs(query_pred_folder)
+            logger.info(f"Created query_pred_folder: {query_pred_folder}")
+        else:
+            logger.info(f"Folder query_predictions already exists: {query_pred_folder}")
+
+
+        return query_acoustic_folder, query_pred_folder
+
 
 def load_processed_folder(processed_folder_path):
     """Load the set of processed filenames from a text file."""
     if os.path.exists(processed_folder_path):
         with open(processed_folder_path, "r") as f:
             return {line.strip() for line in f if line.strip()}
-    return set()
+        
+    else:
+        with open(processed_folder_path, "w") as f: 
+            return set()
 
 
 
@@ -362,14 +445,9 @@ def get_sensor_id_and_filter_query(day_folder):
 def get_sonometer_rasp_acoustics_preds_days_and_paths(logger,point):
 
 
-    #sonometer_folder_path = os.path.join(point,'SONOMETRO')
-    #raspberry_folder_path = os.path.join(point,'RASPBERRY')
-
     spl_folder_path = os.path.join(point.replace('3-Medidas','5-Resultados'),'SPL')
     AI_MODEL_folder_path = os.path.join(point.replace('3-Medidas','5-Resultados'),'AI_MODEL')
 
-    #measurements_folder_path = os.path.join(point,'SPL','measurements')
-    
     
     wavs_folder_path = os.path.join(point,'wav_files')
     sonometer_files_folder_path = os.path.join(point,'sonometer_files')
@@ -385,21 +463,17 @@ def get_sonometer_rasp_acoustics_preds_days_and_paths(logger,point):
             predictions_litle_folder_path,days_folders_wavs,days_folders_acoustics,days_folders_predictions,points_folders_sonometer
 
 
-def get_sonometer_rasp_acoustics_preds_days_and_paths_server_version(logger,point):
+def get_sonometer_rasp_acoustics_preds_days_and_paths_server_version(logger,device):
 
-    spl_folder_path = ""
-    AI_MODEL_folder_path = ""
-    wavs_folder_path = ""
-    sonometer_files_folder_path = ""
-    acoustics_params_folder_path = ""
-    predictions_litle_folder_path = ""
+    
+    acoustics_params_folder_path = os.path.join(INBOX_FOLDER,device,ACOUSTICS_FOLDER_NAME)
+    predictions_litle_folder_path = os.path.join(INBOX_FOLDER,device,PREDICTIONS_FOLDER_NAME)
 
-    days_folders_wavs = []
-    days_folders_acoustics = []
-    days_folders_predictions = []
-    points_folders_sonometer = []
 
-    return spl_folder_path,AI_MODEL_folder_path,wavs_folder_path,sonometer_files_folder_path,acoustics_params_folder_path, \
-            predictions_litle_folder_path,days_folders_wavs,days_folders_acoustics,days_folders_predictions,points_folders_sonometer
+    days_folders_acoustics = [os.path.join(acoustics_params_folder_path, day) for day in os.listdir(acoustics_params_folder_path) if 'fixed_' in day and os.path.exists(os.path.join(acoustics_params_folder_path,day, ".fix_done"))]
+    
+    days_folders_predictions = [os.path.join(predictions_litle_folder_path, day) for day in os.listdir(predictions_litle_folder_path) if 'fixed_' in day and os.path.exists(os.path.join(predictions_litle_folder_path,day, ".fix_done"))]
+
+    return acoustics_params_folder_path, predictions_litle_folder_path, days_folders_acoustics, days_folders_predictions
 
     

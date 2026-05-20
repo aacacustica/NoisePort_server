@@ -227,9 +227,10 @@ def load_config_record(yaml_path: str) -> dict:
 
 def load_config_acoustic(yaml_path: str) -> dict:
     with open(yaml_path, 'r') as file:
+
         config = yaml.safe_load(file)
 
-        id_micro = config["devide"]["id_micro"]
+        id_micro = config["device"]["id_micro"]
 
         location_record = config["location"]["record"]
         location_place = config['location']['place']
@@ -240,13 +241,20 @@ def load_config_acoustic(yaml_path: str) -> dict:
         audio_window_size = config['audio']['window_size']
         audio_calibration_constant = config['audio']['calibration_constant']
 
-
+        
         storage_s3_bucket_name = config['storage']['s3_bucket_name'] 
         storage_output_wav_folder = config['storage']['output_wav_folder']
         storage_output_acoust_folder = config['storage']['output_acoust_folder']
 
+        devices_folder = config['device']['devices_txt']
+        inbox_folder = config['device']['devices_folder']
+        acoustic_queries_folder_name = config['folders']['acoustic_queries']
+        prediction_queries_folder_name = config['folders']['prediction_queries']
 
-    return id_micro, location_record, location_place, location_point, audio_sample_rate, audio_window_size, audio_calibration_constant, storage_s3_bucket_name, storage_output_wav_folder, storage_output_acoust_folder
+
+    return (id_micro, location_record, location_place, location_point, 
+    audio_sample_rate, audio_window_size, audio_calibration_constant, storage_s3_bucket_name,
+    storage_output_wav_folder, storage_output_acoust_folder, devices_folder,inbox_folder, acoustic_queries_folder_name, prediction_queries_folder_name)
 
 
 
@@ -254,7 +262,7 @@ def load_config_inference(yaml_path: str, cwd: str) -> dict:
     with open(yaml_path, 'r') as file:
         config = yaml.safe_load(file)
 
-        id_micro = config["devide"]["id_micro"]
+        id_micro = config["device"]["id_micro"]
 
         location_record = config["location"]["record"]
         location_place = config['location']['place']

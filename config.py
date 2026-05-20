@@ -6,14 +6,6 @@ INBOX_FOLDER="/srv/services/inbox"
 ACOUSTICS_FOLDER_NAME="acoustics"
 PREDICTIONS_FOLDER_NAME="predictions"
 
-DEVICES_FOLDERS = {
-    "ccmp13-dvk-1" : "ccmp13-dvk-1_records",
-    "ccmp13-dvk-2" : "ccmp13-dvk-2_records",
-    "ccmp13-dvk-3" : "ccmp13-dvk-3_records",
-    "ccmp13-dvk-4" : "ccmp13-dvk-4_records",
-    "ccmp13-dvk-5" : "ccmp13-dvk-5_records",
-}
-
 
 # ----------------------------------------
 #  FOLDERS
@@ -88,6 +80,34 @@ THIRD_OCTAVES_SECOND_FORMAT = [
     "100.0Hz", "125.9Hz", "158.5Hz", "199.5Hz", "251.2Hz", "316.2Hz", "398.1Hz", "501.2Hz",
     "631.0Hz", "794.3Hz", "1000.0Hz", "1258.9Hz", "1584.9Hz", "1995.3Hz", "2511.9Hz", "3162.3Hz",
     "3981.1Hz", "5011.9Hz", "6309.6Hz", "7943.3Hz", "10000.0Hz", "12589.3Hz", "15848.9Hz"
+]
+
+THIRD_OCTAVES_SENSOR_FORMAT = [
+    "25.12Hz",
+    "31.62Hz",
+    "39.81Hz",
+    "50.12Hz",
+    "63.10Hz",
+    "79.43Hz",
+    "100.00Hz",
+    "125.89Hz",
+    "158.49Hz",
+    "199.53Hz",
+    "251.19Hz",
+    "316.23Hz",
+    "398.11Hz",
+    "501.19Hz",
+    "630.96Hz",
+    "794.33Hz",
+    "1000.00Hz",
+    "1258.93Hz",
+    "1584.89Hz",
+    "1995.26Hz",
+    "2511.89Hz",
+    "3162.28Hz",
+    "3981.07Hz",
+    "5011.87Hz",
+    "6309.57Hz",
 ]
 
 # -------------------------

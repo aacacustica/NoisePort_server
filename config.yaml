@@ -1,7 +1,9 @@
 # config.yaml
 
-devide:
+device:
   id_micro: "RP-1"
+  devices_txt: "/home/aac/nombres_sensores.txt"
+  devices_folder: "/srv/services/inbox"
 
 
 # device location
@@ -10,6 +12,9 @@ location:
   place: "CONTENEDORES"
   point: "P1_CONTENEDORES"
 
+folders:
+  acoustic_queries : "acoustic_queries"
+  prediction_queries : "prediction_queries"
 
 
 

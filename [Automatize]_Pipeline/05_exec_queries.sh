@@ -2,11 +2,10 @@
 set -euo pipefail
 
 ENV_NAME="s3_env"
-containers=("P6_TEST_AUTOMATIZE")
-DEST_BASE="/srv/contenedores/CONTENEDORES/CONTENEDORES"
-SCRIPT_DIR="/home/aac/CODIGOS/NoisePort_server"
+DEST_BASE="/srv/services/inbox"
+SCRIPT_DIR="/home/aac/I+D/CODIGOS/NoisePort_server"
 
-MODULE_PATH="04_queries.queries"
+MODULE_PATH="04_queries.queries_server"
 
 
 echo "============================================================"
@@ -40,45 +39,34 @@ echo ""
 echo "Activated conda environment '$ENV_NAME'."
 echo ""
 
+echo "============================================================"
+echo "LAUNCHING QUERIES MODULE"
+echo "============================================================"
 
 
+ pushd "${SCRIPT_DIR}" > /dev/null
 
+ echo "Executing module ${MODULE_PATH}"
 
-for container in "${containers[@]}"; do
-     DEST_DIR="${DEST_BASE}/5-Resultados/${container}/SPL/queries/acoustic_params_query"
+ #check if there are sonometer files to process , if they exist , add sonometer processing param 
+ 
+ dir_sonometro="${DEST_BASE}/sonometer_files"
 
-
-     if [ ! -d "$DEST_DIR" ]; then
-         echo "Directory $DEST_DIR does not exist. Creating..."
-	 mkdir -p  "${DEST_DIR}"
-         chown aac:aac "${DEST_DIR}"    
-     else
-	 echo "Changing directory to ${SCRIPT_DIR}..."
-     fi
-
-     pushd "${SCRIPT_DIR}" > /dev/null
-
-     echo "Executing module ${MODULE_PATH}"
-    
-     #check if there are sonometer files to process , if they exist , add sonometer processing param 
-     
-     dir_sonometro="${DEST_BASE}/3-Medidas/${container}/sonometer_files"
-
-     if [ -z "$(echo "$dir_sonometro"/*)" ] || [ ! -e "$dir_sonometro"/* ]; then
-    	python -m "${MODULE_PATH}" -p "${container}" -t 
-     else
-    	python -m "${MODULE_PATH}" -p "${container}" -t -s
-     fi
-     
-     echo "Finished executing module ${MODULE_PATH} at ${container}"
+ if [ -z "$(echo "$dir_sonometro"/*)" ] || [ ! -e "$dir_sonometro"/* ]; then
+	python -m "${MODULE_PATH}" -t 
+ else
+	python -m "${MODULE_PATH}" -t -s
+ fi
+ 
+ echo "Finished executing module ${MODULE_PATH}"
 
      popd > /dev/null
      
-done
+
 
 
 echo "=============================================================="
-echo "SCRIPT COMPLTED SUCCESSFULLY"
+echo "SCRIPT COMPLETED SUCCESSFULLY"
 echo "=============================================================="
 
 conda deactivate
