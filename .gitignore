@@ -182,3 +182,5 @@ test/
 
 #ignore files with PASSWORDS ON GOD
 config.pyconfig.py
+credentials_aws.txt
+credentials_aws
