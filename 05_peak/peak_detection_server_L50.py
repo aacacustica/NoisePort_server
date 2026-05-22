@@ -18,12 +18,18 @@ from collections import defaultdict
 from tqdm import tqdm
 from config import *
 from config_peak import *
-
+from utils import *
 
 logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s - %(levelname)s - %(message)s', 
                     filename='peak_detection.log', 
                     filemode='w')
+
+ID_MICRO, LOCATION_RECORD, LOCATION_PLACE, LOCATION_POINT, \
+AUDIO_SAMPLE_RATE, AUDIO_WINDOW_SIZE, AUDIO_CALIBRATION_CONSTANT,\
+STORAGE_S3_BUCKET_NAME, STORAGE_OUTPUT_WAV_FOLDER, \
+STORAGE_OUTPUT_ACOUSTIC_FOLDER,DEVICES_FOLDER,INBOX_FOLDER, \
+ACOUSTIC_QUERIES_FOLDER_NAME, PREDICTION_QUERIES_FOLDER_NAME = load_config_acoustic('config.yaml')
 
 
 def _extract_key_from_filename(path: str):
@@ -52,6 +58,8 @@ def leq(levels):
 
 
 def get_hourly_folders(point):
+
+
     hour_path_acoustics = []
     hour_path_predictions = []
     hour_path_peaks = []
@@ -315,7 +323,8 @@ def main():
     args = argument_parser()
 
     #point_to_process = args.point
-    devices = load_devices()
+    devices = load_devices(DEVICES_FOLDER,logger)
+
     logging.info(f"Inizializing")
 
     """
@@ -328,7 +337,7 @@ def main():
     ################
     # inizializating
     ################
-    hourly_acoustics_folders,hourly_predictions_folders,_ = list(get_hourly_folders(point_to_process))
+    hourly_acoustics_folders,hourly_predictions_folders,_ = list(get_hourly_folders(devices))
     
     for csv_file in tqdm(hourly_acoustics_folders, desc='Processing csv files'):
         df = pd.read_csv(csv_file)
@@ -396,7 +405,7 @@ def main():
     # CONCAT AND SAVE
     ################
     try:
-        hourly_acoustics_folders,hourly_predictions_folders,hourly_peaks_folders = list(get_hourly_folders(point_to_process))
+        hourly_acoustics_folders,hourly_predictions_folders,hourly_peaks_folders = list(get_hourly_folders(devices))
         merge_acoustics_predictions_and_peaks(point,hourly_acoustics_folders,hourly_predictions_folders,hourly_peaks_folders,logger)
     
     except Exception as e:

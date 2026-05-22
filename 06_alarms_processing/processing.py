@@ -18,15 +18,15 @@ from config_vi import *
 
 
 def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, taxonomy, yamnet_csv, sufix_string, oca_limits, oca_type, logger):
+    
     print()
     stable_version = get_stable_version(logger)
     home_dir = os.path.expanduser('~')
 
-
     for folder in tqdm(folders, desc="Processing folders"):
+        
         logger.info("")
         logger.info(f"Suffix string: {sufix_string}")
-
 
         ###################
         # PROCESSED FILE 

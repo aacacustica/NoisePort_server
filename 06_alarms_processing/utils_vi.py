@@ -168,6 +168,7 @@ def remove_unnamed_columns(df_preds):
 def yamnet_class_map_csv():
     home_dir = os.path.expanduser('~')
     yammnet_class_map_path = os.path.join(home_dir, RELATIVE_PATH_YAMNET_MAP.lstrip('/'))
+    yammnet_class_map_path = "/home/aac/I+D/CODIGOS/GENERAL/Audio_Processing/yamnet_class_map.csv"
     df_audioset = pd.read_csv(yammnet_class_map_path,sep=';')
     df_audioset = remove_unnamed_columns(df_audioset)
     return df_audioset
