@@ -22,10 +22,10 @@ MEDIDAS_FOLDER_NEW = "/srv/contenedores/CONTENEDORES/CONTENEDORES/3-Medidas/"
 # ----------------------------------------
 
 
-ACOUSTICS_QUERY = "acoustic_params_query"
+ACOUSTICS_QUERY = "acoustic_queries"
 PEAKS_QUERY = "peaks_query"
 WAV_FILES_QUERY = "wav_files_query"
-PREDICTIONS_QUERY = "predictions_litle_query"
+PREDICTIONS_QUERY = "prediction_queries"
 MERGED_QUERY = "merged_csv_query"
 
 
@@ -172,7 +172,7 @@ PASSWORD_NEW = "AdminDBPassword123!"
 # ----------------------------------------
 DATABASE_NAME = "noise_port_test"
 
-ACOUSTIC_TABLE_NAME = "noise_port_test.acoustic_data"
+ACOUSTIC_TABLE_NAME = "noise_port_test.acoustic_params"
 PREDICT_TABLE_NAME = "noise_port_test.predict_data"
 WAV_TABLE_NAME = "noise_port_test.wav_data"
 SONOMETER_TABLE_NAME = "noise_port_test.sonometer_acoustic_data"
@@ -242,9 +242,51 @@ QUERYS = {
         `1/3 LZeq 2000`, `1/3 LZeq 2500`, `1/3 LZeq 3150`, `1/3 LZeq 4000`, `1/3 LZeq 5000`,
         `1/3 LZeq 6300`, `1/3 LZeq 8000`, `1/3 LZeq 10000`, `1/3 LZeq 12500`, `1/3 LZeq 16000`,
         `1/3 LZeq 20000`,Timestamp,Filename,Unixtimestamp,sensor_id
-    );
-    """
-}
+    )
+    """,
+    "load_acoustics_db_sensor_RP": """
+        LOAD DATA LOCAL INFILE '{data_path}'
+            INTO TABLE {table_name}
+            FIELDS TERMINATED BY ','
+            OPTIONALLY ENCLOSED BY '"'
+            LINES TERMINATED BY '\\n'
+        IGNORE 1 LINES
+        (
+            `LA`, `LC`, `LZ`, `LAmax`, `LAmin`,
+            `25.12Hz`,
+            `31.62Hz`,
+            `39.81Hz`,
+            `50.12Hz`,
+            `63.10Hz`,
+            `79.43Hz`,
+            `100.00Hz`,
+            `125.89Hz`,
+            `158.49Hz`,
+            `199.53Hz`,
+            `251.19Hz`,
+            `316.23Hz`,
+            `398.11Hz`,
+            `501.19Hz`,
+            `630.96Hz`,
+            `794.33Hz`,
+            `1000.00Hz`,
+            `1258.93Hz`,
+            `1584.89Hz`,
+            `1995.26Hz`,
+            `2511.89Hz`,
+            `3162.28Hz`,
+            `3981.07Hz`,
+            `5011.87Hz`,
+            `6309.57Hz`,
+            `Timestamp`,
+            `Filename`,
+            `Unixtimestamp`,
+            @csv_id_micro
+        )
+        SET
+            `sensor_id` = '{device_id}'
+    """,
+    }
 
 # ----------------------------------------
 # DATABASE DEFINITIONS 

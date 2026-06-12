@@ -1,18 +1,25 @@
+import sys
+sys.path.insert(0, "/home/aac/I+D/CODIGOS/NoisePort_server/")
 import argparse
 import os
 from logging_config import setup_logging
 from config_vi import *
+from utils import *
 import config_vi
 import sys
 
-sys.path.insert(0,'/home/aac/NoisePort_server/06_visualization')
+sys.path.insert(0, "/home/aac/I+D/CODIGOS/NoisePort_server/06_visualization")
 from processing import *
 import re
 
 
-COEFFS_PATH = "/home/aac/NoisePort_server/point_coeffs.json"
+COEFFS_PATH = "/home/aac/I+D/CODIGOS/NoisePort_server/point_coeffs.json"
 
-
+ID_MICRO, LOCATION_RECORD, LOCATION_PLACE, LOCATION_POINT, \
+AUDIO_SAMPLE_RATE, AUDIO_WINDOW_SIZE, AUDIO_CALIBRATION_CONSTANT,\
+STORAGE_S3_BUCKET_NAME, STORAGE_OUTPUT_WAV_FOLDER, \
+STORAGE_OUTPUT_ACOUSTIC_FOLDER,DEVICES_FOLDER,INBOX_FOLDER, \
+ACOUSTIC_QUERIES_FOLDER_NAME, PREDICTION_QUERIES_FOLDER_NAME = load_config_acoustic('config.yaml')
 
 def arg_parser():
     parser = argparse.ArgumentParser(description='Plotting AudioMoth data')
@@ -70,6 +77,13 @@ def ask_date_time_changes():
         ask("Set threshold date? (y/n): ", r"\d{4}-\d{2}-\d{2}"),
         ask("Set threshold time? (y/n): ", r"([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]")
     )
+    
+
+def collect_coeff(coeffs,device):
+
+    for key,value in coeffs.items():
+        if key ==  device:
+            return value
 
 
 def collect_folders(input_folder, change_time_flag,label_source_type, logger,point_filter):
@@ -79,14 +93,14 @@ def collect_folders(input_folder, change_time_flag,label_source_type, logger,poi
     with open(COEFFS_PATH,'r') as f:
         coeffs = json.load(f)
 
-    if label_source_type == "raspberry":
+    if "raspberry" in label_source_type:
         logger.info("Searching for RASPBERRY")
         for root, dirs, _ in os.walk(input_folder):
             if point_filter is not None:
                 if point_filter not in root:
                     continue
-            if 'SPL' in dirs:
-                path = os.path.join(root, 'SPL',ACOUSTIC_PARAMS_FOLDER)
+            if 'acoustics' in dirs:
+                path = os.path.join(root,ACOUSTIC_PARAMS_FOLDER)
                 if point_filter is not None:
                     coefficients[path] = coeffs[point_filter]
                 else:
@@ -170,15 +184,32 @@ def resolve_oca_type(oca_type):
         raise ValueError(f"Invalid OCA type: {oca_type}")
     return oca_map[oca_type]
 
+def load_devices(devices_folder,logger):
+    """
+    devices_folder: str, path to the txt file that contains the names of the devices to process, one per line.
+
+
+    returns: list of str, full paths to the devices folders to process.
+    """
+    devices = []
+
+    with open(devices_folder, 'r') as f:
+        for line in f:
+            device = line.strip()
+            devices.append(os.path.join(INBOX_FOLDER, device))
+
+    return devices
 
 
 
 def main():
     logger = setup_logging('visualization')
+
     try:
         
         args = arg_parser()
-
+        devices = load_devices(DEVICES_FOLDER,logger)
+        
         taxonomy = get_taxonomy(args, *taxonomy_json())
         oca_limits = resolve_oca_type(args.limit_oca)
         yamnet_csv = yamnet_class_map_csv()
@@ -192,6 +223,9 @@ def main():
 
         point_to_process = args.filterpoint
 
+        
+          
+        """
         for label, active in source_types.items():
             logger.info(f"Active: {active}")
             logger.info(f"Trying to get label: {label}")
@@ -206,7 +240,6 @@ def main():
 
             logger.info(f"Using percentiles {args.percentiles}")
             logger.info(f"Aggregation period {args.agg_period}")
-            logger.info(f"Taxonomy: {taxonomy}")
             logger.info(f"Input folder: {input_folder}")
 
 
@@ -227,6 +260,34 @@ def main():
                 args.limit_oca,
                 logger
             )
+        """
+        with open(COEFFS_PATH,'r') as f:
+            coeffs = json.load(f)
+
+        for device in devices:
+
+            folders, _, date_map, thresh_map = collect_folders(input_folder, args.change_date, device,logger,point_to_process)
+            
+            device_coeff = collect_coeff(coeffs,device) 
+            
+            process_all_folders(
+                input_folder,
+                folders,
+                args.agg_period,
+                args.percentiles,
+                taxonomy,
+                yamnet_csv,
+                os.path.basename(device),
+                device_coeff,
+                date_map,
+                thresh_map,
+                oca_limits,
+                args.limit_oca,
+                device,
+                logger
+            )
+
+            logger.info(f"Processing received data from : {device}")
 
         logger.info("Finished all processing.")
 

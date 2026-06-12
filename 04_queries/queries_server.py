@@ -22,7 +22,7 @@ ISDIR = os.path.isdir(PATH)
 ID_MICRO, LOCATION_RECORD, LOCATION_PLACE, LOCATION_POINT, \
 AUDIO_SAMPLE_RATE, AUDIO_WINDOW_SIZE, AUDIO_CALIBRATION_CONSTANT,\
 STORAGE_S3_BUCKET_NAME, STORAGE_OUTPUT_WAV_FOLDER, \
-STORAGE_OUTPUT_ACOUSTIC_FOLDER,DEVICES_FOLDER,INBOX_FOLDER, \
+STORAGE_OUTPUT_ACOUSTIC_FOLDER,DEVICES_TXT,INBOX_FOLDER, \
 ACOUSTIC_QUERIES_FOLDER_NAME, PREDICTION_QUERIES_FOLDER_NAME = load_config_acoustic('config.yaml')
 
 logger = setup_logging('query_automatize')
@@ -79,7 +79,8 @@ def main():
             host=HOST_NEW,
             user=USER_NEW,
             password=PASSWORD_NEW,
-            allow_local_infile=True
+            allow_local_infile=True,
+            allow_local_infile_in_path="/srv/services/inbox",
             )
     
     if DB_INIT_SWITCH: initialize_database(db, logger)
@@ -102,14 +103,16 @@ def main():
     # 1. LOAD DEVICE NAMES AND FULL FOLDER PATHS
     # ---------------------------
 
-    devices                                     = load_devices(DEVICES_FOLDER,logger)
+    devices                                     = load_devices(DEVICES_TXT,logger)
     acoustic_folders,prediction_folders         = load_folders(devices)
 
     logger.info(f"[Queries] Devices to query: {devices}")
     logger.info(f"[Queries] Info located in {acoustic_folders} , {prediction_folders}")
 
     for device in tqdm.tqdm(devices, desc="Processing devices", unit="device"):
+        
         try:
+            print("Processing: ", device)
             device_folder_path = device
             
             if os.path.isdir(device):
@@ -213,6 +216,7 @@ def main():
 
                 logger.info("[Acoustics] Quering")
                 try:
+                    logger.info(f"[Acoustics] days_folder_acoustics : {days_folders_acoustics}")
                     end_time = acoustic_processing(
                                                     folder_days=                        days_folders_acoustics,
                                                     db=                                 db,
@@ -231,7 +235,11 @@ def main():
                     print("[Acoustics] --- %s seconds in execution ---" %end_time)
                 except Exception as e:
                     logger.exception(f"Error quering acoustics")                      
-            
+            print("Quering device: ",device)
+            print("Days folders predictions:",  days_folders_predictions)
+            print("Days folders acoustics: ",   days_folders_acoustics)
+            print("Query pred folder: ",query_pred_folder)
+            print("Query acoust folder: ",query_acoustic_folder)
             if PREDICT_QUERY_SWITCH:
                 
                 logger.info("[Preditions] Quering")
@@ -279,7 +287,7 @@ def main():
         logger.info("all_info: %s", all_info)
         json.dump(all_info, sys.stdout, indent=4, default=decimal_to_native)
 
-        query_acoustic_folder = os.path.join(acoustic_folder_device,ACOUSTICS_FOLDER_NAME) 
+        query_acoustic_folder = os.path.join(device,ACOUSTICS_FOLDER_NAME) 
         all_info_path = os.path.join(query_acoustic_folder, f"{device}_all.json")
         
         with open(all_info_path, "w") as f:

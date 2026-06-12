@@ -10,7 +10,8 @@ import logging
 import yaml
 import csv
 import boto3
-
+import sys
+sys.path.insert(0, "/home/aac/I+D/CODIGOS/NoisePort_server/")
 
 # Constantes de inicializacion
 T = 1
@@ -246,7 +247,7 @@ def load_config_acoustic(yaml_path: str) -> dict:
         storage_output_wav_folder = config['storage']['output_wav_folder']
         storage_output_acoust_folder = config['storage']['output_acoust_folder']
 
-        devices_folder = config['device']['devices_txt']
+        devices_txt = config['device']['devices_txt']
         inbox_folder = config['device']['devices_folder']
         acoustic_queries_folder_name = config['folders']['acoustic_queries']
         prediction_queries_folder_name = config['folders']['prediction_queries']
@@ -254,7 +255,7 @@ def load_config_acoustic(yaml_path: str) -> dict:
 
     return (id_micro, location_record, location_place, location_point, 
     audio_sample_rate, audio_window_size, audio_calibration_constant, storage_s3_bucket_name,
-    storage_output_wav_folder, storage_output_acoust_folder, devices_folder,inbox_folder, acoustic_queries_folder_name, prediction_queries_folder_name)
+    storage_output_wav_folder, storage_output_acoust_folder, devices_txt,inbox_folder, acoustic_queries_folder_name, prediction_queries_folder_name)
 
 
 

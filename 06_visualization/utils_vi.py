@@ -5,6 +5,90 @@ import subprocess
 import os
 from config_vi import *
 
+def collect_df_server(reg_folder):
+
+
+    for subfolder in os.listdir(reg_folder):
+        subfolder_path = os.path.join(reg_folder,subfolder)
+
+        if 'acoustic_queries' in subfolder:
+            dfs_acoustics = [os.path.join(subfolder_path,f) for f in os.listdir(subfolder_path) if f.endswith('.csv')]
+        if 'prediction_queries' in subfolder:
+            dfs_predictions = [os.path.join(subfolder_path,f) for f in os.listdir(subfolder_path) if f.endswith('.csv')]
+        if 'peaks_query' in subfolder:
+            dfs_peaks = [os.path.join(subfolder_path,f) for f in os.listdir(subfolder_path) if f.endswith('.csv')]
+        if 'merged_csv_query' in subfolder:
+            dfs_merged = [os.path.join(subfolder_path,f) for f in os.listdir(subfolder_path) if f.endswith('.csv')]
+    
+
+    return sorted(dfs_acoustics),sorted(dfs_predictions),sorted(dfs_peaks),sorted(dfs_merged)
+
+def parse_probability(x):
+    import ast
+    if pd.isna(x):
+        return [0.0]
+
+    if isinstance(x, list):
+        return x
+
+    if not isinstance(x, str):
+        return [x]
+
+    s = x.strip()
+
+    if s == "":
+        return [0.0]
+
+    try:
+        parsed = ast.literal_eval(s)
+    except Exception:
+        return [0.0]
+
+    if isinstance(parsed, list):
+        return parsed
+
+    return [parsed]
+
+def parse_prediction_class(x):
+    import ast
+    if x is None:
+        return ["Silence"]
+
+    if isinstance(x, list):
+        return x
+
+    if isinstance(x, tuple):
+        return list(x)
+
+    try:
+        if pd.isna(x):
+            return ["Silence"]
+    except Exception:
+        pass
+
+    if not isinstance(x, str):
+        return [x]
+
+    s = x.strip()
+
+    if s == "":
+        return ["Silence"]
+
+    try:
+        parsed = ast.literal_eval(s)
+    except Exception:
+        return [s]
+
+    if parsed is None:
+        return ["Silence"]
+
+    if isinstance(parsed, list):
+        return parsed
+
+    if isinstance(parsed, tuple):
+        return list(parsed)
+
+    return [parsed]
 
 def sum_dBs(dB_values):
     return 10 * np.log10(np.sum(np.power(10, np.array(dB_values) / 10)))
@@ -36,27 +120,43 @@ def evaluation_period_str_valencia(hour_column):
 
 
 def add_night_column(hour_column, day_col):
-    night_list=["Lunes-Martes","Martes-Miércoles","Miércoles-Jueves","Jueves-Viernes","Viernes-Sábado","Sábado-Domingo","Domingo-Lunes"]
+    
+    night_list={
+        'Lunes':"Lunes-Martes",
+        'Martes':"Martes-Miércoles",
+        'Miércoles':"Miércoles-Jueves",
+        'Jueves':"Jueves-Viernes",
+        'Viernes':"Viernes-Sábado",
+        'Sábado':"Sábado-Domingo",
+        'Domingo':"Domingo-Lunes"
+        }
+
+    
     night = ''
     if hour_column >= 23:
-        night=night_list[day_col]
+        night=night_list[day_col.replace(" ","")]
     elif hour_column < 7:
-        night=night_list[day_col-1]
+        pos=0
+        for i in night_list:
+            pos+=1
+            if i == day_col.replace(" ",""):
+                listForm = list(night_list.values())
+                night = listForm[pos+1]
     return night
 
 
 def add_datetime_columns(df,logging, date_col):
-    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+    df['Timestamp'] = pd.to_datetime(df['Timestamp'], errors='coerce')
 
     #df['day_hour'] = df.apply(lambda x: str(x[date_col].day) + '-' + str(x[date_col].hour),axis=1)
-    if df[date_col].dtype == 'datetime64[ns]':
-        df["year"] = df[date_col].dt.year
-        df["month"] = df[date_col].dt.month
-        df['date'] = df[date_col].dt.date
-        df['day'] = df[date_col].dt.day
-        df['hour'] = df[date_col].dt.hour
-        df['weekday'] = df[date_col].dt.weekday
-        df['day_name'] = df[date_col].dt.day_name()
+    if df['Timestamp'].dtype == 'datetime64[ns]' or df['Timestamp'].dtype == 'datetime64[ns, UTC+02:00]':
+        df["year"] = df['Timestamp'].dt.year
+        df["month"] = df['Timestamp'].dt.month
+        df['date'] = df['Timestamp'].dt.date
+        df['day'] = df['Timestamp'].dt.day
+        df['hour'] = df['Timestamp'].dt.hour
+        df['weekday'] = df['Timestamp'].dt.weekday
+        df['day_name'] = df['Timestamp'].dt.day_name()
 
         # df["weekday"] = df["weekday"].replace(WEEKDAY_TRANSLATION)
         # df["weekday"] = df["weekday"].astype(str)
@@ -216,7 +316,19 @@ def apply_db_correction(df, coefficient, sufix_string, logger):
     """
     Applying correction to the dataframe based on the provided coefficient and suffix string."""
     logger.info("")        
+    
+    if coefficient is None:
+        df["LA_corrected"] = df["LA"]
+        df["LAmax_corrected"] = df["LAmax"]
+        df["LAmin_corrected"] = df["LAmin"]
 
+        if not "LC-LA" in df.columns:
+            df["LC-LA"] = df["LC"] - df["LA"]
+            df["LCeq-LAeq_corrected"] = df["LC-LA"]
+        else:
+            df["LCeq-LAeq_corrected"] = df["LC-LA"]
+        return df
+    
     if not "LC-LA" in df.columns and "LC" in df.columns and "LA" in df.columns:
         try:
             logger.info("Creating the LC-LA column")
@@ -245,7 +357,7 @@ def apply_db_correction(df, coefficient, sufix_string, logger):
             logger.error("No column found to apply the correction for SONOMETRO data")
             return None
 
-    if sufix_string == "SONOMETRO" or sufix_string == "RASPBERRY":
+    if (sufix_string == "SONOMETRO") or (('raspberry' or 'ccmp') in sufix_string):
         logger.info("Applying the correction to the SONOMETRO data")
         if "LAeq" in df.columns:
             logger.info("Applying the correction to the LAeq column")
@@ -553,7 +665,7 @@ def transform_1h_pred(df, logger, agg_period):
 
 def transformation(df, logger, oca_limits):
     # transformation
-    df = add_datetime_columns(df, logger, date_col="datetime")
+    if not 'datetime' in df.columns : df = add_datetime_columns(df, logger, date_col="datetime")
     df = df.sort_values("datetime")
     df.set_index("datetime", inplace=True, drop=False)
     df = df.rename(columns={"datetime": "date_time"})
@@ -561,6 +673,7 @@ def transformation(df, logger, oca_limits):
     
     # add indicators column
     logger.info(f"Adding indicators column")
+    if "hour" not in df.columns: df = insert_dates(df)
     df["indicador_str"] = df.apply(lambda x: evaluation_period_str(x["hour"]), axis=1)
     # add nights column
     logger.info(f"Adding nights column")

@@ -4,7 +4,7 @@ from datetime import datetime, time
 import subprocess
 import os
 
-from config_vi import *
+from .config_vi import *
 
 
 
@@ -49,6 +49,8 @@ def add_night_column(hour_column, day_col):
 
 
 def add_datetime_columns(df,logging, date_col):
+
+        
     df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
 
     #df['day_hour'] = df.apply(lambda x: str(x[date_col].day) + '-' + str(x[date_col].hour),axis=1)
@@ -168,7 +170,6 @@ def remove_unnamed_columns(df_preds):
 def yamnet_class_map_csv():
     home_dir = os.path.expanduser('~')
     yammnet_class_map_path = os.path.join(home_dir, RELATIVE_PATH_YAMNET_MAP.lstrip('/'))
-    yammnet_class_map_path = "/home/aac/I+D/CODIGOS/GENERAL/Audio_Processing/yamnet_class_map.csv"
     df_audioset = pd.read_csv(yammnet_class_map_path,sep=';')
     df_audioset = remove_unnamed_columns(df_audioset)
     return df_audioset
@@ -593,10 +594,15 @@ def leq_safe(series):
 
 def agg_hour(group):
     result = {}
-    if "id_micro" in group:
-        result["id_micro"] = group["id_micro"].iloc[0]
+    
+    if "id_micro" in group.columns:
+        ids = group["id_micro"].dropna()
+        if not ids.empty:
+            result["id_micro"] = ids.iloc[0]
+        else:
+            result["id_micro"] = pd.NA
 
-
+    """
     leq_cols = [
         "LA", "LC", "LZ", "LAmax", "LAmin",
         "12.6Hz", "15.8Hz", "20.0Hz", "25.1Hz", "31.6Hz", "39.8Hz",
@@ -607,7 +613,50 @@ def agg_hour(group):
         "7943.3Hz", "10000.0Hz", "12589.3Hz", "15848.9Hz",
         "peak_leq",
     ]
-    for col in leq_cols:
+    """
+    leq_cols_V2 = [
+    "LA", "LC", "LZ", "LAmax", "LAmin",
+
+    "12.59Hz",
+    "15.85Hz",
+    "19.95Hz",
+    "25.12Hz",
+    "31.62Hz",
+    "39.81Hz",
+
+    "50.12Hz",
+    "63.1Hz",
+    "79.43Hz",
+    "100.00Hz",
+    "125.89Hz",
+    "158.49Hz",
+
+    "199.53Hz",
+    "251.19Hz",
+    "316.23Hz",
+    "398.11Hz",
+    "501.19Hz",
+    "630.96Hz",
+    "794.33Hz",
+    "1000.00Hz",
+    "1258.93Hz",
+
+    "1584.89Hz",
+    "1995.26Hz",
+    "2511.89Hz",
+    "3162.28Hz",
+    "3981.07Hz",
+    "5011.87Hz",
+    "6309.57Hz",
+    "7943.3Hz",
+
+    "10000.00Hz",
+    "12589.25Hz",
+    "15848.93Hz",
+
+    "peak_leq",
+    ]
+    for col in leq_cols_V2:
         if col in group:
             result[col] = leq_safe(group[col])
 

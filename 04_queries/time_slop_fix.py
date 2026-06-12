@@ -2,6 +2,7 @@ import os
 import shutil
 import tqdm
 
+from pathlib import Path
 import pandas as pd
 
 from config import *
@@ -9,6 +10,8 @@ from logging_config import *
 
 logger = setup_logging("query_automatize")
 
+CODE_ROOT = Path("/home/aac/I+D/CODIGOS/NoisePort_server")
+INBOX_ROOT = Path("/srv/services/inbox")
 
 TIMESTAMP_CANDIDATES = (
     "Timestamp",
@@ -21,6 +24,44 @@ TIMESTAMP_CANDIDATES = (
 
 SOURCE_FILE_COL = "_source_file_path"
 
+def bucket_end_time(bucket):
+    day, hour = parse_bucket(bucket)
+
+    if day is None:
+        return None
+
+    try:
+        if hour is None:
+            # Bucket diario YYYYMMDD acaba al día siguiente a las 00:00
+            return pd.to_datetime(day, format="%Y%m%d") + pd.Timedelta(days=1)
+
+        # Bucket horario YYYYMMDD_HH acaba a la hora siguiente
+        return pd.to_datetime(f"{day}_{hour:02d}", format="%Y%m%d_%H") + pd.Timedelta(hours=1)
+
+    except Exception:
+        return None
+
+
+def is_bucket_closed(bucket, grace_minutes=30):
+    end_time = bucket_end_time(bucket)
+
+    if end_time is None:
+        return False
+
+    now = pd.Timestamp.now()
+
+    return now >= end_time + pd.Timedelta(minutes=grace_minutes)
+
+
+def resolve_output_path(path):
+    path = Path(path)
+
+    try:
+        relative = path.relative_to(CODE_ROOT)
+        return INBOX_ROOT / relative
+    except ValueError:
+        return path
+    
 
 def get_time_column(df):
     for col in TIMESTAMP_CANDIDATES:
@@ -272,7 +313,7 @@ def append_extra_seconds(fixed_folder_path, prev_name, curr_name, row_indices):
     log_row_move(len(rows_to_move), prev_path, curr_path)
 
 
-def build_bucket_key_from_df_rows(rows_df):
+def build_bucket_key_from_df_rows(rows_df, original_bucket=None):
     if rows_df.empty:
         return None, None
 
@@ -288,8 +329,16 @@ def build_bucket_key_from_df_rows(rows_df):
 
     ts0 = ts_valid.iloc[0]
     bucket_day = ts0.strftime("%Y%m%d")
-    bucket_hour = ts0.hour
 
+    if original_bucket is not None:
+        _, original_hour = parse_bucket(original_bucket)
+
+        # Si la carpeta original era diaria, mantener salida diaria.
+        if original_hour is None:
+            return bucket_day, ts0
+
+    # Si la carpeta original era horaria, mantener salida horaria.
+    bucket_hour = ts0.hour
     return f"{bucket_day}_{bucket_hour:02d}", ts0
 
 
@@ -312,9 +361,15 @@ def append_leftover_rows_to_next_bucket(leftover_df, next_fixed_folder_path):
     if leftover_df is None or leftover_df.empty:
         return
 
-    os.makedirs(next_fixed_folder_path, exist_ok=True)
+    # Carpeta lógica que recibes
+    original_folder_path = Path(next_fixed_folder_path)
 
-    bucket_name = os.path.basename(next_fixed_folder_path)
+    # Carpeta real donde quieres escribir
+    output_folder_path = resolve_output_path(original_folder_path)
+
+    output_folder_path.mkdir(parents=True, exist_ok=True)
+
+    bucket_name = output_folder_path.name
 
     if bucket_name.startswith("fixed_"):
         bucket = bucket_name.replace("fixed_", "", 1)
@@ -328,7 +383,7 @@ def append_leftover_rows_to_next_bucket(leftover_df, next_fixed_folder_path):
 
     leftover_df = normalize_timestamp_column(
         leftover_df,
-        next_fixed_folder_path,
+        str(output_folder_path),
         logger
     )
 
@@ -348,7 +403,7 @@ def append_leftover_rows_to_next_bucket(leftover_df, next_fixed_folder_path):
     if rows_for_bucket.empty:
         return
 
-    csvs = sort_csvs_by_content_timestamp(next_fixed_folder_path)
+    csvs = sort_csvs_by_content_timestamp(str(output_folder_path))
 
     if not csvs:
         fname = (
@@ -356,7 +411,8 @@ def append_leftover_rows_to_next_bucket(leftover_df, next_fixed_folder_path):
             f"{rows_for_bucket.iloc[0]['Timestamp'].strftime('%Y%m%d_%H%M%S')}"
             f"_tflt_w_1.0.csv"
         )
-        dst_path = os.path.join(next_fixed_folder_path, fname)
+
+        dst_path = output_folder_path / fname
 
         rows_to_write = (
             drop_internal_columns(rows_for_bucket)
@@ -368,20 +424,21 @@ def append_leftover_rows_to_next_bucket(leftover_df, next_fixed_folder_path):
 
         if SOURCE_FILE_COL in rows_for_bucket.columns:
             for src_path, src_rows in rows_for_bucket.groupby(SOURCE_FILE_COL):
-                log_row_move(len(src_rows), src_path, dst_path)
+                log_row_move(len(src_rows), src_path, str(dst_path))
         else:
-            log_row_move(len(rows_for_bucket), "unknown", dst_path)
+            log_row_move(len(rows_for_bucket), "unknown", str(dst_path))
 
         return
 
-    first_csv_path = os.path.join(next_fixed_folder_path, csvs[0])
+    first_csv_path = output_folder_path / csvs[0]
 
     try:
         df_next = pd.read_csv(first_csv_path)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Could not read CSV {first_csv_path}: {e}")
         return
 
-    df_next = normalize_timestamp_column(df_next, first_csv_path, logger)
+    df_next = normalize_timestamp_column(df_next, str(first_csv_path), logger)
 
     if df_next is None:
         return
@@ -399,12 +456,11 @@ def append_leftover_rows_to_next_bucket(leftover_df, next_fixed_folder_path):
 
     if SOURCE_FILE_COL in rows_for_bucket.columns:
         for src_path, src_rows in rows_for_bucket.groupby(SOURCE_FILE_COL):
-            log_row_move(len(src_rows), src_path, first_csv_path)
+            log_row_move(len(src_rows), src_path, str(first_csv_path))
     else:
-        log_row_move(len(rows_for_bucket), "unknown", first_csv_path)
+        log_row_move(len(rows_for_bucket), "unknown", str(first_csv_path))
 
-
-def handle_minute_jumps(prev_path, curr_path, leftover_buckets, measurement_folder):
+def handle_minute_jumps(prev_path, curr_path, leftover_buckets, measurement_folder, bucket):
     if not detect_minute_jump_by_content(prev_path, curr_path):
         return
 
@@ -431,7 +487,7 @@ def handle_minute_jumps(prev_path, curr_path, leftover_buckets, measurement_fold
     df_prev = df_prev.drop(index=leftover_rows.index).reset_index(drop=True)
     drop_internal_columns(df_prev).to_csv(prev_path, index=False)
 
-    bucket_key, _ = build_bucket_key_from_df_rows(leftover_rows)
+    bucket_key, _ = build_bucket_key_from_df_rows(leftover_rows, original_bucket=bucket)
 
     if bucket_key is None:
         return
@@ -710,7 +766,8 @@ def time_slop_fix(point, acoustic_folder, pred_litle_folder, logger):
                     prev_path,
                     curr_path,
                     leftover_buckets,
-                    measurement_name
+                    measurement_name,
+                    bucket,
                 )
 
                 _, extra_idx = get_extra_seconds_indices(prev_path)
@@ -738,11 +795,42 @@ def time_slop_fix(point, acoustic_folder, pred_litle_folder, logger):
                 continue
 
             if fp_prev == tuple(map(str, fp_now)):
-                mark_fix_done(fixed_folder)
+                if is_bucket_closed(bucket, grace_minutes=30):
+                    mark_fix_done(fixed_folder)
+                    logger.info(f"Marked fix done: {fixed_folder}")
+                else:
+                    logger.info(f"Bucket still open, not marking .fix_done: {bucket}")
             else:
                 save_fingerprint(fixed_folder, fp_now)
 
+
+        measurement_paths = {
+            os.path.basename(os.path.normpath(acoustic_folder)): acoustic_folder,
+            os.path.basename(os.path.normpath(pred_litle_folder)): pred_litle_folder,
+        }
+        
+        measurement_paths = {
+            os.path.basename(os.path.normpath(acoustic_folder)): acoustic_folder,
+            os.path.basename(os.path.normpath(pred_litle_folder)): pred_litle_folder,
+        }
+
         for (bucket_key, m_folder), leftover_df in leftover_buckets.items():
-            next_folder = os.path.join(point, m_folder, f"fixed_{bucket_key}")
+            base_path = measurement_paths.get(m_folder)
+
+            if base_path is None:
+                logger.warning(
+                    "Unknown measurement folder for leftovers: m_folder=%s, bucket_key=%s",
+                    m_folder,
+                    bucket_key,
+                )
+                continue
+
+            next_folder = os.path.join(base_path, f"fixed_{bucket_key}")
             os.makedirs(next_folder, exist_ok=True)
+
+            logger.info(
+                "Appending leftover rows to absolute folder: %s",
+                next_folder,
+            )
+
             append_leftover_rows_to_next_bucket(leftover_df, next_folder)

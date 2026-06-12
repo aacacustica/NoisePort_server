@@ -20,6 +20,18 @@ from utils_queries import *
 import warnings
 warnings.filterwarnings("ignore")
 
+
+def is_current_day_folder(day_path):
+    name = Path(day_path).name
+
+    if name.startswith("fixed_"):
+        name = name.replace("fixed_", "", 1)
+
+    day_part = name[:8]
+    today = datetime.datetime.now().strftime("%Y%m%d")
+
+    return day_part == today
+
 def strip_tz(ts):
     if isinstance(ts, pd.Timestamp):
         if ts.tzinfo is not None:
@@ -578,6 +590,28 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
             logger.info("[Acoustics] Trying to concatenate the csv files to process one hour of audio data recordings")
             
             df_day = pd.concat([pd.read_csv(csv_file) for csv_file in csv_files], ignore_index=True)
+            
+            if "Timestamp" not in df_day.columns:
+                if "date" in df_day.columns:
+                    df_day = df_day.rename(columns={"date": "Timestamp"})
+                else:
+                    logger.error(
+                        "[Acoustics] Missing Timestamp/date column. Columns found: %s",
+                        df_day.columns.tolist()
+                    )
+                    continue
+
+            # Normalizar columna filename
+            if "Filename" not in df_day.columns:
+                if "filename" in df_day.columns:
+                    df_day = df_day.rename(columns={"filename": "Filename"})
+                else:
+                    df_day["Filename"] = None
+
+            timestamp_tag = "Timestamp"
+
+            logger.info("[Acoustics] Columns found: %s", df_day.columns.tolist())
+            logger.info("[Acoustics] First rows:\n%s", df_day.head().to_string())
 
         except Exception as e:
             logger.error(f"[Acoustics] Error concatenating CSV files: {e}")
@@ -589,32 +623,32 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
             # 4-ordering by timestamp, selecting columns,truncate first minute if not = 00 and turning the result into a csv so we can use it
             # ------------------------------------
 
-            df_day = df_day.sort_values(by=["Timestamp"])
+            df_day = df_day.sort_values(by=[timestamp_tag])
             df_day["LA"] = df_day["LA"].round(1)
 
             if not df_day.empty:
                 logger.info("[Acoustics] Converting 'Timestamp' to datetime and handling timezone.")
                 
                 # 1. Convertir a datetime (esto es lo que puede crear datetimes tz-aware)
-                df_day['Timestamp'] = pd.to_datetime(df_day['Timestamp'], errors='coerce')
+                df_day[timestamp_tag] = pd.to_datetime(df_day[timestamp_tag], errors='coerce')
                 
                 
                 try:
                     
-                    if df_day['Timestamp'].dt.tz is not None:
+                    if df_day[timestamp_tag].dt.tz is not None:
                         logger.warning("[Acoustics] Timestamp column is tz-aware. Naivizing using tz_localize(None).")
                         
-                        df_day['Timestamp'] = df_day['Timestamp'].dt.tz_localize(None)
+                        df_day[timestamp_tag] = df_day[timestamp_tag].dt.tz_localize(None)
                 except AttributeError:
 
                     logger.warning("[Acoustics] Direct naivization failed. Applying lambda to strip timezone from elements.")
 
-                    df_day['Timestamp'] = df_day['Timestamp'].apply(strip_tz)
+                    df_day[timestamp_tag] = df_day[timestamp_tag].apply(strip_tz)
 
 
-                df_day['Timestamp'] = df_day['Timestamp'].astype('datetime64[ns]')
+                df_day[timestamp_tag] = df_day[timestamp_tag].astype('datetime64[ns]')
 
-                mask_sec0 = df_day['Timestamp'].dt.second == 0
+                mask_sec0 = df_day[timestamp_tag].dt.second == 0
                 
                 if mask_sec0.any():
                     first_sec0_idx = mask_sec0.idxmax()
@@ -629,13 +663,13 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
                     "Timestamp","Filename","Unixtimestamp","id_micro"]
 
             else:
-                columns = ["LA", "LC", "LZ", "LAmax", "LAmin"] + THIRD_OCTAVES_SECOND_FORMAT + [
+                columns = ["LA", "LC", "LZ", "LAmax", "LAmin"] + THIRD_OCTAVES_SENSOR_FORMAT + [
                     "Timestamp","Filename","Unixtimestamp","id_micro"]
             
 
             csv_concat_path = os.path.join(query_folder, f"{day_str}.csv")
 
-            df_day = df_day.dropna(subset=["Timestamp"])
+            df_day = df_day.dropna(subset=[timestamp_tag])
 
             # Crear Filename si no existe
             if "Filename" not in df_day.columns:
@@ -645,18 +679,18 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
                     df_day["Filename"] = None
 
             # Asegurar Timestamp como datetime
-            df_day["Timestamp"] = pd.to_datetime(df_day["Timestamp"], errors="coerce")
-            df_day = df_day.dropna(subset=["Timestamp"])
+            df_day[timestamp_tag] = pd.to_datetime(df_day[timestamp_tag], errors="coerce")
+            df_day = df_day.dropna(subset=[timestamp_tag])
 
             # Crear Unixtimestamp si no existe
             if "Unixtimestamp" not in df_day.columns:
-                df_day["Unixtimestamp"] = df_day["Timestamp"].astype("int64") // 10**9
+                df_day["Unixtimestamp"] = df_day[timestamp_tag].astype("int64") // 10**9
 
             # Crear id_micro ANTES de df_day[columns]
             df_day["id_micro"] = device
 
             # Formatear Timestamp después de crear Unixtimestamp
-            df_day["Timestamp"] = df_day["Timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S")
+            df_day[timestamp_tag] = df_day[timestamp_tag].dt.strftime("%Y-%m-%d %H:%M:%S")
 
             # Seleccionar columnas finales
             df_day = df_day[columns]
@@ -676,10 +710,10 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
             # ------------------------------------
             
             logger.info("")
-            load_data = False
+            load_data = True
             if load_data:
-                logger.info("[Acoustics] Loading data into TABLE")
-                load_data_db(db, csv_concat_path, logger,table_name=ACOUSTIC_TABLE_NAME)
+                logger.info(f"[Acoustics] Loading data into TABLE from: {csv_concat_path} and from device: {device}")
+                ok = load_data_db(db, csv_concat_path, logger,device,table_name=ACOUSTIC_TABLE_NAME)
                 cur = db.cursor()
                 cur.execute(f"SELECT COUNT(*) FROM {ACOUSTIC_TABLE_NAME}")
                 n = cur.fetchone()[0]
@@ -729,9 +763,17 @@ def process_acoustic_folder(db,logger,folder_days,all_info,query_folder,processe
             # ------------------------------------
 
             logger.info("")
-            update_processed_folder(processed_folder_txt, day)
+            if ok:
+                if is_current_day_folder(day):
+                    logger.info(
+                        "[Acoustics] Current day not marked as processed: %s",
+                        day,
+                    )
+                else:
+                    update_processed_folder(processed_folder_txt, day)
+                    logger.info("[Acoustics] Added to processed files: %s", day)
+
             processed_folder = load_processed_folder(processed_folder_txt)
-            logger.info("[Acoustics] Added to processed files: %s", day)
         
         except Exception as e:
             logger.error(f"[Acoustics] Error updating processed files: {e}")
@@ -863,17 +905,17 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
             # ------------------------------------
             # 5-    Loading PREDICTIONS csv into the DB table
             # ------------------------------------
-
-
-            logger.info("")
-            logger.info("[Predictions] Loading data into TABLE")
-            load_data_db(db, csv_concat_path, logger,table_name=PREDICT_TABLE_NAME)
-            cur = db.cursor()
-            cur.execute(f"USE {DATABASE_NAME}")
-            cur.execute(f"SELECT COUNT(*) FROM {PREDICT_TABLE_NAME}")
-            n = cur.fetchone()[0]
-            logger.info(f"[Predictions] → {PREDICT_TABLE_NAME} contains {n} rows after LOAD DATA")
-            cur.close()
+            upload_db=True
+            if upload_db:
+                logger.info("")
+                logger.info("[Predictions] Loading data into TABLE")
+                ok = load_data_db(db, csv_concat_path, logger,device,table_name=PREDICT_TABLE_NAME)
+                cur = db.cursor()
+                cur.execute(f"USE {DATABASE_NAME}")
+                cur.execute(f"SELECT COUNT(*) FROM {PREDICT_TABLE_NAME}")
+                n = cur.fetchone()[0]
+                logger.info(f"[Predictions] → {PREDICT_TABLE_NAME} contains {n} rows after LOAD DATA")
+                cur.close()
         
         except Exception as e:
             logger.error(f"[Predictions] Error loading data into database: {e}")
@@ -914,9 +956,17 @@ def process_pred_folder(db,logger,folder_days, all_info, query_folder, processed
 
 
             logger.info("")
-            update_processed_folder(processed_folder_txt, day)
+            if ok:
+                if is_current_day_folder(day):
+                    logger.info(
+                        "[Acoustics] Current day not marked as processed: %s",
+                        day,
+                    )
+                else:
+                    update_processed_folder(processed_folder_txt, day)
+                    logger.info("[Acoustics] Added to processed files: %s", day)
+
             processed_folder = load_processed_folder(processed_folder_txt)
-            logger.info("[Predictions] Added to processed files: %s", day)
         
         except Exception as e:
             logger.error(f"[Predictions] Error updating processed files: {e}")

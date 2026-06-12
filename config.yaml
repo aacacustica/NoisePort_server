@@ -2,7 +2,7 @@
 
 device:
   id_micro: "RP-1"
-  devices_txt: "/home/aac/nombres_sensores.txt"
+  devices_txt: "/home/aac/I+D/CODIGOS/NoisePort_server/devices.txt"
   devices_folder: "/srv/services/inbox"
 
 

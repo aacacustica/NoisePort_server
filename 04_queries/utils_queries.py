@@ -14,7 +14,7 @@ PATH = SANDISK_PATH_LINUX_NEW
 ID_MICRO, LOCATION_RECORD, LOCATION_PLACE, LOCATION_POINT, \
 AUDIO_SAMPLE_RATE, AUDIO_WINDOW_SIZE, AUDIO_CALIBRATION_CONSTANT,\
 STORAGE_S3_BUCKET_NAME, STORAGE_OUTPUT_WAV_FOLDER, \
-STORAGE_OUTPUT_ACOUSTIC_FOLDER,DEVICES_FOLDER, INBOX_FOLDER,  \
+STORAGE_OUTPUT_ACOUSTIC_FOLDER,DEVICES_TXT, INBOX_FOLDER,  \
 ACOUSTIC_QUERIES_FOLDER_NAME, PREDICTION_QUERIES_FOLDER_NAME = load_config_acoustic('config.yaml')
 
 def load_devices(devices_folder,logger):
@@ -85,68 +85,139 @@ def pad_list(values, size=3, fill_value=None):
 
 
 def send_mqtt_data(data, logger, sent_Records_txt):
+    """
+    Envía datos agregados horarios por MQTT.
 
+    Para registros horarios, se genera un identificador lógico:
+        record_id = "{sensor_id}_{hour}"
 
-    # Asegurarse de que el archivo exista
+    Ejemplo:
+        raspberrypi4_2026-05-28 03:00:00
+
+    Esto evita depender de record_id/first_record_id y permite controlar
+    qué agregados horarios ya fueron enviados.
+    """
+
+    # Asegurar que existe el archivo de registros enviados
     if not os.path.exists(sent_Records_txt):
-        open(sent_Records_txt, 'w').close()
+        open(sent_Records_txt, "w").close()
 
-    # Leer los record_id ya enviados
-    with open(sent_Records_txt) as f:
-        sent_ids = set(f.read().splitlines())
+    # Leer IDs ya enviados
+    with open(sent_Records_txt, "r") as f:
+        sent_ids = set(line.strip() for line in f if line.strip())
 
     # Crear cliente MQTT
     try:
         client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-    except:
+    except Exception:
         client = mqtt.Client()
 
     # Conexión al broker
-    if DEMO:
-        port = int(MQTT_PORT_DEMO)
-        client.connect(MQTT_BROKER_DEMO, port, keepalive=60)
-        logger.info("Connected to MQTT broker DEMO at %s:%s", MQTT_BROKER_DEMO, port)
-    else:
-        port = int(MQTT_PORT_MUUTECH)
-        client.username_pw_set(MQTT_USER_MUUTECH, MQTT_PASSWORD_MUUTECH)
-        client.tls_set(cert_reqs=ssl.CERT_NONE)
-        client.tls_insecure_set(True)
-        client.connect(MQTT_BROKER_MUUTECH, port, keepalive=60)
-        logger.info("Connected to MQTT broker MUUTECH at %s:%s", MQTT_BROKER_MUUTECH, port)
+    try:
+        if DEMO:
+            port = int(MQTT_PORT_DEMO)
+            client.connect(MQTT_BROKER_DEMO, port, keepalive=60)
+            logger.info(
+                "Connected to MQTT broker DEMO at %s:%s",
+                MQTT_BROKER_DEMO,
+                port,
+            )
+        else:
+            port = int(MQTT_PORT_MUUTECH)
+            client.username_pw_set(MQTT_USER_MUUTECH, MQTT_PASSWORD_MUUTECH)
+            client.tls_set(cert_reqs=ssl.CERT_NONE)
+            client.tls_insecure_set(True)
+            client.connect(MQTT_BROKER_MUUTECH, port, keepalive=60)
+            logger.info(
+                "Connected to MQTT broker MUUTECH at %s:%s",
+                MQTT_BROKER_MUUTECH,
+                port,
+            )
+    except Exception as e:
+        logger.error("Error connecting to MQTT broker: %s", e)
+        return
 
-    #Ordenar data por unixtimestamp
-    data = sorted(data, key=lambda x: x['unixtimestamp'])
+    # Ordenar por timestamp Unix
+    try:
+        data = sorted(data, key=lambda x: x.get("unixtimestamp", 0))
+    except Exception as e:
+        logger.warning("Could not sort MQTT data by unixtimestamp: %s", e)
 
-    # Iniciar loop en background
     client.loop_start()
 
-    for record in data:
-        record_id = str(record.get('record_id', ''))
-        if not record_id or record_id in sent_ids:
-            continue
+    published_count = 0
+    skipped_count = 0
+    error_count = 0
 
-        sensor_id = record.get("sensor_id", "unknown")
-        topic = f"aacacustica/{sensor_id}"
-        payload = json.dumps(record, default=str)
+    try:
+        for record in data:
+            sensor_id = record.get("sensor_id", "unknown")
+            hour = record.get("hour")
 
-        if sensor_id in ['0005884', '0005886']:
-            print(f"Topic: {topic}")
-            print(f"Sensor_id: {sensor_id}")
-            print(f"Payload: {payload}")
+            if not hour:
+                logger.warning("Skipping record without hour: %s", record)
+                skipped_count += 1
+                continue
 
-        try:
-            result = client.publish(topic, payload, qos=1, retain=True)
-            result.wait_for_publish()  #Ahora puede recibir ACK
-            logger.info("Published record %s to topic '%s'", record_id, topic)
-            update_processed_folder(sent_Records_txt, record_id)
-            sent_ids.add(record_id)
-        except Exception as e:
-            logger.error("Error publishing record %s: %s", record_id, e)
+            # ID único del agregado horario
+            record_id = f"{sensor_id}_{hour}"
 
-    # Detener loop y desconectar
-    client.loop_stop()
-    client.disconnect()
-    logger.info("MQTT client disconnected")
+            if record_id in sent_ids:
+                logger.info("Skipping already sent hourly record: %s", record_id)
+                skipped_count += 1
+                continue
+
+            topic = f"aacacustica/{sensor_id}"
+
+            # Añadir record_id al payload enviado
+            record["record_id"] = record_id
+
+            payload = json.dumps(record, default=str)
+
+            try:
+                logger.info("Publishing record_id=%s to topic=%s", record_id, topic)
+
+                result = client.publish(
+                    topic,
+                    payload,
+                    qos=1,
+                    retain=True,
+                )
+
+                result.wait_for_publish()
+
+                if result.rc != mqtt.MQTT_ERR_SUCCESS:
+                    logger.error(
+                        "MQTT publish failed for record_id=%s with rc=%s",
+                        record_id,
+                        result.rc,
+                    )
+                    error_count += 1
+                    continue
+
+                logger.info(
+                    "Published record_id=%s to topic=%s",
+                    record_id,
+                    topic,
+                )
+
+                update_processed_folder(sent_Records_txt, record_id)
+                sent_ids.add(record_id)
+                published_count += 1
+
+            except Exception as e:
+                logger.error("Error publishing record_id=%s: %s", record_id, e)
+                error_count += 1
+
+    finally:
+        client.loop_stop()
+        client.disconnect()
+        logger.info(
+            "MQTT client disconnected. Published=%s, skipped=%s, errors=%s",
+            published_count,
+            skipped_count,
+            error_count,
+        )
 
 
 def get_columns_for_table(table_name):
@@ -189,45 +260,75 @@ def get_columns_for_table(table_name):
     else:
         return []
     
-def power_laeq_avg(db, logger,sensor_id, table_name=ACOUSTIC_TABLE_NAME):
+def power_laeq_avg(db, logger, sensor_id, table_name=ACOUSTIC_TABLE_NAME):
+    
+    allowed_tables = {
+        ACOUSTIC_TABLE_NAME,
+        SONOMETER_TABLE_NAME,
+    }
+
+    if table_name not in allowed_tables:
+        raise ValueError(f"Unsupported table name: {table_name}")
+
     cursor = db.cursor(dictionary=True)
+
     if table_name == SONOMETER_TABLE_NAME:
-            query = f""" 
-        SELECT
-        record_id,
-        sensor_id,
-        MIN(Unixtimestamp)                      AS unixtimestamp,
-        10 * LOG10 ( AVG(POWER(10,LAeq/10)))    AS AVG_LAeq,
-        MAX(LAmax)                              AS max_LAmax,
-        MIN(LAmin)                              AS min_LAmin
-        FROM {table_name}
-        GROUP BY record_id,sensor_id,Timestamp
+        query = f"""
+            SELECT
+                MIN(id) AS first_record_id,
+                MAX(id) AS last_record_id,
+                sensor_id,
+                DATE_FORMAT(`Timestamp`, '%Y-%m-%d %H:00:00') AS hour,
+                MIN(`Unixtimestamp`) AS unixtimestamp,
+                10 * LOG10(AVG(POWER(10, `LAeq` / 10))) AS AVG_LAeq,
+                MAX(`LAmax`) AS max_LAmax,
+                MIN(`LAmin`) AS min_LAmin
+            FROM {table_name}
+            WHERE sensor_id = %s
+              AND `LAeq` IS NOT NULL
+            GROUP BY
+                sensor_id,
+                DATE_FORMAT(`Timestamp`, '%Y-%m-%d %H:00:00')
+            ORDER BY
+                sensor_id,
+                hour;
         """
+        params = (sensor_id,)
+
     else:
         query = f"""
-        SELECT
-            MIN(record_id)                              AS first_record_id,
-            MAX(record_id)                              AS last_record_id,
-            sensor_id,
-            DATE_FORMAT(Timestamp, '%Y-%m-%d %H:00:00') AS hour,
-            MIN(Unixtimestamp)                          AS unixtimestamp,
-            10 * LOG10(AVG(POWER(10, LA/10)))           AS AVG_LAeq,
-            MAX(LAmax)                                  AS max_LAmax,
-            MIN(LAmin)                                  AS min_LAmin
-        FROM {table_name}
-        WHERE sensor_id = '{sensor_id}'
-        GROUP BY
-            sensor_id,
-            hour;
+            SELECT
+                MIN(`id`) AS first_record_id,
+                MAX(`id`) AS last_record_id,
+                `sensor_id`,
+                DATE_FORMAT(`Timestamp`, '%Y-%m-%d %H:00:00') AS hour,
+                MIN(`Unixtimestamp`) AS unixtimestamp,
+                10 * LOG10(AVG(POWER(10, `LA` / 10))) AS AVG_LAeq,
+                MAX(`LAmax`) AS max_LAmax,
+                MIN(`LAmin`) AS min_LAmin
+            FROM {table_name}
+            WHERE `sensor_id` = %s
+              AND `LA` IS NOT NULL
+            GROUP BY
+                `sensor_id`,
+                DATE_FORMAT(`Timestamp`, '%Y-%m-%d %H:00:00')
+            ORDER BY
+                `sensor_id`,
+                hour;
         """
+        params = (sensor_id,)
+
     try:
-        cursor.execute(query)
+        logger.info(f"Computing hourly LAeq averages from {table_name} for sensor_id={sensor_id}")
+        cursor.execute(query, params)
         rows = cursor.fetchall()
-        logger.info(f"Computed overall averages for {cursor.rowcount} sensors")
+        logger.info(f"Computed {len(rows)} hourly LAeq rows")
         return rows
+
     except mysql.connector.Error as err:
         logger.error("Error executing query: %s", err)
         return None
+
     finally:
         cursor.close()
 
@@ -275,19 +376,36 @@ def initialize_database(db, logger):
 
 
 
-def load_data_db(db, data_path, logger, table_name=ACOUSTIC_TABLE_NAME):
+def load_data_db(db, data_path, logger,device, table_name=ACOUSTIC_TABLE_NAME):
     
     
     cursor = db.cursor(dictionary=True)
-    if table_name == ACOUSTIC_TABLE_NAME: query_load = QUERYS['load_acoustics_db'].format(data_path=data_path,table_name=table_name)
-    if table_name == WAV_TABLE_NAME: query_load = QUERYS['load_wavs_db'].format(data_path=data_path,table_name=table_name)
-    if table_name == PREDICT_TABLE_NAME: query_load = QUERYS['load_preds_db'].format(data_path=data_path,table_name=table_name)
-    if table_name == SONOMETER_TABLE_NAME: query_load = QUERYS['load_sonometers_db'].format(data_path=data_path,table_name=table_name) 
+    if ('ccmp' not in device ) and ('raspberry' not in device) : 
+        if table_name == ACOUSTIC_TABLE_NAME: query_load = QUERYS['load_acoustics_db'].format(data_path=data_path,table_name=table_name)
+        if table_name == WAV_TABLE_NAME: query_load = QUERYS['load_wavs_db'].format(data_path=data_path,table_name=table_name)
+        if table_name == PREDICT_TABLE_NAME: query_load = QUERYS['load_preds_db'].format(data_path=data_path,table_name=table_name)
+        if table_name == SONOMETER_TABLE_NAME: query_load = QUERYS['load_sonometers_db'].format(data_path=data_path,table_name=table_name)
+    else:
+        logger.info(f"Logging data into into: {ACOUSTIC_TABLE_NAME} using query: {QUERYS['load_acoustics_db_sensor_RP']}")
+        
+        if table_name == ACOUSTIC_TABLE_NAME: 
+            query_load = QUERYS['load_acoustics_db_sensor_RP'].format(
+                data_path=data_path.replace("\\", "\\\\").replace("'", "\\'"),
+                table_name=table_name,
+                device_id=device.replace("'", "\\'")
+            )
+    
+    
     
     try:
         cursor.execute(query_load)
+        rows_loaded = cursor.rowcount
         db.commit()
         logger.info("Data loaded successfully")
+
+        if rows_loaded > 0:
+            return True
+        else: return False
     except mysql.connector.Error as err:
         logger.error("Error loading data: %s", err)
         db.rollback()
@@ -442,6 +560,14 @@ def get_sensor_id_and_filter_query(day_folder):
     sensor_id = csv_file['id_micro'][0]
     return sensor_id
 
+def is_daily_fixed_folder(name):
+    if not name.startswith("fixed_"):
+        return False
+
+    bucket = name.replace("fixed_", "", 1)
+
+    return len(bucket) == 8 and bucket.isdigit()
+
 def get_sonometer_rasp_acoustics_preds_days_and_paths(logger,point):
 
 
@@ -455,8 +581,12 @@ def get_sonometer_rasp_acoustics_preds_days_and_paths(logger,point):
     predictions_litle_folder_path = os.path.join(AI_MODEL_folder_path,'prediction_files')
 
     days_folders_wavs = [os.path.join(wavs_folder_path,file) for file in os.listdir(wavs_folder_path) if os.path.isdir(os.path.join(wavs_folder_path,file))]
-    days_folders_acoustics = [os.path.join(acoustics_params_folder_path,file) for file in os.listdir(acoustics_params_folder_path) if 'fixed_' in file and os.path.exists(os.path.join(acoustics_params_folder_path,".fix_done"))]
-    days_folders_predictions = [os.path.join(predictions_litle_folder_path,file)  for file in os.listdir(predictions_litle_folder_path) if 'fixed_' in file]
+    days_folders_acoustics = [os.path.join(acoustics_params_folder_path,file) for file in os.listdir(acoustics_params_folder_path) if 'fixed_' in file ]
+    days_folders_predictions = sorted([os.path.join(predictions_litle_folder_path, day) for day in os.listdir(predictions_litle_folder_path) if is_daily_fixed_folder(day) and os.path.isdir(os.path.join(predictions_litle_folder_path, day))])
+    
+    
+    
+    
     points_folders_sonometer = [os.path.join(sonometer_files_folder_path,file) for file in os.listdir(sonometer_files_folder_path)]
 
     return spl_folder_path,AI_MODEL_folder_path,wavs_folder_path,sonometer_files_folder_path,acoustics_params_folder_path, \
@@ -470,9 +600,9 @@ def get_sonometer_rasp_acoustics_preds_days_and_paths_server_version(logger,devi
     predictions_litle_folder_path = os.path.join(INBOX_FOLDER,device,PREDICTIONS_FOLDER_NAME)
 
 
-    days_folders_acoustics = [os.path.join(acoustics_params_folder_path, day) for day in os.listdir(acoustics_params_folder_path) if 'fixed_' in day and os.path.exists(os.path.join(acoustics_params_folder_path,day, ".fix_done"))]
+    days_folders_acoustics = [os.path.join(acoustics_params_folder_path, day) for day in os.listdir(acoustics_params_folder_path) if 'fixed_' in day ]
     
-    days_folders_predictions = [os.path.join(predictions_litle_folder_path, day) for day in os.listdir(predictions_litle_folder_path) if 'fixed_' in day and os.path.exists(os.path.join(predictions_litle_folder_path,day, ".fix_done"))]
+    days_folders_predictions = [os.path.join(predictions_litle_folder_path, day) for day in os.listdir(predictions_litle_folder_path) if 'fixed_' in day ]
 
     return acoustics_params_folder_path, predictions_litle_folder_path, days_folders_acoustics, days_folders_predictions
 

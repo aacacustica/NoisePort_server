@@ -10,11 +10,15 @@ from matplotlib.patches import Patch
 from matplotlib.colors import ListedColormap
 from scipy.stats import gaussian_kde
 import ast
+import sys
 
 from .utils_vi import *
-from config_vi import *
-
-
+from .config_vi import *
+from .config_vi import (
+    LOW_FREQ_BANDS_NEW,
+    MEDIUM_FREQ_BANDS_NEW,
+    HIGH_FREQ_BANDS_NEW,
+)
 plt.rc('font', size=MEDIUM_SIZE)          # controls default text sizes
 plt.rc('axes', titlesize=MEDIUM_SIZE)     # fontsize of the axes title
 plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
@@ -3210,9 +3214,9 @@ def frequency_composition(df_1h: pd.DataFrame,df_alarms_1h: pd.DataFrame,logger,
     df_freq = df_freq.set_index("datetime", drop=False)
 
     # band columns actually present
-    low_cols = [c for c in LOW_FREQ_BANDS if c in df_freq.columns]
-    med_cols = [c for c in MEDIUM_FREQ_BANDS if c in df_freq.columns]
-    high_cols = [c for c in HIGH_FREQ_BANDS if c in df_freq.columns]
+    low_cols = [c for c in LOW_FREQ_BANDS_NEW if c in df_freq.columns]
+    med_cols = [c for c in MEDIUM_FREQ_BANDS_NEW if c in df_freq.columns]
+    high_cols = [c for c in HIGH_FREQ_BANDS_NEW if c in df_freq.columns]
 
     if low_cols:
         df_freq["low_freq"] = df_freq[low_cols].apply(sum_dBs, axis=1)
@@ -3955,8 +3959,12 @@ def plot_peak_distribution_heatmap(df_alarms_1h: pd.DataFrame,folder_output_dir:
         plt.tight_layout()
         plt.grid(False)
 
+        logger.info(f"folder_output_dir: {folder_output_dir}")
+
+
         out_path = f"{folder_output_dir}/{plotname}_peak_distribution_heatmap.png"
         plt.savefig(out_path, dpi=150)
+
         logger.info(f"Saved plot at {out_path}")
 
         
@@ -4199,8 +4207,10 @@ def plot_peak_distribution(df_alarms_1h: pd.DataFrame,folder_output_dir: str,log
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
         plt.tight_layout()
 
+
         out_path_night = f"{folder_output_dir}/{plotname}_peak_distribution_night.png"
         plt.savefig(out_path_night, dpi=150)
+
         logger.info(f"Saved plot at {out_path_night}")
 
     except Exception as e:
@@ -4273,6 +4283,7 @@ def plot_peak_distribution(df_alarms_1h: pd.DataFrame,folder_output_dir: str,log
 
 def plot_density_distribution_peaks(df_alarms_1h: pd.DataFrame,folder_output_dir: str,logger,plotname: str):
     try:
+        folder_output_dir.join(MERGED_FOLDER)
         sns.set_style("whitegrid")
         df = df_alarms_1h.copy()
 
@@ -4345,6 +4356,7 @@ def plot_density_distribution_peaks(df_alarms_1h: pd.DataFrame,folder_output_dir
         plt.grid(True)
         plt.tight_layout()
 
+
         out_kde = f"{folder_output_dir}/{plotname}_peak_density_distribution_hourly.png"
         plt.savefig(out_kde, dpi=150)
         logger.info(f"Saved plot at {out_kde}")
@@ -4353,13 +4365,6 @@ def plot_density_distribution_peaks(df_alarms_1h: pd.DataFrame,folder_output_dir
         logger.error(f"Error in plot_density_distribution_peaks: {e}")
 
 
-
-
-
-
-
-####
-#
 def plot_predic_peak_laeq_mean(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
     try:
         # select just the row which has a 1 value on the "Peak" column
@@ -4368,7 +4373,7 @@ def plot_predic_peak_laeq_mean(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, 
         # exit()
         #########################################################
         #### Plotting the data ####
-        
+        folder_output_dir.join(MERGED_FOLDER)
         display_name = 'display_name'
         iso_taxonomy = 'iso_taxonomy'
         classes = 'class'
@@ -4378,7 +4383,7 @@ def plot_predic_peak_laeq_mean(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, 
         noiseport_1 = 'NoisePort_Level_1'
         noiseport_2 = 'NoisePort_Level_2'
 
-        if 'Siren' in set(taxonomy_map.values()):
+        if taxonomy_map["NoisePort_Level_1"].eq("Siren").any():
             class_to_plot = noiseport_1
             color_palet = COLOR_PALLET_PORT_L1
             logger.info("Using 'NoisePort_Level_1' class for plotting")
@@ -4387,6 +4392,16 @@ def plot_predic_peak_laeq_mean(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, 
             color_palet = COLOR_PALLET_URBAN
             logger.info("Using 'Brown_Level_2' class for plotting")
 
+        """
+        if 'Siren' in set(taxonomy_map.values()):
+            class_to_plot = noiseport_1
+            color_palet = COLOR_PALLET_PORT_L1
+            logger.info("Using 'NoisePort_Level_1' class for plotting")
+        else:
+            class_to_plot = brown_2
+            color_palet = COLOR_PALLET_URBAN
+            logger.info("Using 'Brown_Level_2' class for plotting")
+        """
 
         ####################################
         grouped_df = df_all_yamnet.groupby(class_to_plot).agg(
@@ -4416,7 +4431,8 @@ def plot_predic_peak_laeq_mean(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, 
         )
             
         # Save plot
-        os.makedirs(folder_output_dir, exist_ok=True)
+
+
         fig.write_html(f"{folder_output_dir}/{plotname}_LAeq_Peak_class_mean.html")
         grouped_df.to_csv(f"{folder_output_dir}/{plotname}_LAeq_Peak_class_mean.csv", index=False)
         
@@ -4443,7 +4459,7 @@ def plot_predic_peak_laeq_mean_week(df_all_yamnet: pd.DataFrame, taxonomy_map: d
 
 
         ###############
-        if 'Siren' in set(taxonomy_map.values()):
+        if taxonomy_map["NoisePort_Level_1"].eq("Siren").any():
             class_to_plot = 'NoisePort_Level_1'
             color_palet = COLOR_PALLET_PORT_L1
             logger.info("Using 'NoisePort_Level_1' class for plotting")
@@ -4452,6 +4468,16 @@ def plot_predic_peak_laeq_mean_week(df_all_yamnet: pd.DataFrame, taxonomy_map: d
             color_palet = COLOR_PALLET_URBAN
             logger.info("Using 'Brown_Level_2' class for plotting")
 
+        """
+        if 'Siren' in set(taxonomy_map.values()):
+            class_to_plot = 'NoisePort_Level_1'
+            color_palet = COLOR_PALLET_PORT_L1
+            logger.info("Using 'NoisePort_Level_1' class for plotting")
+        else:
+            class_to_plot = 'Brown_Level_2'
+            color_palet = COLOR_PALLET_URBAN
+            logger.info("Using 'Brown_Level_2' class for plotting")
+        """
         weeks = df_all_yamnet['week'].unique()
 
 
@@ -4506,6 +4532,7 @@ def plot_predic_peak_laeq_mean_week(df_all_yamnet: pd.DataFrame, taxonomy_map: d
 
 def plot_box_plot_prediction(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
     try:
+
         sns.set_style("whitegrid")
         df_all_yamnet = df_all_yamnet[df_all_yamnet['Peak'] == 1].copy()
 
@@ -4521,8 +4548,9 @@ def plot_box_plot_prediction(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, fo
 
         plt.ylim([30, 110])
         plt.tight_layout()
-
+        
         # save the plot
+
         plt.savefig(f"{folder_output_dir}/{plotname}_peak_box_plot.png", dpi=150)
         logger.info(f"Saved plot at {folder_output_dir}/{plotname}_peak_box_plot.png")
 
@@ -4534,6 +4562,7 @@ def plot_box_plot_prediction(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, fo
 
 def plot_box_plot_prediction_week(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
     try:
+        folder_output_dir.join(MERGED_FOLDER)
         sns.set_style("whitegrid")
         df_all_yamnet = df_all_yamnet[df_all_yamnet['Peak'] == 1].copy()
         df_all_yamnet['Timestamp'] = pd.to_datetime(df_all_yamnet['Timestamp'])
@@ -4578,6 +4607,7 @@ def plot_box_plot_prediction_week(df_all_yamnet: pd.DataFrame, taxonomy_map: dic
 
 def plot_heat_map_prediction(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
     try:
+        folder_output_dir.join(MERGED_FOLDER)
         df_all_yamnet = df_all_yamnet[df_all_yamnet['Peak'] == 1].copy()
         df_all_yamnet['Timestamp'] = pd.to_datetime(df_all_yamnet['Timestamp'])
         try:
@@ -4619,7 +4649,7 @@ def plot_heat_map_prediction(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, fo
             plt.grid(False)
             plt.tight_layout()
 
-            # save the plot
+            # save the plot           
             week_folder = os.path.join(folder_output_dir, f"week_{week_start.strftime('%Y-%m-%d')}")
             os.makedirs(week_folder, exist_ok=True)
             plt.savefig(f"{week_folder}/{plotname}_peak_heatmap_{week_start.strftime('%Y-%m-%d')}.png", dpi=150)
@@ -4634,6 +4664,7 @@ def plot_heat_map_prediction(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, fo
 
 def plot_heat_map_prediction_week(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, folder_output_dir: str, logger, plotname: str):
     try:
+        folder_output_dir.join(MERGED_FOLDER)
         df_all_yamnet = df_all_yamnet[df_all_yamnet['Peak'] == 1].copy()
         df_all_yamnet['Timestamp'] = pd.to_datetime(df_all_yamnet['Timestamp'])
 

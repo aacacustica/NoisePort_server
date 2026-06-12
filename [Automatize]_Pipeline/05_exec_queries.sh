@@ -53,9 +53,9 @@ echo "============================================================"
  dir_sonometro="${DEST_BASE}/sonometer_files"
 
  if [ -z "$(echo "$dir_sonometro"/*)" ] || [ ! -e "$dir_sonometro"/* ]; then
-	python -m "${MODULE_PATH}" -t 
+	python -m "${MODULE_PATH}" -t -m
  else
-	python -m "${MODULE_PATH}" -t -s
+	python -m "${MODULE_PATH}" -t -s -m
  fi
  
  echo "Finished executing module ${MODULE_PATH}"

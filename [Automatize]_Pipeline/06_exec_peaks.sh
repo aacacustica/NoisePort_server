@@ -6,7 +6,7 @@ containers=("P6_TEST_AUTOMATIZE")
 DEST_BASE="/srv/contenedores/CONTENEDORES/CONTENEDORES"
 SCRIPT_DIR="/home/aac/I+D/CODIGOS/NoisePort_server"
 
-MODULE_PATH="05_peak.peak_detection_L50"
+MODULE_PATH="05_peak.peak_detection_server_L50"
 
 
 echo "============================================================"

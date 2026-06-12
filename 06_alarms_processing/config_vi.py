@@ -141,6 +141,8 @@ SHOW_OCA = True
 ########################## 
 # PLOTTING ALARMS 
 # ########################
+PLOTTING_ALARMS = True
+
 OCA_ALARM = True
 OCA_ALARM_WEEK = False
 
@@ -161,6 +163,7 @@ FREQUENCY_COMPOSITION_WEEK = False
 
 TONAL_FREQUENCY = True
 TONAL_FREQUENCY_WEEK = False
+
 
 
 # peak
@@ -204,10 +207,47 @@ HIGH_FREQ_CORRECTION = +1
 # '3162.3Hz', '3981.1Hz', '5011.9Hz', '6309.6Hz', '7943.3Hz', '10000.0Hz',
 # '12589.3Hz', '15848.9Hz'
 
+"""
+25.12Hz,31.62Hz,39.81Hz,50.12Hz,63.10Hz,79.43Hz,100.00Hz,125.89Hz,158.49Hz,199.53Hz,251.19Hz,316.23Hz,398.11Hz,501.19Hz,630.96Hz,794.33Hz,1000.00Hz,1258.93Hz,1584.89Hz,1995.26Hz,2511.89Hz,3162.28Hz,3981.07Hz,5011.87Hz,6309.57Hz,filename,date
+25.12Hz,31.62Hz,39.81Hz,50.12Hz,63.10Hz,79.43Hz,100.00Hz,125.89Hz,158.49Hz,199.53Hz,251.19Hz,316.23Hz,398.11Hz,501.19Hz,630.96Hz,794.33Hz,1000.00Hz,1258.93Hz,1584.89Hz,1995.26Hz,2511.89Hz,3162.28Hz,3981.07Hz,5011.87Hz,6309.57Hz,Timestamp,Filename_acoustic,Unixtimestamp,id_micro,Prediction_1,Prediction_2,Prediction_3,Prob_1,Prob_2,Prob_3,Filename_prediction,is_peak,peak_filename,peak_start_time,peak_end_time,peak_duration,peak_leq,peak_LA_values
+
+"""
 
 LOW_FREQ_BANDS = ['50.1Hz', '63.1Hz', '79.4Hz', '100.0Hz', '125.9Hz', '158.5Hz']
 MEDIUM_FREQ_BANDS = ['199.5Hz', '251.2Hz', '316.2Hz', '398.1Hz', '501.2Hz', '631.0Hz', '794.3Hz', '1000.0Hz', '1258.9Hz']
 HIGH_FREQ_BANDS = ['1584.9Hz','1995.3Hz', '2511.9Hz', '3162.3Hz', '3981.1Hz', '5011.9Hz', '6309.6Hz', '7943.3Hz', '10000.0Hz', '12589.3Hz']
+
+LOW_FREQ_BANDS_NEW = [
+    "50.12Hz",
+    "63.1Hz",
+    "79.43Hz",
+    "100Hz",
+    "125.89Hz",
+    "158.49Hz",
+]
+
+MEDIUM_FREQ_BANDS_NEW = [
+    "199.53Hz",
+    "251.19Hz",
+    "316.23Hz",
+    "398.11Hz",
+    "501.19Hz",
+    "630.96Hz",
+    "794.33Hz",
+    "1000Hz",
+    "1258.93Hz",
+]
+
+HIGH_FREQ_BANDS_NEW = [
+    "1584.89Hz",
+    "1995.26Hz",
+    "2511.89Hz",
+    "3162.28Hz",
+    "3981.07Hz",
+    "5011.87Hz",
+    "6309.57Hz",
+    "7943.3Hz",
+]
 
 
 # tonal freq
