@@ -4,7 +4,7 @@ import pandas as pd
 from tqdm import tqdm
 from io import StringIO
 
-from .utils_vi import *
+from utils_vi import *
 
 
 

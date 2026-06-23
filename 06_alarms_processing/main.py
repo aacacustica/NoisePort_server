@@ -7,8 +7,8 @@ import re
 from logging_config import setup_logging
 from config_vi import *
  
-from .processing import *
-from .utils_vi import *
+from processing import *
+from utils_vi import *
 from utils import *
 
 

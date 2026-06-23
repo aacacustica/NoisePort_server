@@ -12,15 +12,16 @@ import ast
 import re
 
 
-from .visualization import *
-from .reading import *
-from .utils_vi import *
-from .config_vi import *
+from visualization import *
+from reading import *
+from utils_vi import *
+from config_vi import *
 
 
 
 def process_all_folders(folders, PERIODO_AGREGACION, PERCENTILES, taxonomy, yamnet_csv, sufix_string, oca_limits, oca_type, logger):
     
+    temporal_bool = True
     print()
     stable_version = get_stable_version(logger)
     home_dir = os.path.expanduser('~')
@@ -341,6 +342,7 @@ def process_all_folders(folders, PERIODO_AGREGACION, PERCENTILES, taxonomy, yamn
                 ################################################################
                 # PEAK ANALYSIS
                 ##################################################################
+                if temporal_bool:PLOTTING_ALARMS=True
                 if PLOTTING_ALARMS:
                     logger.info("")
                     logger.info(f"PLOTTING PEAKS!!!")

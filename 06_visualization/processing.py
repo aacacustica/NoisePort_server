@@ -168,6 +168,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
             # CREATING THE FOLDER OUTPUT DIR --> /5-RESULTAODS/P1/SPL/GRAPHICS_SUFFIX/
             folder_output_dir = os.path.join(resultados_dir,spl_string, graphics_string)
+            
             logger.info(f"folder_output_dir: {folder_output_dir}")
             if '3-Medidas' in folder_output_dir:
                 folder_output_dir = folder_output_dir.replace('3-Medidas', '5-Resultados')
@@ -193,7 +194,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             
             
             # CREATING THE PREDICTION VISUALIZATION FOLDER--> /5-RESULTAODS/P1/AI_MODEL/Visualizations/
-            ia_visualization_folder = ai_prediction_folder.replace("Predictions", "Visualizations")
+            ia_visualization_folder = os.path.join(folder_output_dir,'AI_Visualizations')
             os.makedirs(ia_visualization_folder, exist_ok=True)
             logger.info(f"Created AI visualization folder: {ia_visualization_folder}")
             
@@ -344,9 +345,9 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     # add nights column
                     if df is not None:
                         logger.info(f"Adding nights column")
-                        df['night_str'] = df.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
+                        df['night_str'] = df.apply(lambda x: add_night_column(x['hour'], x['day_name']), axis=1)
                     if df_prediction is not None:
-                        df_prediction['night_str'] = df_prediction.apply(lambda x: add_night_column(x['hour'], x['weekday']), axis=1)
+                        df_prediction['night_str'] = df_prediction.apply(lambda x: add_night_column(x['hour'], x['day_name']), axis=1)
 
                 except Exception as e:
                     logger.error(f"An error occurred while adding indicators and nights columns: {e}")
@@ -777,19 +778,19 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 
                 if PLOT_NIGHT_EVOLUTION_WEEK:
                     logger.info(f"[1.2] Plotting night WEEK evolution for folder {folder}")
-                    plot_night_evolution_week(df, folder_output_dir_week, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder, indicador_noche="Ln")
+                    plot_night_evolution_week(df, folder_output_dir_week, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname='night_evolution_week', indicador_noche="Ln")
 
 
 
                 # Plotting night evolution 15 min
                 if PLOT_NIGHT_EVOLUTION_15_MIN:
                     logger.info(f"[2.1] Plotting night evolution 15 min for folder {folder}")
-                    plot_night_evolution_15_min(df, folder_output_dir, logger, name_extension="15_min", laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder, indicador_noche="Ln")
+                    plot_night_evolution_15_min(df, folder_output_dir, logger, name_extension="15_min", laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname='night_evolution_15min', indicador_noche="Ln")
 
                 # Plotting night evolution 15 min
                 if PLOT_NIGHT_EVOLUTION_15_MIN_WEEK:
                     logger.info(f"[2.2] Plotting night WEEK evolution 15 min for folder {folder}")
-                    plot_night_evolution_15_min_week(df, folder_output_dir_week, logger, name_extension="15_min", laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder, indicador_noche="Ln")
+                    plot_night_evolution_15_min_week(df, folder_output_dir_week, logger, name_extension="15_min", laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname='night_evolution_15min_week', indicador_noche="Ln")
 
 
 
@@ -799,11 +800,11 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 # Plotting LEq power average with predictions
                 if PLOT_PREDIC_LAEQ_MEAN:
                     logger.info(f"[3.1] Plotting PLOT_PREDIC_LAEQ_MEAN for folder {folder}")
-                    plot_predic_laeq_mean(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+                    plot_predic_laeq_mean(df, taxonomy, ia_visualization_folder, logger, plotname='predictions')
 
                 if PLOT_PREDIC_LAEQ_MEAN_WEEK:
                     logger.info(f"[3.2] Plotting PLOT_PREDIC_LAEQ_MEAN WEEK for folder {folder}")
-                    plot_predic_laeq_mean_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+                    plot_predic_laeq_mean_week(df, taxonomy, ia_visualization_folder, logger, plotname='predictions')
 
 
                 # TODO
@@ -813,13 +814,13 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
                 if PLOT_PREDIC_LAEQ_MEAN_4H:
                     logger.info(f"[4.1] Plotting PLOT_PREDIC_LAEQ_MEAN_4H for folder {folder}")
-                    plot_predic_laeq_mean_4h(df_all_yamnet, df_ship_dock, taxonomy, ia_visualization_folder, logger, plotname=folder)    
-                    exit()
+                    plot_predic_laeq_mean_4h(df, df_ship_dock_1h, taxonomy, ia_visualization_folder, logger, plotname='predictions')    
+                    #exit()
                 
                 if PLOT_PREDIC_LAEQ_DAY:
                     logger.info(f"[4.1] Plotting PLOT_PREDIC_LAEQ_MEAN_4H for folder {folder}")
-                    plot_predic_laeq_mean_day(df_all_yamnet, df_ship_dock, taxonomy, ia_visualization_folder, logger, plotname=folder)
-                    exit()
+                    plot_predic_laeq_mean_day(df, df_ship_dock_1h, taxonomy, ia_visualization_folder, logger, plotname='predictions')
+                    #exit()
 
 
                 # TODO
@@ -836,19 +837,19 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 
 
 
+                # TODO
+                #if PLOT_PREDICTION_MAP:
+                #    logger.info(f"[7.1] Plotting PLOT_PREDICTION_MAP WEEK for folder {folder}")
+                #    df_all_yamnet_1h = plot_prediction_map_new(df_all_yamnet, df_ship_dock_1h, ia_visualization_folder, logger, plotname=folder)
+                #    print(df_all_yamnet_1h)
+                #    print(df_all_yamnet_1h.columns)
+                #    # print(df_all_yamnet_1h['NoisePort_Level_1'].value_counts())
+                #    # exit()
 
-                if PLOT_PREDICTION_MAP:
-                    logger.info(f"[7.1] Plotting PLOT_PREDICTION_MAP WEEK for folder {folder}")
-                    df_all_yamnet_1h = plot_prediction_map_new(df_all_yamnet, df_ship_dock, ia_visualization_folder, logger, plotname=folder)
-                    print(df_all_yamnet_1h)
-                    print(df_all_yamnet_1h.columns)
-                    # print(df_all_yamnet_1h['NoisePort_Level_1'].value_counts())
-                    # exit()
-
-                
-                if PLOT_PREDICTION_MAP_WEEK:
-                    logger.info(f"[7.2] Plotting PLOT_PREDICTION_MAP WEEK for folder {folder}")
-                    plot_prediction_map_new_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+                # TODO
+                #if PLOT_PREDICTION_MAP_WEEK:
+                #    logger.info(f"[7.2] Plotting PLOT_PREDICTION_MAP WEEK for folder {folder}")
+                #    plot_prediction_map_new_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
 
 
 
@@ -864,72 +865,72 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 # Plotting time plot
                 if PLOT_MAKE_TIME_PLOT:
                     logger.info(f"[9.1] Plotting time plot for folder {folder}")
-                    make_time_plot(df, folder_output_dir, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder, percentiles=PERCENTILES)
+                    make_time_plot(df, folder_output_dir, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname='time_plot', percentiles=PERCENTILES)
 
 
                 # Plotting time plot
                 if PLOT_MAKE_TIME_PLOT_WEEK:
                     logger.info(f"[9.2] Plotting time WEEK plot for folder {folder}")
-                    make_time_plot_week(df, folder_output_dir_week, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname=folder, percentiles=PERCENTILES)
+                    make_time_plot_week(df, folder_output_dir_week, logger, columns_dict=slm_dict, agg_period=PERIODO_AGREGACION, plotname='time_plot_week', percentiles=PERCENTILES)
 
 
                 # Plotting heatmap evolution hour
                 if PLOT_HEATMAP_EVOLUTION_HOUR:
                     logger.info(f"[10.1] Plotting heatmap for folder {folder}")
-                    plot_heatmap_evolution_hour(df, folder_output_dir, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname=folder)
+                    plot_heatmap_evolution_hour(df, folder_output_dir, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname='heatmap_hour')
 
 
                 # Plotting heatmap evolution hour
                 if PLOT_HEATMAP_EVOLUTION_HOUR_WEEK:
                     logger.info(f"[10.2] Plotting heatmap WEEK for folder {folder}")
-                    plot_heatmap_evolution_hour_week(df, folder_output_dir_week, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname=folder)
+                    plot_heatmap_evolution_hour_week(df, folder_output_dir_week, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname='heatmap_hour_week')
                 
                 
                 # Plotting heatmap evolution 15 min
                 if PLOT_HEATMAP_EVOLUTION_15_MIN:
                     logger.info(f"[11] Plotting heatmap 15 min for folder {folder}")
-                    plot_heatmap_evolution_15_min(df, folder_output_dir, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname=folder)
+                    plot_heatmap_evolution_15_min(df, folder_output_dir, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname='heatmap_evolution')
 
                 
                 # Plotting heatmap evolution 15 min
                 if PLOT_HEATMAP_EVOLUTION_15_MIN_WEEK:
                     logger.info(f"[11.2] Plotting heatmap 15 min WEEK for folder {folder}")
-                    plot_heatmap_evolution_15_min_week(df, folder_output_dir_week, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname=folder)
+                    plot_heatmap_evolution_15_min_week(df, folder_output_dir_week, logger, values_column=slm_dict['LAEQ_COLUMN_COEFF'], agg_func=leq,plotname='heatmap_evolution_week')
                 
 
                 # Plotting individual heatmap
                 if PLOT_INDICADORES_HEATMAP:
                     logger.info(f"[12] Plotting indicadores heatmap for folder {folder}")
-                    plot_indicadores_heatmap(df, folder_output_dir, logger, plotname=folder, ind_column=slm_dict["LAEQ_COLUMN_COEFF"])
+                    plot_indicadores_heatmap(df, folder_output_dir, logger, plotname='indicadores_heatmap', ind_column=slm_dict["LAEQ_COLUMN_COEFF"])
 
                 
                 # Plotting individual heatmap
                 if PLOT_INDICADORES_HEATMAP_WEEK:
                     logger.info(f"[12.2] Plotting indicadores heatmap WEEK for folder {folder}")
-                    plot_indicadores_heatmap_week(df, folder_output_dir_week, logger, plotname=folder, ind_column=slm_dict["LAEQ_COLUMN_COEFF"])
+                    plot_indicadores_heatmap_week(df, folder_output_dir_week, logger, plotname='indicadores_heatmap_week', ind_column=slm_dict["LAEQ_COLUMN_COEFF"])
 
 
                 # Plotting day evolution
                 if PLOT_DAY_EVOLUTION:
                     logger.info(f"[13] Plotting day evolution for folder {folder}")
-                    plot_day_evolution(df, folder_output_dir, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder)
+                    plot_day_evolution(df, folder_output_dir, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname='day_evolution')
 
 
                 if PLOT_DAY_EVOLUTION_WEEK:
                     logger.info(f"[13.2] Plotting day evolution WEEK for folder {folder}")
-                    plot_day_evolution_week(df, folder_output_dir_week, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder)
+                    plot_day_evolution_week(df, folder_output_dir_week, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname='day_evolution_week')
                 
 
                 # Plotting period evolution
                 if PLOT_PERIOD_EVOLUTION:
                     logger.info(f"[14] Plotting period evolution (1) Ld (2) Le for folder {folder}")
-                    plot_period_evolution(df, folder_output_dir, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder)
+                    plot_period_evolution(df, folder_output_dir, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname='period_evolution')
 
 
                 # Plotting period evolution
                 if PLOT_PERIOD_EVOLUTION_WEEK:
                     logger.info(f"[14.2] Plotting period evolution (1) Ld (2) Le WEEK for folder {folder}")
-                    plot_period_evolution_week(df, folder_output_dir_week, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname=folder)
+                    plot_period_evolution_week(df, folder_output_dir_week, logger, laeq_column=slm_dict["LAEQ_COLUMN_COEFF"], plotname='period_evolution_week')
                 
 
                 # TODO
@@ -950,78 +951,66 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
                 if OCA_ALARM:
                     logger.info(f"[1.1] Plotting OCA alarm for folder {folder}")
-                    df_alarms_1h = oca_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder)
+                    df_alarms_1h = oca_alarm(df_1h, folder_output_dir_1h, logger, plotname='oca_alarm')
                     print(df_alarms_1h)
 
                 if OCA_ALARM_WEEK:
                     logger.info(f"[1.2] Plotting OCA alarm WEEK for folder {folder}")
-                    oca_alarm_week(df_1h, folder_output_dir_1h_week, logger, plotname=folder)
+                    oca_alarm_week(df_1h, folder_output_dir_1h_week, logger, plotname='oca_alarm_week')
                 
-                
-
                 if LMAX_ALARM:
                     logger.info(f"[2.1] Plotting LMAX alarm for folder {folder}")
-                    df_alarms_1h=lmax_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold=95) # OCA +10
+                    df_alarms_1h=lmax_alarm(df_1h, folder_output_dir_1h, logger, plotname='lmax_alarm', threshold=95) # OCA +10
                     print(df_alarms_1h)
 
                 if LMAX_ALARM_WEEK:
                     logger.info(f"[2.2] Plotting LMAX alarm WEEK for folder {folder}")
-                    lmax_alarm_week(df_1h, folder_output_dir_1h_week, logger, plotname=folder, threshold=95)
-
-                
+                    lmax_alarm_week(df_1h, folder_output_dir_1h_week, logger, plotname='lmax_alarm_week', threshold=95)
 
                 if LC_LA_ALARM:
                     logger.info(f"[3.1] Plotting LC-LA alarm for folder {folder}")
-                    df_alarms_1h=LC_LA_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_norma=10, threshold_dB=3)
+                    df_alarms_1h=LC_LA_alarm(df_1h, folder_output_dir_1h, logger, plotname='LC_LA_alarm', threshold_norma=10, threshold_dB=3)
                     print(df_alarms_1h)
 
                 if LC_LA_ALARM_WEEK:
                     logger.info(f"[3.2] Plotting LC-LA alarm WEEK for folder {folder}")
-                    LC_LA_alarm_week(df_1h, folder_output_dir_1h_week, logger, plotname=folder, threshold_norma=10, threshold_dB=3)
-
-
+                    LC_LA_alarm_week(df_1h, folder_output_dir_1h_week, logger, plotname='LC_LA_alarm_week', threshold_norma=10, threshold_dB=3)
 
                 if L90_ALARM:
                     logger.info(f"[4.1] Plotting L90 alarm for folder {folder}")
-                    l90_alarm(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_dB=5)
+                    l90_alarm(df_1h, folder_output_dir_1h, logger, plotname='190_alarm', threshold_dB=5)
 
                 if L90_ALARM_WEEK:
                     logger.info(f"[4.2] Plotting L90 alarm WEEK for folder {folder}")
-                    l90_alarm_week(df_1h, folder_output_dir_1h_week, logger, plotname=folder, threshold_dB=5)
-
-
+                    l90_alarm_week(df_1h, folder_output_dir_1h_week, logger, plotname='190_alarm_week', threshold_dB=5)
 
                 if L90_ALARM_DYNAMIC:
                     logger.info(f"[5.1] Plotting L90 alarm dynamic for folder {folder}")
-                    df_alarms_1h=l90_alarm_dynamic(df_1h, folder_output_dir_1h, logger, plotname=folder, threshold_dB=5)
+                    df_alarms_1h=l90_alarm_dynamic(df_1h, folder_output_dir_1h, logger, plotname='190_alarm_dynamic', threshold_dB=5)
                     print(df_alarms_1h)
 
                 if L90_ALARM_DYNAMIC_WEEK:
                     logger.info(f"[5.2] Plotting L90 alarm dynamic WEEK for folder {folder}")
-                    l90_alarm_dynamic_week(df_1h, folder_output_dir_1h_week, logger, plotname=folder, threshold_dB=5)
-
-
+                    l90_alarm_dynamic_week(df_1h, folder_output_dir_1h_week, logger, plotname='190_alarm_dynamic_week', threshold_dB=5)
 
                 if FREQUENCY_COMPOSITION:
                     logger.info(f"[6.1] Plotting frequency composition for folder {folder}")            
-                    df_alarms_1h =frequency_composition(df, df_alarms_1h, folder_output_dir_1h, logger, plotname=folder, threshold_comp=5)
+                    df_alarms_1h =frequency_composition(df, df_alarms_1h, folder_output_dir_1h, logger, plotname='freq_composition', threshold_comp=5)
                     print(df_alarms_1h)
                     # exit()
 
                 if FREQUENCY_COMPOSITION_WEEK:
                     logger.info(f"[6.2] Plotting frequency composition WEEK for folder {folder}")            
-                    frequency_composition_week(df, folder_output_dir_1h_week, logger, plotname=folder, threshold_comp=5)
-
-
+                    frequency_composition_week(df, folder_output_dir_1h_week, logger, plotname='freq_composition_week', threshold_comp=5)
 
                 if TONAL_FREQUENCY:
                     logger.info(f"[7.1] Plotting tonal frequency for folder {folder}")
-                    df_alarms_1h = tonal_frequency(df, df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
+                    df_alarms_1h = tonal_frequency(df, df_alarms_1h, folder_output_dir_1h, logger, plotname='tonal_freq')
                     print(df_alarms_1h)
-                
-                if TONAL_FREQUENCY_WEEK:
-                    logger.info(f"[7.2] Plotting tonal frequency WEEK for folder {folder}")
-                    tonal_frequency_week(df, folder_output_dir_1h_week, logger, plotname=folder)
+                # TODO
+                #if TONAL_FREQUENCY_WEEK:
+                #    logger.info(f"[7.2] Plotting tonal frequency WEEK for folder {folder}")
+                #    tonal_frequency_week(df, folder_output_dir_1h_week, logger, plotname='tonal_freq_week')
 
 
 
@@ -1036,31 +1025,31 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
                 if PLOT_PEAK_DISTRIBUTION_HEATMAP:
                     logger.info(f"[8.1] Plotting peak heatmap for folder {folder}")
-                    df_alarms_1h=plot_peak_distribution_heatmap(df_peaks, df_alarms_1h, folder_output_dir_1h, logger, plotname=folder)
+                    df_alarms_1h=plot_peak_distribution_heatmap(df_peaks, df_alarms_1h, folder_output_dir_1h, logger, plotname='peak_distribution_heatmap')
 
                 if PLOT_PEAK_DISTRIBUTION_HEATMAP_WEEK:
                     logger.info(f"[8.2] Plotting peak heatmap WEEK for folder {folder}")
-                    plot_peak_distribution_heatmap_week(df_peaks, folder_output_dir_1h_week, logger, plotname=folder)
+                    plot_peak_distribution_heatmap_week(df_peaks, folder_output_dir_1h_week, logger, plotname='peak_distribution_heatmap_week')
 
 
 
                 if PLOT_PEAK_DISTRIBUTION:
                     logger.info(f"[9.1] Plotting peak distribution for folder {folder}")
-                    plot_peak_distribution(df_peaks, folder_output_dir_1h, logger, plotname=folder)
+                    plot_peak_distribution(df_peaks, folder_output_dir_1h, logger, plotname='peak_distribution')
 
                 if PLOT_PEAK_DISTRIBUTION_WEEK:
                     logger.info(f"[9.2] Plotting peak distribution WEEK for folder {folder}")
-                    plot_peak_distribution_week(df_peaks, folder_output_dir_1h_week, logger, plotname=folder)
+                    plot_peak_distribution_week(df_peaks, folder_output_dir_1h_week, logger, plotname='peak_distribution_week')
 
 
 
                 if PLOT_PEAK_DENSITY_DISTRIBUTION:
                     logger.info(f"[10.1] Plotting density distribution for folder {folder}")
-                    plot_density_distribution_peaks(df_peaks, folder_output_dir_1h, logger, plotname=folder)
+                    plot_density_distribution_peaks(df_peaks, folder_output_dir_1h, logger, plotname='peak_density_distribution')
 
                 if PLOT_PEAK_DENSITY_DISTRIBUTION_WEEK:
                     logger.info(f"[10.2] Plotting density distribution WEEK for folder {folder}")
-                    plot_density_distribution_peaks_week(df_peaks, folder_output_dir_1h_week, logger, plotname=folder)
+                    plot_density_distribution_peaks_week(df_peaks, folder_output_dir_1h_week, logger, plotname='peak_density_distribution_week')
 
 
 
@@ -1070,33 +1059,33 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 # #####################################################
                 if PLOT_PEAK_PREDIC_LAEQ_MEAN:
                     logger.info(f"[11.1] Plotting PLOT_PREDIC_LAEQ for folder {folder}")
-                    plot_predic_peak_laeq_mean(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+                    plot_predic_peak_laeq_mean(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname='prediction')
 
                 if PLOT_PEAK_PREDIC_LAEQ_MEAN_WEEK:
                     logger.info(f"[11.2] Plotting PLOT_PREDIC_LAEQ WEEK for folder {folder}")
-                    plot_predic_peak_laeq_mean_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+                    plot_predic_peak_laeq_mean_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname='prediction')
 
                 
 
 
                 if PLOT_PEAK_BOX_PLOT_PREDICTION:
                     logger.info(f"[12] Plotting box plot prediction for folder {folder}")
-                    plot_box_plot_prediction(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+                    plot_box_plot_prediction(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname='prediction')
 
                 if PLOT_PEAK_BOX_PLOT_PREDICTION_WEEK:
                     logger.info(f"[12.2] Plotting box plot prediction WEEK for folder {folder}")
-                    plot_box_plot_prediction_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+                    plot_box_plot_prediction_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname='prediction')
 
 
 
 
                 if PLOT_PEAK_HEATMAT_PREDICTION:
                     logger.info(f"[13] Plotting heatmap prediction for folder {folder}")
-                    plot_heat_map_prediction(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+                    plot_heat_map_prediction(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname='peak_heatman_prediction')
 
                 if PLOT_PEAK_HEATMAT_PREDICTION_WEEK:
                     logger.info(f"[13.2] Plotting heatmap prediction WEEK for folder {folder}")
-                    plot_heat_map_prediction_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname=folder)
+                    plot_heat_map_prediction_week(df_all_yamnet, taxonomy, ia_visualization_folder, logger, plotname='peak_heatmap_prediction')
 
 
 

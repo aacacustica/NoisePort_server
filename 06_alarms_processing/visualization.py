@@ -12,13 +12,13 @@ from scipy.stats import gaussian_kde
 import ast
 import sys
 
-from .utils_vi import *
-from .config_vi import *
-from .config_vi import (
-    LOW_FREQ_BANDS_NEW,
-    MEDIUM_FREQ_BANDS_NEW,
-    HIGH_FREQ_BANDS_NEW,
-)
+from utils_vi import *
+from config_vi import *
+#from config_vi import (
+#    LOW_FREQ_BANDS_NEW,
+#    MEDIUM_FREQ_BANDS_NEW,
+#    HIGH_FREQ_BANDS_NEW,
+#)
 plt.rc('font', size=MEDIUM_SIZE)          # controls default text sizes
 plt.rc('axes', titlesize=MEDIUM_SIZE)     # fontsize of the axes title
 plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
@@ -3208,6 +3208,37 @@ def l90_alarm_dynamic(df_1h: pd.DataFrame, logger, threshold_dB: int):
 def frequency_composition(df_1h: pd.DataFrame,df_alarms_1h: pd.DataFrame,logger,threshold_comp: int,):
     df_freq = df_1h.copy()
 
+    LOW_FREQ_BANDS_NEW = [
+    "50.12Hz",
+    "63.1Hz",
+    "79.43Hz",
+    "100Hz",
+    "125.89Hz",
+    "158.49Hz",
+    ]
+
+    MEDIUM_FREQ_BANDS_NEW = [
+        "199.53Hz",
+        "251.19Hz",
+        "316.23Hz",
+        "398.11Hz",
+        "501.19Hz",
+        "630.96Hz",
+        "794.33Hz",
+        "1000Hz",
+        "1258.93Hz",
+    ]
+
+    HIGH_FREQ_BANDS_NEW = [
+        "1584.89Hz",
+        "1995.26Hz",
+        "2511.89Hz",
+        "3162.28Hz",
+        "3981.07Hz",
+        "5011.87Hz",
+        "6309.57Hz",
+        "7943.3Hz",
+    ]
     # ensure datetime is proper datetime and sorted
     df_freq["datetime"] = pd.to_datetime(df_freq["datetime"])
     df_freq = df_freq.sort_values("datetime")
@@ -4404,6 +4435,7 @@ def plot_predic_peak_laeq_mean(df_all_yamnet: pd.DataFrame, taxonomy_map: dict, 
         """
 
         ####################################
+        if class_to_plot not in df_all_yamnet.columns: df_all_yamnet = df_all_yamnet.rename(columns={'NoisePort_Level_1_mode': 'NoisePort_Level_1'})
         grouped_df = df_all_yamnet.groupby(class_to_plot).agg(
             number=(classes, 'size'),
             LAeq=('LA_corrected', lambda x: leq(x))

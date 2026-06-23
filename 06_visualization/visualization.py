@@ -11,7 +11,7 @@ from matplotlib.patches import Patch
 from matplotlib.colors import ListedColormap
 from scipy.stats import gaussian_kde
 import ast
-
+import pytz
 
 
 plt.rc('font', size=MEDIUM_SIZE)          # controls default text sizes
@@ -62,7 +62,7 @@ def plot_night_evolution(df, folder_output_dir: str, logger, laeq_column:str, pl
         
         # save to excel
         os.makedirs(folder_output_dir, exist_ok=True)
-        night_data.to_csv(f"{folder_output_dir}/{plotname}_{indicador_noche}_evolution.csv", index=False)
+        night_data.to_csv(f"{folder_output_dir}/night_evolution_{indicador_noche}_evolution.csv", index=False)
         logger.info(f"Night evolution data saved to {folder_output_dir}/{plotname}_{indicador_noche}_evolution.csv")
 
         fig = sns.relplot(
@@ -92,7 +92,7 @@ def plot_night_evolution(df, folder_output_dir: str, logger, laeq_column:str, pl
         os.makedirs(folder_output_dir, exist_ok=True)
 
         logger.info(f"Saving the plot {plotname}_{indicador_noche}")
-        fig.savefig(f"{folder_output_dir}/{plotname}_{indicador_noche}_evolution.png", dpi=150)
+        fig.savefig(f"{folder_output_dir}/night_evolution_{indicador_noche}_evolution.png", dpi=150)
         logger.info(f"Night evolution plot saved to {folder_output_dir}/{plotname}_{indicador_noche}_evolution.png")
 
     except Exception as e:
@@ -190,7 +190,10 @@ def plot_night_evolution_15_min(df, folder_output_dir: str, logger, name_extensi
         
         df['Día'] = df['night_str']
         # df.index = pd.to_datetime(df.index)
-        if 'datetime' in df.columns:
+        if 'Timestamp' in df.columns:
+            df['Timestamp'] = pd.to_datetime(df['Timestamp'], errors='coerce')
+            df = df.set_index('Timestamp')
+        elif 'datetime' in df.columns:
             df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce')
             df = df.set_index('datetime')
         else:
@@ -210,20 +213,24 @@ def plot_night_evolution_15_min(df, folder_output_dir: str, logger, name_extensi
         print(df_resampled)
         print(df_resampled.columns)
         print(df_resampled['plot_time'])
-        exit()
+        #exit()
         
 
         # filter data
         unique_dates = pd.to_datetime(df_resampled.index.date).unique()
         night_data = pd.DataFrame()
 
+        print(type(df_resampled.index))
+        print(df_resampled.index.dtype)
+        print("Zona horaria del índice:", df_resampled.index.tz)
+
         # data for each night
         for current_date in unique_dates:
             #  time, which is the last 15-minute interval of the previous day
-            start_time = pd.Timestamp(current_date - pd.Timedelta(days=1)).replace(hour=23, minute=0)
+            start_time = pd.Timestamp(current_date - pd.Timedelta(days=1),tzinfo=pytz.UTC).replace(hour=23, minute=0)
             
             # end time, which is the first 6 hours and 45 minutes of the current day
-            end_time = pd.Timestamp(current_date).replace(hour=6, minute=45)
+            end_time = pd.Timestamp(current_date,tzinfo = pytz.UTC).replace(hour=6, minute=45)
             
             # slice the data, which is the last 15-minute interval of the previous day and the first 6 hours and 45 minutes of the current day
             data_slice = df_resampled[start_time:end_time]
@@ -287,7 +294,15 @@ def plot_night_evolution_15_min_week(df, folder_output_dir: str, logger, name_ex
         sns.set_palette("tab10")
 
         df['Día'] = df['night_str']
-        df.index = pd.to_datetime(df.index)
+
+        if 'Timestamp' in df.columns:
+            df['Timestamp'] = pd.to_datetime(df['Timestamp'], errors='coerce')
+            df = df.set_index('Timestamp')
+        elif 'datetime' in df.columns:
+            df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce')
+            df = df.set_index('datetime')
+        else:
+            raise ValueError("The 'datetime' column is missing.")
 
         df_resampled = df.resample('15min')[laeq_column].agg(leq)
         df_night_str = df.resample('15min')['Día'].agg(lambda x: x.value_counts().index[0] if len(x) > 0 else None)
@@ -305,9 +320,16 @@ def plot_night_evolution_15_min_week(df, folder_output_dir: str, logger, name_ex
         unique_dates = pd.to_datetime(df_resampled.index.date).unique()
         night_data = pd.DataFrame()
 
+        print(type(df_resampled.index))
+        print(df_resampled.index.dtype)
+        print("Zona horaria del índice:", df_resampled.index.tz)
+
         for current_date in unique_dates:
-            start_time = pd.Timestamp(current_date - pd.Timedelta(days=1)).replace(hour=23, minute=0)
-            end_time = pd.Timestamp(current_date).replace(hour=6, minute=45)
+            
+            start_time = pd.Timestamp(current_date - pd.Timedelta(days=1),tzinfo=pytz.UTC).replace(hour=23, minute=0)
+            
+            end_time = pd.Timestamp(current_date,tzinfo=pytz.UTC).replace(hour=6, minute=45)
+            
             data_slice = df_resampled[start_time:end_time]
 
             if not data_slice.empty and data_slice.index.min().hour == 23:
@@ -1581,6 +1603,18 @@ def make_time_plot(df: pd.DataFrame, folder_output_dir: str, logger, columns_dic
             columns_dict['LAMIN_COLUMN_COEFF']: 'min'
             
         }
+
+        df['Timestamp'] = pd.to_datetime(
+            df['Timestamp'],
+            errors='coerce',
+            utc=True
+        )
+
+        df = (
+            df.dropna(subset=['Timestamp'])
+            .set_index('Timestamp')
+            .sort_index()
+        )
         logger.info(f"Using the columns_dict: {columns_dict}")
 
         logger.info(f"Using the agg_funcs: {agg_funcs}")
@@ -3250,6 +3284,20 @@ def frequency_composition(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, fold
     #     low_freq  medium_freq  high_freq
     # datetime
     #  for hour
+    #set index
+    
+    df_oct_cp['Timestamp'] = pd.to_datetime(
+        df_oct_cp['Timestamp'],
+        errors='coerce',
+        utc=True
+    )
+
+    df_oct_cp = (
+        df_oct_cp.dropna(subset=['Timestamp'])
+        .set_index('Timestamp')
+        .sort_index()
+    )
+
     df_oct_cp[["low_freq", "medium_freq", "high_freq"]]
     df_oct_1hour = df_oct_cp.resample("h").agg(
         {"low_freq": leq, "medium_freq": leq, "high_freq": leq}
@@ -3287,16 +3335,30 @@ def frequency_composition(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, fold
     ################################
     ################################
     # join the df_oct_1hour['predominant_freq] column to the df_alarms_1h dataframe
-    df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"])
-    df_oct_1hour["datetime"] = pd.to_datetime(df_oct_1hour["datetime"])
+    if 'date_time' in df_alarms_1h.columns: df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"])
+    else: df_alarms_1h["Timestamp"] = pd.to_datetime(df_alarms_1h["Timestamp"])
 
-    df_alarms_1h = df_alarms_1h.merge(
-        df_oct_1hour[["datetime", "predominant_freq"]],
-        left_on="date_time",
-        right_on="datetime",
-        how="left"
-    )
-    df_alarms_1h.drop(columns=["datetime"], inplace=True)
+    if 'datetime' in df_oct_1hour.columns: df_oct_1hour["datetime"] = pd.to_datetime(df_oct_1hour["datetime"])
+    else: df_oct_1hour["Timestamp"] = pd.to_datetime(df_oct_1hour["Timestamp"])
+    
+    if 'datetime' in df_oct_1hour.columns:
+        df_alarms_1h = df_alarms_1h.merge(
+            df_oct_1hour[["datetime", "predominant_freq"]],
+            left_on="date_time",
+            right_on="datetime",
+            how="left"
+        )
+        #df_alarms_1h.drop(columns=["datetime"], inplace=True)
+    else:
+        df_alarms_1h = df_alarms_1h.merge(
+            df_oct_1hour[["Timestamp", "predominant_freq"]],
+            left_on="date_time",
+            right_on="Timestamp",
+            how="left"
+        )
+        #df_alarms_1h.drop(columns=["date_time"], inplace=True)
+
+    
     #rename 
     df_alarms_1h.rename(columns={"predominant_freq": "predominant_freq_alarm"}, inplace=True)
     # print(df_alarms_1h)
@@ -3367,12 +3429,14 @@ def frequency_composition(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, fold
 
     df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"])
     df_alarms_1h = df_alarms_1h.merge(
-        df_oct_1hour_lineal_comparsion[["datetime", "low_high_freq_alarm"]],
+        df_oct_1hour_lineal_comparsion[["Timestamp", "low_high_freq_alarm"]],
         left_on="date_time",
-        right_on="datetime",
+        right_on="Timestamp",
         how="left"
     )
-    df_alarms_1h.drop(columns=["datetime"], inplace=True)
+    df_alarms_1h.drop(columns=["date_time"], inplace=True)
+
+
     ################################
     ################################
 
@@ -3506,7 +3570,8 @@ def tonal_frequency(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_out
     bands = []
     band_thresholds = []
 
-
+    detections = []
+    
     logger.info("Detecting tonal frequencies. It may take a while (5-10 min)...")
     for _, row in df_oct.iterrows():
         for i in range(len(df_oct.columns)):
@@ -3588,48 +3653,33 @@ def tonal_frequency(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_out
                     band_threshold = HIGH_BAND_THRESHOLD
 
 
-
             if detected_band:
-                bands.append(detected_band)
-                tonal_frequency.append(current_column)
-                tonal_frequency_value.append(current_column_value)
-                previous_tonal_frequency.append(previous_column)
-                previous_tonal_value_frequency.append(previos_column_value)
-                next_tonal_frequency.append(next_column)
-                next_tonal_value_frequency.append(next_column_value)
-                previous_diff.append(diff_previous_band)
-                next_diff.append(diff_next_band)
-                filenames.append(current_filename)
-                dates.append(current_date)
-                band_thresholds.append(band_threshold)
+                detections.append({
+                    "Filename": current_filename,
+                    "Timestamp": current_date,
+                    "band": detected_band,
+                    "band_threshold": band_threshold,
+                    "tonal_frequency": current_column,
+                    "tonal_frequency_value": current_column_value,
+                    "previous_tonal_frequency": previous_column,
+                    "previous_tonal_value_frequency": previos_column_value,
+                    "next_tonal_frequency": next_column,
+                    "next_tonal_value_frequency": next_column_value,
+                    "previous_diff": diff_previous_band,
+                    "next_diff": diff_next_band,
+                })
 
 
+    df_tonal_freq = pd.DataFrame(detections)
 
-    df_tonal_freq = pd.DataFrame(
-        {
-            "date": dates,
-            "filename": filenames,
-            "tonal_frequency": tonal_frequency,
-            "tonal_frequency_value": tonal_frequency_value,
-            "previous_column": previous_tonal_frequency,
-            "previous_column_value": previous_tonal_value_frequency,
-            "next_column": next_tonal_frequency,
-            "next_column_value": next_tonal_value_frequency,
-            "previous_diff": previous_diff,
-            "next_diff": next_diff,
-            "threshold": band_thresholds,
-            "band": bands,
-        }
-    )
-
-    # plotting
-    df_tonal_freq['date'] = pd.to_datetime(df_tonal_freq['date'], errors='coerce')
+    # plotting  
+    df_tonal_freq['Timestamp'] = pd.to_datetime(df_tonal_freq['Timestamp'], errors='coerce')
     print(df_tonal_freq)
     
 
     # drop row with values -np.inf, -np.inf and np.nan
     # TODO --> TEST THIS
-    df_tonal_freq["date"] = pd.to_datetime(df_tonal_freq["date"])
+    #df_tonal_freq["date"] = pd.to_datetime(df_tonal_freq["date"])
 
     # filter out any invalid values
     df_tonal_freq = df_tonal_freq[
@@ -3650,7 +3700,7 @@ def tonal_frequency(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_out
 
 
 
-    df_tonal_freq["hour"] = df_tonal_freq["date"].dt.floor("h")
+    df_tonal_freq["hour"] = df_tonal_freq["Timestamp"].dt.floor("h")
     band_counts = df_tonal_freq.groupby(["hour", "band"]).size().unstack(fill_value=0)
     def get_predominant_band(row):
         top = row[row == row.max()]
@@ -3670,11 +3720,11 @@ def tonal_frequency(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_out
     ################################
     # join the df_oct_1hour['predominant_freq] column to the df_alarms_1h dataframe
     df_predominant_bands["hour"] = pd.to_datetime(df_predominant_bands["hour"])
-    df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"])
+    df_alarms_1h["Timestamp_x"] = pd.to_datetime(df_alarms_1h["Timestamp_x"])
 
     df_alarms_1h = df_alarms_1h.merge(
         df_predominant_bands,
-        left_on="date_time",
+        left_on="Timestamp_x",
         right_on="hour",
         how="left"
     )
@@ -3689,7 +3739,7 @@ def tonal_frequency(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_out
 
     plt.figure(figsize=(18, 10))
     # plt.figure(figsize=(25, 12))
-    plt.scatter(df_tonal_freq["date"], df_tonal_freq["tonal_frequency"].cat.codes, marker="x", color="orange")
+    plt.scatter(df_tonal_freq["Timestamp"], df_tonal_freq["tonal_frequency"].cat.codes, marker="x", color="orange")
     plt.title(f"{plotname} | Tonal Frequency Alarm Detection")
     plt.xticks(rotation=90)
     plt.yticks(range(len(TONAL_FREQ_BANDS_ORDERED)), TONAL_FREQ_BANDS_ORDERED)  # !!!!!! set y-ticks to ordered frequencies !!!!!! 
@@ -3701,7 +3751,7 @@ def tonal_frequency(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, folder_out
     plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=4))
 
     # X AND Y LMIT
-    plt.xlim(df_tonal_freq["date"].min(), df_tonal_freq["date"].max())
+    plt.xlim(df_tonal_freq["Timestamp"].min(), df_tonal_freq["Timestamp"].max())
     plt.ylim(-1, len(TONAL_FREQ_BANDS_ORDERED)) 
 
     plt.tight_layout()

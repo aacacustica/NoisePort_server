@@ -1,5 +1,3 @@
-ccmp13-dvk
-ccmp13-dvk-2
 raspberry1
 raspberrypi2
 raspberry3

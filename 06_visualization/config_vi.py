@@ -73,7 +73,7 @@ PREDICTION_QUERY_FOLDER_NEW = "prediction_queries"
 ###################################################################
 # Plotting Flags there are 15 flags to plot the following plots
 PLOT_NIGHT_EVOLUTION = True
-PLOT_NIGHT_EVOLUTION_WEEK = False
+PLOT_NIGHT_EVOLUTION_WEEK = True
 
 PLOT_NIGHT_EVOLUTION_15_MIN = True
 PLOT_NIGHT_EVOLUTION_15_MIN_WEEK = False
@@ -203,10 +203,13 @@ HIGH_FREQ_CORRECTION = +1
 # '12589.3Hz', '15848.9Hz'
 
 
-LOW_FREQ_BANDS = ['50.1Hz', '63.1Hz', '79.4Hz', '100.0Hz', '125.9Hz', '158.5Hz']
-MEDIUM_FREQ_BANDS = ['199.5Hz', '251.2Hz', '316.2Hz', '398.1Hz', '501.2Hz', '631.0Hz', '794.3Hz', '1000.0Hz', '1258.9Hz']
-HIGH_FREQ_BANDS = ['1584.9Hz','1995.3Hz', '2511.9Hz', '3162.3Hz', '3981.1Hz', '5011.9Hz', '6309.6Hz', '7943.3Hz', '10000.0Hz', '12589.3Hz']
+#LOW_FREQ_BANDS = ['50.1Hz', '63.1Hz', '79.4Hz', '100.0Hz', '125.9Hz', '158.5Hz']
+#MEDIUM_FREQ_BANDS = ['199.5Hz', '251.2Hz', '316.2Hz', '398.1Hz', '501.29Hz', '631.0Hz', '794.3Hz', '1000.0Hz', '1258.9Hz']
+#HIGH_FREQ_BANDS = ['1584.9Hz','1995.3Hz', '2511.9Hz', '3162.3Hz', '3981.1Hz', '5011.9Hz', '6309.6Hz', '7943.3Hz', '10000.0Hz', '12589.3Hz']
 
+LOW_FREQ_BANDS = ['50.12Hz', '63.10Hz', '79.43Hz', '100.00Hz', '125.89Hz', '158.49Hz']
+MEDIUM_FREQ_BANDS = ['199.53Hz', '251.19Hz', '316.23Hz', '398.11Hz', '501.19Hz', '630.96Hz', '794.33Hz', '1000.00Hz', '1258.93Hz']
+HIGH_FREQ_BANDS = ['1584.89Hz','1995.26Hz', '2511.89Hz', '3162.28Hz', '3981.07Hz', '5011.87Hz', '6309.57Hz']
 
 # tonal freq
 COLUMNS_DISCARD = ["LA", "LC", "LZ", "LAmax", "LAmin", "filename", "date"]
@@ -217,9 +220,20 @@ COLUMNS_DISCARD = ["LA", "LC", "LZ", "LAmax", "LAmin", "filename", "date"]
 # MEDIUM_BAND_TONAL_FREQ = ["157.49Hz", "198.43Hz", "250.00Hz", "314.98Hz", "396.85Hz"]
 # HIGH_BAND_TONAL_FREQ = ["500.00Hz", "629.96Hz", "793.70Hz", "1000.00Hz", "1259.92Hz", "1587.40Hz", "2000.00Hz", "2519.84Hz", "3174.80Hz", "4000.00Hz", "5039.68Hz", "6349.60Hz", "8000.00Hz", "10079.37Hz", "12699.21Hz", "16000.00Hz", "20158.74Hz"]
 
-LOW_BAND_TONAL_FREQ = ['12.6Hz', '15.8Hz', '20.0Hz', '25.1Hz', '31.6Hz', '39.8Hz', '50.1Hz', '63.1Hz', '79.4Hz', '100.0Hz', '125.9Hz']
-MEDIUM_BAND_TONAL_FREQ = ['158.5Hz', '199.5Hz', '251.2Hz', '316.2Hz', '398.1Hz']
-HIGH_BAND_TONAL_FREQ = ['501.2Hz', '631.0Hz', '794.3Hz', '1000.0Hz', '1258.9Hz', '1584.9Hz', '1995.3Hz', '2511.9Hz', '3162.3Hz', '3981.1Hz', '5011.9Hz', '6309.6Hz', '7943.3Hz', '10000.0Hz', '12589.3Hz', '15848.9Hz']
+#LOW_BAND_TONAL_FREQ = ['12.6Hz', '15.8Hz', '20.0Hz', '25.1Hz', '31.6Hz', '39.8Hz', '50.1Hz', '63.1Hz', '79.4Hz', '100.0Hz', '125.9Hz']
+#MEDIUM_BAND_TONAL_FREQ = ['158.5Hz', '199.5Hz', '251.2Hz', '316.2Hz', '398.1Hz']
+#HIGH_BAND_TONAL_FREQ = ['501.2Hz', '631.0Hz', '794.3Hz', '1000.0Hz', '1258.9Hz', '1584.9Hz', '1995.3Hz', '2511.9Hz', '3162.3Hz', '3981.1Hz', '5011.9Hz', '6309.6Hz', '7943.3Hz', '10000.0Hz', '12589.3Hz', '15848.9Hz']
+
+"""
+'25.12Hz', '31.62Hz', '39.81Hz',
+       '50.12Hz', '63.10Hz', '79.43Hz', '100.00Hz', '125.89Hz', '158.49Hz',
+       '199.53Hz', '251.19Hz', '316.23Hz', '398.11Hz', '501.19Hz', '630.96Hz',
+       '794.33Hz', '1000.00Hz', '1258.93Hz', '1584.89Hz', '1995.26Hz',
+       '2511.89Hz', '3162.28Hz', '3981.07Hz', '5011.87Hz', '6309.57Hz',
+"""
+LOW_BAND_TONAL_FREQ = ['25.12Hz', '31.62Hz', '39.81Hz', '50.12Hz', '63.10Hz', '79.43Hz', '100.00Hz', '125.89Hz']
+MEDIUM_BAND_TONAL_FREQ = ['158.49Hz', '199.53Hz', '251.19Hz', '316.23Hz', '398.11Hz']
+HIGH_BAND_TONAL_FREQ = ['501.19Hz', '630.96Hz', '794.33Hz', '1000.00Hz', '1258.93Hz', '1584.89Hz', '1995.26Hz', '2511.89Hz', '3162.28Hz', '3981.07Hz', '5011.87Hz', '6309.57Hz']
 
 # frequency thresholds
 LOW_BAND_THRESHOLD = 15
@@ -228,8 +242,8 @@ HIGH_BAND_THRESHOLD = 5
 
 # Desire order bands
 # TONAL_FREQ_BANDS_ORDERED = ["12.40Hz", "15.62Hz", "19.69Hz", "24.80Hz", "31.25Hz", "39.37Hz", "49.61Hz", "62.50Hz", "78.75Hz", "99.21Hz", "125.00Hz", "157.49Hz", "198.43Hz", "250.00Hz", "314.98Hz", "396.85Hz", "500.00Hz", "629.96Hz", "793.70Hz", "1000.00Hz", "1259.92Hz", "1587.40Hz", "2000.00Hz", "2519.84Hz", "3174.80Hz", "4000.00Hz", "5039.68Hz", "6349.60Hz", "8000.00Hz", "10079.37Hz", "12699.21Hz", "16000.00Hz"]
-TONAL_FREQ_BANDS_ORDERED = ['12.6Hz', '15.8Hz', '20.0Hz', '25.1Hz', '31.6Hz','39.8Hz', '50.1Hz', '63.1Hz', '79.4Hz', '100.0Hz', '125.9Hz', '158.5Hz','199.5Hz', '251.2Hz', '316.2Hz', '398.1Hz', '501.2Hz', '631.0Hz', '794.3Hz', '1000.0Hz', '1258.9Hz', '1584.9Hz', '1995.3Hz', '2511.9Hz', '3162.3Hz', '3981.1Hz', '5011.9Hz', '6309.6Hz', '7943.3Hz', '10000.0Hz','12589.3Hz', '15848.9Hz']
-
+#TONAL_FREQ_BANDS_ORDERED = ['12.6Hz', '15.8Hz', '20.0Hz', '25.1Hz', '31.6Hz','39.8Hz', '50.1Hz', '63.1Hz', '79.4Hz', '100.0Hz', '125.9Hz', '158.5Hz','199.5Hz', '251.2Hz', '316.2Hz', '398.1Hz', '501.2Hz', '631.0Hz', '794.3Hz', '1000.0Hz', '1258.9Hz', '1584.9Hz', '1995.3Hz', '2511.9Hz', '3162.3Hz', '3981.1Hz', '5011.9Hz', '6309.6Hz', '7943.3Hz', '10000.0Hz','12589.3Hz', '15848.9Hz']
+TONAL_FREQ_BANDS_ORDERED = ['25.12Hz', '31.62Hz', '39.81Hz','50.12Hz', '63.10Hz', '79.43Hz', '100.00Hz', '125.89Hz', '158.49Hz','199.53Hz', '251.19Hz', '316.23Hz', '398.11Hz', '501.19Hz', '630.96Hz','794.33Hz', '1000.00Hz', '1258.93Hz', '1584.89Hz', '1995.26Hz','2511.89Hz', '3162.28Hz', '3981.07Hz', '5011.87Hz', '6309.57Hz']
 
 
 

@@ -122,20 +122,26 @@ def evaluation_period_str_valencia(hour_column):
 def add_night_column(hour_column, day_col):
     
     night_list={
-        'Lunes':"Lunes-Martes",
-        'Martes':"Martes-Miércoles",
-        'Miércoles':"Miércoles-Jueves",
-        'Jueves':"Jueves-Viernes",
-        'Viernes':"Viernes-Sábado",
-        'Sábado':"Sábado-Domingo",
-        'Domingo':"Domingo-Lunes"
+
+        'Lunes'     : "Lunes-Martes",
+        'Martes'    : "Martes-Miércoles",
+        'Miércoles' : "Miércoles-Jueves",
+        'Jueves'    : "Jueves-Viernes",
+        'Viernes'   : "Viernes-Sábado",
+        'Sábado'    : "Sábado-Domingo",
+        'Domingo'   : "Domingo-Lunes"
+        
         }
 
     
     night = ''
+
     if hour_column >= 23:
-        night=night_list[day_col.replace(" ","")]
+
+        night=night_list[str(day_col).replace(" ","")]
+
     elif hour_column < 7:
+
         pos=0
         for i in night_list:
             pos+=1
@@ -149,6 +155,15 @@ def add_datetime_columns(df,logging, date_col):
     df['Timestamp'] = pd.to_datetime(df['Timestamp'], errors='coerce')
 
     #df['day_hour'] = df.apply(lambda x: str(x[date_col].day) + '-' + str(x[date_col].hour),axis=1)
+    weekday_translation = {
+        "Monday": " Lunes",
+        "Tuesday": " Martes",
+        "Wednesday": " Miércoles",
+        "Thursday": " Jueves",
+        "Friday": " Viernes",
+        "Saturday": " Sábado",
+        "Sunday": " Domingo"
+    }
     if df['Timestamp'].dtype == 'datetime64[ns]' or df['Timestamp'].dtype == 'datetime64[ns, UTC+02:00]':
         df["year"] = df['Timestamp'].dt.year
         df["month"] = df['Timestamp'].dt.month
@@ -157,6 +172,8 @@ def add_datetime_columns(df,logging, date_col):
         df['hour'] = df['Timestamp'].dt.hour
         df['weekday'] = df['Timestamp'].dt.weekday
         df['day_name'] = df['Timestamp'].dt.day_name()
+
+        df['day_name'] = df['day_name'].map(weekday_translation) 
 
         # df["weekday"] = df["weekday"].replace(WEEKDAY_TRANSLATION)
         # df["weekday"] = df["weekday"].astype(str)
