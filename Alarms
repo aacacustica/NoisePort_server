@@ -8915,3 +8915,972 @@
 2026-11-24 15:06:50,752 - processing.py - 06_alarms_processing.logging_config - INFO - SAVING THE ALARMS CSV FILE
 2026-11-24 15:06:50,753 - processing.py - 06_alarms_processing.logging_config - INFO - Saved or update alarms dataframe to /srv/services/inbox/ccmp13-dvk/merged_csv_query/postprocessing/20261112/ccmp13-dvk_alarms.csv
 2026-11-24 15:06:50,753 - main.py - 06_alarms_processing.logging_config - INFO - Finished all processing.
+2026-11-24 16:06:21,475 - main.py - 06_alarms_processing.logging_config - INFO - Starting alarm processing!!
+2026-11-24 16:06:21,482 - main.py - 06_alarms_processing.logging_config - INFO - Taxonomy: True
+2026-11-24 16:06:21,482 - main.py - 06_alarms_processing.logging_config - INFO - Entering the process all folder function
+2026-11-24 16:06:21,490 - utils_vi.py - 06_alarms_processing.logging_config - INFO - Latest stable version: v0.0
+2026-11-24 16:06:21,490 - utils_vi.py - 06_alarms_processing.logging_config - INFO - Latest stable version string: v0_0
+2026-11-24 16:06:21,490 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:21,490 - processing.py - 06_alarms_processing.logging_config - INFO - Suffix string: raspberry1
+2026-11-24 16:06:21,490 - processing.py - 06_alarms_processing.logging_config - INFO - Processed list file path: /srv/services/inbox/raspberry1/merged_csv_query/processed_csv_raspberry1_v0_0.txt
+2026-11-24 16:06:21,491 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:21,491 - processing.py - 06_alarms_processing.logging_config - INFO - Processing folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:06:21,491 - processing.py - 06_alarms_processing.logging_config - INFO - Getting the data from the dataframes
+2026-11-24 16:06:21,492 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:21,492 - processing.py - 06_alarms_processing.logging_config - INFO - Processing RASPBERRY data
+2026-11-24 16:06:21,492 - processing.py - 06_alarms_processing.logging_config - INFO - Found 8 CSV files in /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:06:21,492 - processing.py - 06_alarms_processing.logging_config - INFO - Processing CSV: /srv/services/inbox/raspberry1/merged_csv_query/merged_raspberry1_20261118.csv
+2026-11-24 16:06:22,356 - processing.py - 06_alarms_processing.logging_config - INFO - Saved corrected CSV to: /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261118_postpo.csv
+2026-11-24 16:06:22,356 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:22,356 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:22,356 - processing.py - 06_alarms_processing.logging_config - INFO - Adding datetime columns, sorting by datetime and setting datetime as index
+2026-11-24 16:06:22,393 - processing.py - 06_alarms_processing.logging_config - INFO - Start date 2026-11-18 12:02:00 and end date 2026-11-18 23:59:05
+2026-11-24 16:06:22,394 - processing.py - 06_alarms_processing.logging_config - INFO - df was sorted by datetime and datetime was set as index
+2026-11-24 16:06:22,394 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:22,394 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators column
+2026-11-24 16:06:22,621 - processing.py - 06_alarms_processing.logging_config - INFO - Adding nights column
+2026-11-24 16:06:22,970 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:06:22,970 - processing.py - 06_alarms_processing.logging_config - INFO - OCA Limits --> {'ld_limit': 65, 'le_limit': 65, 'ln_limit': 55}
+2026-11-24 16:06:22,985 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:22,985 - processing.py - 06_alarms_processing.logging_config - INFO - FILTERING PREDICTIONS
+2026-11-24 16:06:22,988 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:22,988 - processing.py - 06_alarms_processing.logging_config - INFO - MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA
+2026-11-24 16:06:22,988 - processing.py - 06_alarms_processing.logging_config - INFO - folder_output_dir_1h: /srv/services/inbox/raspberry1
+2026-11-24 16:06:22,988 - processing.py - 06_alarms_processing.logging_config - INFO - ia_visualization_folder: /srv/services/inbox/raspberry1/AI_ALARMS
+2026-11-24 16:06:22,988 - processing.py - 06_alarms_processing.logging_config - INFO - Point name detected: raspberry1
+2026-11-24 16:06:22,988 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:22,988 - processing.py - 06_alarms_processing.logging_config - INFO - Transforming 1 second data to 1 hour data
+2026-11-24 16:06:23,090 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:23,090 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:06:23,091 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators / night / oca to 2H dataframe
+2026-11-24 16:06:23,092 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:23,092 - processing.py - 06_alarms_processing.logging_config - INFO - CREATING THE CSV ALARMS!!!
+2026-11-24 16:06:23,092 - processing.py - 06_alarms_processing.logging_config - INFO - [1] Computing OCA alarm columns
+2026-11-24 16:06:23,093 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'oca_alarm'
+2026-11-24 16:06:23,093 - processing.py - 06_alarms_processing.logging_config - INFO - [2] Computing LMAX alarm columns
+2026-11-24 16:06:23,093 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LAmax_alarm' with threshold 95 dB
+2026-11-24 16:06:23,093 - processing.py - 06_alarms_processing.logging_config - INFO - [3] Computing LC-LA alarm columns
+2026-11-24 16:06:23,095 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LC_LA_alarm'
+2026-11-24 16:06:23,095 - processing.py - 06_alarms_processing.logging_config - INFO - [4] Computing dynamic L90 alarm columns
+2026-11-24 16:06:23,097 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'l90_alarm' with dynamic threshold +5 dB
+2026-11-24 16:06:23,097 - processing.py - 06_alarms_processing.logging_config - INFO - [5] Computing frequency composition alarms
+2026-11-24 16:06:23,103 - visualization.py - 06_alarms_processing.logging_config - INFO - frequency_composition: computing low/high frequency jump alarms
+2026-11-24 16:06:23,105 - processing.py - 06_alarms_processing.logging_config - INFO - [6] Computing tonal frequency alarms
+2026-11-24 16:06:23,105 - visualization.py - 06_alarms_processing.logging_config - INFO - Detecting tonal frequencies (compute-only, no plots)...
+2026-11-24 16:06:23,115 - visualization.py - 06_alarms_processing.logging_config - INFO - tonal_frequency: no tonal events detected.
+2026-11-24 16:06:23,115 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:23,115 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PEAKS!!!
+2026-11-24 16:06:23,115 - processing.py - 06_alarms_processing.logging_config - INFO - [8] Plotting peak heatmap for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:06:23,229 - visualization.py - 06_alarms_processing.logging_config - INFO - folder_output_dir: /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261118/GRAPHICS_ALARMS
+2026-11-24 16:06:23,410 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261118/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap.png
+2026-11-24 16:06:23,615 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261118/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap_4h.png
+2026-11-24 16:06:23,615 - processing.py - 06_alarms_processing.logging_config - INFO - [9] Plotting peak distribution for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:06:23,884 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261118/GRAPHICS_ALARMS/peak_peak_distribution.png
+2026-11-24 16:06:24,220 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261118/GRAPHICS_ALARMS/peak_peak_distribution_night.png
+2026-11-24 16:06:24,221 - processing.py - 06_alarms_processing.logging_config - INFO - [10] Plotting density distribution for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:06:24,395 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261118/GRAPHICS_ALARMS/density_peak_distribution_hourly.png
+2026-11-24 16:06:24,645 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261118/GRAPHICS_ALARMS/density_peak_density_distribution_hourly.png
+2026-11-24 16:06:24,645 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:24,645 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PREDICTION !!!
+2026-11-24 16:06:24,645 - processing.py - 06_alarms_processing.logging_config - INFO - [11] Plotting PLOT_PREDIC_LAEQ for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:06:24,646 - visualization.py - 06_alarms_processing.logging_config - INFO - Using 'NoisePort_Level_1' class for plotting
+2026-11-24 16:06:24,649 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_predic_laeq_15_min: "Column(s) ['LA_corrected', 'class'] do not exist"
+2026-11-24 16:06:24,649 - processing.py - 06_alarms_processing.logging_config - INFO - [12] Plotting box plot prediction for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:06:24,649 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_box_plot_prediction: 'Peak'
+2026-11-24 16:06:24,649 - processing.py - 06_alarms_processing.logging_config - INFO - [13] Plotting heatmap prediction for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:06:24,649 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_heat_map_prediction: 'Peak'
+2026-11-24 16:06:24,649 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:24,649 - processing.py - 06_alarms_processing.logging_config - INFO - SAVING THE ALARMS CSV FILE
+2026-11-24 16:06:24,651 - processing.py - 06_alarms_processing.logging_config - INFO - Saved or update alarms dataframe to /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261118/raspberry1_alarms.csv
+2026-11-24 16:06:24,651 - processing.py - 06_alarms_processing.logging_config - INFO - Processing CSV: /srv/services/inbox/raspberry1/merged_csv_query/merged_raspberry1_20261116.csv
+2026-11-24 16:06:24,713 - processing.py - 06_alarms_processing.logging_config - INFO - Saved corrected CSV to: /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261116_postpo.csv
+2026-11-24 16:06:24,714 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:24,714 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:24,714 - processing.py - 06_alarms_processing.logging_config - INFO - Adding datetime columns, sorting by datetime and setting datetime as index
+2026-11-24 16:06:24,718 - processing.py - 06_alarms_processing.logging_config - INFO - Start date 2026-11-16 08:01:00 and end date 2026-11-16 08:38:13
+2026-11-24 16:06:24,718 - processing.py - 06_alarms_processing.logging_config - INFO - df was sorted by datetime and datetime was set as index
+2026-11-24 16:06:24,718 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:24,718 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators column
+2026-11-24 16:06:24,731 - processing.py - 06_alarms_processing.logging_config - INFO - Adding nights column
+2026-11-24 16:06:24,755 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:06:24,755 - processing.py - 06_alarms_processing.logging_config - INFO - OCA Limits --> {'ld_limit': 65, 'le_limit': 65, 'ln_limit': 55}
+2026-11-24 16:06:24,758 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:24,758 - processing.py - 06_alarms_processing.logging_config - INFO - FILTERING PREDICTIONS
+2026-11-24 16:06:24,762 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:24,762 - processing.py - 06_alarms_processing.logging_config - INFO - MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA
+2026-11-24 16:06:24,762 - processing.py - 06_alarms_processing.logging_config - INFO - folder_output_dir_1h: /srv/services/inbox/raspberry1
+2026-11-24 16:06:24,762 - processing.py - 06_alarms_processing.logging_config - INFO - ia_visualization_folder: /srv/services/inbox/raspberry1/AI_ALARMS
+2026-11-24 16:06:24,762 - processing.py - 06_alarms_processing.logging_config - INFO - Point name detected: raspberry1
+2026-11-24 16:06:24,762 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:24,762 - processing.py - 06_alarms_processing.logging_config - INFO - Transforming 1 second data to 1 hour data
+2026-11-24 16:06:24,782 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:24,782 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:06:24,784 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators / night / oca to 2H dataframe
+2026-11-24 16:06:24,786 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:24,786 - processing.py - 06_alarms_processing.logging_config - INFO - CREATING THE CSV ALARMS!!!
+2026-11-24 16:06:24,786 - processing.py - 06_alarms_processing.logging_config - INFO - [1] Computing OCA alarm columns
+2026-11-24 16:06:24,787 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'oca_alarm'
+2026-11-24 16:06:24,787 - processing.py - 06_alarms_processing.logging_config - INFO - [2] Computing LMAX alarm columns
+2026-11-24 16:06:24,788 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LAmax_alarm' with threshold 95 dB
+2026-11-24 16:06:24,788 - processing.py - 06_alarms_processing.logging_config - INFO - [3] Computing LC-LA alarm columns
+2026-11-24 16:06:24,791 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LC_LA_alarm'
+2026-11-24 16:06:24,791 - processing.py - 06_alarms_processing.logging_config - INFO - [4] Computing dynamic L90 alarm columns
+2026-11-24 16:06:24,793 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'l90_alarm' with dynamic threshold +5 dB
+2026-11-24 16:06:24,793 - processing.py - 06_alarms_processing.logging_config - INFO - [5] Computing frequency composition alarms
+2026-11-24 16:06:24,798 - visualization.py - 06_alarms_processing.logging_config - INFO - frequency_composition: computing low/high frequency jump alarms
+2026-11-24 16:06:24,800 - processing.py - 06_alarms_processing.logging_config - INFO - [6] Computing tonal frequency alarms
+2026-11-24 16:06:24,800 - visualization.py - 06_alarms_processing.logging_config - INFO - Detecting tonal frequencies (compute-only, no plots)...
+2026-11-24 16:06:24,801 - visualization.py - 06_alarms_processing.logging_config - INFO - tonal_frequency: no tonal events detected.
+2026-11-24 16:06:24,801 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:06:24,801 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PEAKS!!!
+2026-11-24 16:06:24,802 - processing.py - 06_alarms_processing.logging_config - INFO - [8] Plotting peak heatmap for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:06:24,859 - visualization.py - 06_alarms_processing.logging_config - INFO - folder_output_dir: /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261116/GRAPHICS_ALARMS
+2026-11-24 16:06:25,022 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261116/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap.png
+2026-11-24 16:06:25,239 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261116/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap_4h.png
+2026-11-24 16:06:25,239 - processing.py - 06_alarms_processing.logging_config - INFO - [9] Plotting peak distribution for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:08:00,402 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261116/GRAPHICS_ALARMS/peak_peak_distribution.png
+2026-11-24 16:09:33,944 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261116/GRAPHICS_ALARMS/peak_peak_distribution_night.png
+2026-11-24 16:09:33,944 - processing.py - 06_alarms_processing.logging_config - INFO - [10] Plotting density distribution for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:34,059 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261116/GRAPHICS_ALARMS/density_peak_distribution_hourly.png
+2026-11-24 16:09:34,061 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_density_distribution_peaks: The data appears to lie in a lower-dimensional subspace of the space in which it is expressed. This has resulted in a singular data covariance matrix, which cannot be treated using the algorithms implemented in `gaussian_kde`. Consider performing principle component analysis / dimensionality reduction and using `gaussian_kde` with the transformed data.
+2026-11-24 16:09:34,061 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:34,061 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PREDICTION !!!
+2026-11-24 16:09:34,061 - processing.py - 06_alarms_processing.logging_config - INFO - [11] Plotting PLOT_PREDIC_LAEQ for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:34,061 - visualization.py - 06_alarms_processing.logging_config - INFO - Using 'NoisePort_Level_1' class for plotting
+2026-11-24 16:09:34,063 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_predic_laeq_15_min: "Column(s) ['LA_corrected', 'class'] do not exist"
+2026-11-24 16:09:34,063 - processing.py - 06_alarms_processing.logging_config - INFO - [12] Plotting box plot prediction for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:34,063 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_box_plot_prediction: 'Peak'
+2026-11-24 16:09:34,063 - processing.py - 06_alarms_processing.logging_config - INFO - [13] Plotting heatmap prediction for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:34,063 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_heat_map_prediction: 'Peak'
+2026-11-24 16:09:34,063 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:34,063 - processing.py - 06_alarms_processing.logging_config - INFO - SAVING THE ALARMS CSV FILE
+2026-11-24 16:09:34,064 - processing.py - 06_alarms_processing.logging_config - INFO - Saved or update alarms dataframe to /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261116/raspberry1_alarms.csv
+2026-11-24 16:09:34,064 - processing.py - 06_alarms_processing.logging_config - INFO - Processing CSV: /srv/services/inbox/raspberry1/merged_csv_query/merged_raspberry1_20261119.csv
+2026-11-24 16:09:35,744 - processing.py - 06_alarms_processing.logging_config - INFO - Saved corrected CSV to: /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261119_postpo.csv
+2026-11-24 16:09:35,744 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:35,744 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:35,744 - processing.py - 06_alarms_processing.logging_config - INFO - Adding datetime columns, sorting by datetime and setting datetime as index
+2026-11-24 16:09:35,814 - processing.py - 06_alarms_processing.logging_config - INFO - Start date 2026-11-19 00:00:00 and end date 2026-11-19 23:59:57
+2026-11-24 16:09:35,814 - processing.py - 06_alarms_processing.logging_config - INFO - df was sorted by datetime and datetime was set as index
+2026-11-24 16:09:35,814 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:35,814 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators column
+2026-11-24 16:09:36,958 - processing.py - 06_alarms_processing.logging_config - INFO - Adding nights column
+2026-11-24 16:09:37,484 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:09:37,484 - processing.py - 06_alarms_processing.logging_config - INFO - OCA Limits --> {'ld_limit': 65, 'le_limit': 65, 'ln_limit': 55}
+2026-11-24 16:09:37,511 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:37,511 - processing.py - 06_alarms_processing.logging_config - INFO - FILTERING PREDICTIONS
+2026-11-24 16:09:37,515 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:37,515 - processing.py - 06_alarms_processing.logging_config - INFO - MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA
+2026-11-24 16:09:37,515 - processing.py - 06_alarms_processing.logging_config - INFO - folder_output_dir_1h: /srv/services/inbox/raspberry1
+2026-11-24 16:09:37,515 - processing.py - 06_alarms_processing.logging_config - INFO - ia_visualization_folder: /srv/services/inbox/raspberry1/AI_ALARMS
+2026-11-24 16:09:37,515 - processing.py - 06_alarms_processing.logging_config - INFO - Point name detected: raspberry1
+2026-11-24 16:09:37,515 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:37,515 - processing.py - 06_alarms_processing.logging_config - INFO - Transforming 1 second data to 1 hour data
+2026-11-24 16:09:37,687 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:37,687 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:09:37,688 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators / night / oca to 2H dataframe
+2026-11-24 16:09:37,690 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:37,690 - processing.py - 06_alarms_processing.logging_config - INFO - CREATING THE CSV ALARMS!!!
+2026-11-24 16:09:37,690 - processing.py - 06_alarms_processing.logging_config - INFO - [1] Computing OCA alarm columns
+2026-11-24 16:09:37,691 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'oca_alarm'
+2026-11-24 16:09:37,691 - processing.py - 06_alarms_processing.logging_config - INFO - [2] Computing LMAX alarm columns
+2026-11-24 16:09:37,691 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LAmax_alarm' with threshold 95 dB
+2026-11-24 16:09:37,691 - processing.py - 06_alarms_processing.logging_config - INFO - [3] Computing LC-LA alarm columns
+2026-11-24 16:09:37,697 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LC_LA_alarm'
+2026-11-24 16:09:37,697 - processing.py - 06_alarms_processing.logging_config - INFO - [4] Computing dynamic L90 alarm columns
+2026-11-24 16:09:37,701 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'l90_alarm' with dynamic threshold +5 dB
+2026-11-24 16:09:37,701 - processing.py - 06_alarms_processing.logging_config - INFO - [5] Computing frequency composition alarms
+2026-11-24 16:09:37,710 - visualization.py - 06_alarms_processing.logging_config - INFO - frequency_composition: computing low/high frequency jump alarms
+2026-11-24 16:09:37,712 - processing.py - 06_alarms_processing.logging_config - INFO - [6] Computing tonal frequency alarms
+2026-11-24 16:09:37,712 - visualization.py - 06_alarms_processing.logging_config - INFO - Detecting tonal frequencies (compute-only, no plots)...
+2026-11-24 16:09:37,729 - visualization.py - 06_alarms_processing.logging_config - INFO - tonal_frequency: no tonal events detected.
+2026-11-24 16:09:37,729 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:37,730 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PEAKS!!!
+2026-11-24 16:09:37,730 - processing.py - 06_alarms_processing.logging_config - INFO - [8] Plotting peak heatmap for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:37,838 - visualization.py - 06_alarms_processing.logging_config - INFO - folder_output_dir: /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261119/GRAPHICS_ALARMS
+2026-11-24 16:09:38,039 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261119/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap.png
+2026-11-24 16:09:38,254 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261119/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap_4h.png
+2026-11-24 16:09:38,254 - processing.py - 06_alarms_processing.logging_config - INFO - [9] Plotting peak distribution for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:38,531 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261119/GRAPHICS_ALARMS/peak_peak_distribution.png
+2026-11-24 16:09:38,825 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261119/GRAPHICS_ALARMS/peak_peak_distribution_night.png
+2026-11-24 16:09:38,825 - processing.py - 06_alarms_processing.logging_config - INFO - [10] Plotting density distribution for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:39,039 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261119/GRAPHICS_ALARMS/density_peak_distribution_hourly.png
+2026-11-24 16:09:39,295 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261119/GRAPHICS_ALARMS/density_peak_density_distribution_hourly.png
+2026-11-24 16:09:39,295 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:39,295 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PREDICTION !!!
+2026-11-24 16:09:39,295 - processing.py - 06_alarms_processing.logging_config - INFO - [11] Plotting PLOT_PREDIC_LAEQ for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:39,295 - visualization.py - 06_alarms_processing.logging_config - INFO - Using 'NoisePort_Level_1' class for plotting
+2026-11-24 16:09:39,297 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_predic_laeq_15_min: "Column(s) ['LA_corrected', 'class'] do not exist"
+2026-11-24 16:09:39,297 - processing.py - 06_alarms_processing.logging_config - INFO - [12] Plotting box plot prediction for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:39,297 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_box_plot_prediction: 'Peak'
+2026-11-24 16:09:39,297 - processing.py - 06_alarms_processing.logging_config - INFO - [13] Plotting heatmap prediction for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:39,297 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_heat_map_prediction: 'Peak'
+2026-11-24 16:09:39,297 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:39,297 - processing.py - 06_alarms_processing.logging_config - INFO - SAVING THE ALARMS CSV FILE
+2026-11-24 16:09:39,298 - processing.py - 06_alarms_processing.logging_config - INFO - Saved or update alarms dataframe to /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261119/raspberry1_alarms.csv
+2026-11-24 16:09:39,298 - processing.py - 06_alarms_processing.logging_config - INFO - Processing CSV: /srv/services/inbox/raspberry1/merged_csv_query/merged_raspberry1_20261120.csv
+2026-11-24 16:09:40,921 - processing.py - 06_alarms_processing.logging_config - INFO - Saved corrected CSV to: /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261120_postpo.csv
+2026-11-24 16:09:40,922 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:40,922 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:40,922 - processing.py - 06_alarms_processing.logging_config - INFO - Adding datetime columns, sorting by datetime and setting datetime as index
+2026-11-24 16:09:40,973 - processing.py - 06_alarms_processing.logging_config - INFO - Start date 2026-11-20 00:00:00 and end date 2026-11-20 23:59:59
+2026-11-24 16:09:40,974 - processing.py - 06_alarms_processing.logging_config - INFO - df was sorted by datetime and datetime was set as index
+2026-11-24 16:09:40,974 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:40,974 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators column
+2026-11-24 16:09:41,387 - processing.py - 06_alarms_processing.logging_config - INFO - Adding nights column
+2026-11-24 16:09:41,925 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:09:41,925 - processing.py - 06_alarms_processing.logging_config - INFO - OCA Limits --> {'ld_limit': 65, 'le_limit': 65, 'ln_limit': 55}
+2026-11-24 16:09:41,953 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:41,953 - processing.py - 06_alarms_processing.logging_config - INFO - FILTERING PREDICTIONS
+2026-11-24 16:09:41,960 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:41,960 - processing.py - 06_alarms_processing.logging_config - INFO - MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA
+2026-11-24 16:09:41,960 - processing.py - 06_alarms_processing.logging_config - INFO - folder_output_dir_1h: /srv/services/inbox/raspberry1
+2026-11-24 16:09:41,960 - processing.py - 06_alarms_processing.logging_config - INFO - ia_visualization_folder: /srv/services/inbox/raspberry1/AI_ALARMS
+2026-11-24 16:09:41,960 - processing.py - 06_alarms_processing.logging_config - INFO - Point name detected: raspberry1
+2026-11-24 16:09:41,960 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:41,960 - processing.py - 06_alarms_processing.logging_config - INFO - Transforming 1 second data to 1 hour data
+2026-11-24 16:09:42,128 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:42,128 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:09:42,128 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators / night / oca to 2H dataframe
+2026-11-24 16:09:42,129 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:42,129 - processing.py - 06_alarms_processing.logging_config - INFO - CREATING THE CSV ALARMS!!!
+2026-11-24 16:09:42,130 - processing.py - 06_alarms_processing.logging_config - INFO - [1] Computing OCA alarm columns
+2026-11-24 16:09:42,130 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'oca_alarm'
+2026-11-24 16:09:42,130 - processing.py - 06_alarms_processing.logging_config - INFO - [2] Computing LMAX alarm columns
+2026-11-24 16:09:42,130 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LAmax_alarm' with threshold 95 dB
+2026-11-24 16:09:42,130 - processing.py - 06_alarms_processing.logging_config - INFO - [3] Computing LC-LA alarm columns
+2026-11-24 16:09:42,132 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LC_LA_alarm'
+2026-11-24 16:09:42,132 - processing.py - 06_alarms_processing.logging_config - INFO - [4] Computing dynamic L90 alarm columns
+2026-11-24 16:09:42,134 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'l90_alarm' with dynamic threshold +5 dB
+2026-11-24 16:09:42,134 - processing.py - 06_alarms_processing.logging_config - INFO - [5] Computing frequency composition alarms
+2026-11-24 16:09:42,143 - visualization.py - 06_alarms_processing.logging_config - INFO - frequency_composition: computing low/high frequency jump alarms
+2026-11-24 16:09:42,146 - processing.py - 06_alarms_processing.logging_config - INFO - [6] Computing tonal frequency alarms
+2026-11-24 16:09:42,146 - visualization.py - 06_alarms_processing.logging_config - INFO - Detecting tonal frequencies (compute-only, no plots)...
+2026-11-24 16:09:42,162 - visualization.py - 06_alarms_processing.logging_config - INFO - tonal_frequency: no tonal events detected.
+2026-11-24 16:09:42,162 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:42,162 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PEAKS!!!
+2026-11-24 16:09:42,162 - processing.py - 06_alarms_processing.logging_config - INFO - [8] Plotting peak heatmap for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:42,268 - visualization.py - 06_alarms_processing.logging_config - INFO - folder_output_dir: /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261120/GRAPHICS_ALARMS
+2026-11-24 16:09:42,466 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261120/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap.png
+2026-11-24 16:09:42,674 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261120/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap_4h.png
+2026-11-24 16:09:42,675 - processing.py - 06_alarms_processing.logging_config - INFO - [9] Plotting peak distribution for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:42,951 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261120/GRAPHICS_ALARMS/peak_peak_distribution.png
+2026-11-24 16:09:43,235 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261120/GRAPHICS_ALARMS/peak_peak_distribution_night.png
+2026-11-24 16:09:43,235 - processing.py - 06_alarms_processing.logging_config - INFO - [10] Plotting density distribution for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:43,452 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261120/GRAPHICS_ALARMS/density_peak_distribution_hourly.png
+2026-11-24 16:09:43,624 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261120/GRAPHICS_ALARMS/density_peak_density_distribution_hourly.png
+2026-11-24 16:09:43,624 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:43,624 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PREDICTION !!!
+2026-11-24 16:09:43,624 - processing.py - 06_alarms_processing.logging_config - INFO - [11] Plotting PLOT_PREDIC_LAEQ for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:43,624 - visualization.py - 06_alarms_processing.logging_config - INFO - Using 'NoisePort_Level_1' class for plotting
+2026-11-24 16:09:43,626 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_predic_laeq_15_min: "Column(s) ['LA_corrected', 'class'] do not exist"
+2026-11-24 16:09:43,626 - processing.py - 06_alarms_processing.logging_config - INFO - [12] Plotting box plot prediction for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:43,626 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_box_plot_prediction: 'Peak'
+2026-11-24 16:09:43,626 - processing.py - 06_alarms_processing.logging_config - INFO - [13] Plotting heatmap prediction for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:43,626 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_heat_map_prediction: 'Peak'
+2026-11-24 16:09:43,626 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:43,626 - processing.py - 06_alarms_processing.logging_config - INFO - SAVING THE ALARMS CSV FILE
+2026-11-24 16:09:43,627 - processing.py - 06_alarms_processing.logging_config - INFO - Saved or update alarms dataframe to /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261120/raspberry1_alarms.csv
+2026-11-24 16:09:43,627 - processing.py - 06_alarms_processing.logging_config - INFO - Processing CSV: /srv/services/inbox/raspberry1/merged_csv_query/merged_raspberry1_20261122.csv
+2026-11-24 16:09:44,878 - processing.py - 06_alarms_processing.logging_config - INFO - Saved corrected CSV to: /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261122_postpo.csv
+2026-11-24 16:09:44,878 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:44,878 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:44,878 - processing.py - 06_alarms_processing.logging_config - INFO - Adding datetime columns, sorting by datetime and setting datetime as index
+2026-11-24 16:09:44,915 - processing.py - 06_alarms_processing.logging_config - INFO - Start date 2026-11-22 00:01:00 and end date 2026-11-22 18:02:47
+2026-11-24 16:09:44,915 - processing.py - 06_alarms_processing.logging_config - INFO - df was sorted by datetime and datetime was set as index
+2026-11-24 16:09:44,915 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:44,915 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators column
+2026-11-24 16:09:45,228 - processing.py - 06_alarms_processing.logging_config - INFO - Adding nights column
+2026-11-24 16:09:46,484 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:09:46,484 - processing.py - 06_alarms_processing.logging_config - INFO - OCA Limits --> {'ld_limit': 65, 'le_limit': 65, 'ln_limit': 55}
+2026-11-24 16:09:46,503 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:46,503 - processing.py - 06_alarms_processing.logging_config - INFO - FILTERING PREDICTIONS
+2026-11-24 16:09:46,506 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:46,506 - processing.py - 06_alarms_processing.logging_config - INFO - MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA
+2026-11-24 16:09:46,506 - processing.py - 06_alarms_processing.logging_config - INFO - folder_output_dir_1h: /srv/services/inbox/raspberry1
+2026-11-24 16:09:46,506 - processing.py - 06_alarms_processing.logging_config - INFO - ia_visualization_folder: /srv/services/inbox/raspberry1/AI_ALARMS
+2026-11-24 16:09:46,506 - processing.py - 06_alarms_processing.logging_config - INFO - Point name detected: raspberry1
+2026-11-24 16:09:46,506 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:46,506 - processing.py - 06_alarms_processing.logging_config - INFO - Transforming 1 second data to 1 hour data
+2026-11-24 16:09:46,653 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:46,653 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:09:46,653 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators / night / oca to 2H dataframe
+2026-11-24 16:09:46,654 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:46,654 - processing.py - 06_alarms_processing.logging_config - INFO - CREATING THE CSV ALARMS!!!
+2026-11-24 16:09:46,654 - processing.py - 06_alarms_processing.logging_config - INFO - [1] Computing OCA alarm columns
+2026-11-24 16:09:46,655 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'oca_alarm'
+2026-11-24 16:09:46,655 - processing.py - 06_alarms_processing.logging_config - INFO - [2] Computing LMAX alarm columns
+2026-11-24 16:09:46,655 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LAmax_alarm' with threshold 95 dB
+2026-11-24 16:09:46,655 - processing.py - 06_alarms_processing.logging_config - INFO - [3] Computing LC-LA alarm columns
+2026-11-24 16:09:46,657 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LC_LA_alarm'
+2026-11-24 16:09:46,657 - processing.py - 06_alarms_processing.logging_config - INFO - [4] Computing dynamic L90 alarm columns
+2026-11-24 16:09:46,658 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'l90_alarm' with dynamic threshold +5 dB
+2026-11-24 16:09:46,658 - processing.py - 06_alarms_processing.logging_config - INFO - [5] Computing frequency composition alarms
+2026-11-24 16:09:46,664 - visualization.py - 06_alarms_processing.logging_config - INFO - frequency_composition: computing low/high frequency jump alarms
+2026-11-24 16:09:46,666 - processing.py - 06_alarms_processing.logging_config - INFO - [6] Computing tonal frequency alarms
+2026-11-24 16:09:46,666 - visualization.py - 06_alarms_processing.logging_config - INFO - Detecting tonal frequencies (compute-only, no plots)...
+2026-11-24 16:09:46,678 - visualization.py - 06_alarms_processing.logging_config - INFO - tonal_frequency: no tonal events detected.
+2026-11-24 16:09:46,679 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:46,679 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PEAKS!!!
+2026-11-24 16:09:46,679 - processing.py - 06_alarms_processing.logging_config - INFO - [8] Plotting peak heatmap for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:46,770 - visualization.py - 06_alarms_processing.logging_config - INFO - folder_output_dir: /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261122/GRAPHICS_ALARMS
+2026-11-24 16:09:46,947 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261122/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap.png
+2026-11-24 16:09:47,139 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261122/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap_4h.png
+2026-11-24 16:09:47,139 - processing.py - 06_alarms_processing.logging_config - INFO - [9] Plotting peak distribution for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:47,390 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261122/GRAPHICS_ALARMS/peak_peak_distribution.png
+2026-11-24 16:09:47,628 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261122/GRAPHICS_ALARMS/peak_peak_distribution_night.png
+2026-11-24 16:09:47,628 - processing.py - 06_alarms_processing.logging_config - INFO - [10] Plotting density distribution for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:47,814 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261122/GRAPHICS_ALARMS/density_peak_distribution_hourly.png
+2026-11-24 16:09:48,020 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261122/GRAPHICS_ALARMS/density_peak_density_distribution_hourly.png
+2026-11-24 16:09:48,020 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:48,020 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PREDICTION !!!
+2026-11-24 16:09:48,020 - processing.py - 06_alarms_processing.logging_config - INFO - [11] Plotting PLOT_PREDIC_LAEQ for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:48,020 - visualization.py - 06_alarms_processing.logging_config - INFO - Using 'NoisePort_Level_1' class for plotting
+2026-11-24 16:09:48,022 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_predic_laeq_15_min: "Column(s) ['LA_corrected', 'class'] do not exist"
+2026-11-24 16:09:48,022 - processing.py - 06_alarms_processing.logging_config - INFO - [12] Plotting box plot prediction for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:48,022 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_box_plot_prediction: 'Peak'
+2026-11-24 16:09:48,022 - processing.py - 06_alarms_processing.logging_config - INFO - [13] Plotting heatmap prediction for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:48,022 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_heat_map_prediction: 'Peak'
+2026-11-24 16:09:48,022 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:48,022 - processing.py - 06_alarms_processing.logging_config - INFO - SAVING THE ALARMS CSV FILE
+2026-11-24 16:09:48,023 - processing.py - 06_alarms_processing.logging_config - INFO - Saved or update alarms dataframe to /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261122/raspberry1_alarms.csv
+2026-11-24 16:09:48,023 - processing.py - 06_alarms_processing.logging_config - INFO - Processing CSV: /srv/services/inbox/raspberry1/merged_csv_query/merged_raspberry1_20261124.csv
+2026-11-24 16:09:49,067 - processing.py - 06_alarms_processing.logging_config - INFO - Saved corrected CSV to: /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261124_postpo.csv
+2026-11-24 16:09:49,067 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:49,067 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:49,067 - processing.py - 06_alarms_processing.logging_config - INFO - Adding datetime columns, sorting by datetime and setting datetime as index
+2026-11-24 16:09:49,097 - processing.py - 06_alarms_processing.logging_config - INFO - Start date 2026-11-24 00:00:00 and end date 2026-11-24 14:59:23
+2026-11-24 16:09:49,097 - processing.py - 06_alarms_processing.logging_config - INFO - df was sorted by datetime and datetime was set as index
+2026-11-24 16:09:49,097 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:49,097 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators column
+2026-11-24 16:09:49,359 - processing.py - 06_alarms_processing.logging_config - INFO - Adding nights column
+2026-11-24 16:09:49,674 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:09:49,674 - processing.py - 06_alarms_processing.logging_config - INFO - OCA Limits --> {'ld_limit': 65, 'le_limit': 65, 'ln_limit': 55}
+2026-11-24 16:09:49,690 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:49,690 - processing.py - 06_alarms_processing.logging_config - INFO - FILTERING PREDICTIONS
+2026-11-24 16:09:49,693 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:49,693 - processing.py - 06_alarms_processing.logging_config - INFO - MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA
+2026-11-24 16:09:49,693 - processing.py - 06_alarms_processing.logging_config - INFO - folder_output_dir_1h: /srv/services/inbox/raspberry1
+2026-11-24 16:09:49,693 - processing.py - 06_alarms_processing.logging_config - INFO - ia_visualization_folder: /srv/services/inbox/raspberry1/AI_ALARMS
+2026-11-24 16:09:49,693 - processing.py - 06_alarms_processing.logging_config - INFO - Point name detected: raspberry1
+2026-11-24 16:09:49,693 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:49,693 - processing.py - 06_alarms_processing.logging_config - INFO - Transforming 1 second data to 1 hour data
+2026-11-24 16:09:49,804 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:49,804 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:09:49,805 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators / night / oca to 2H dataframe
+2026-11-24 16:09:49,806 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:49,806 - processing.py - 06_alarms_processing.logging_config - INFO - CREATING THE CSV ALARMS!!!
+2026-11-24 16:09:49,807 - processing.py - 06_alarms_processing.logging_config - INFO - [1] Computing OCA alarm columns
+2026-11-24 16:09:49,807 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'oca_alarm'
+2026-11-24 16:09:49,807 - processing.py - 06_alarms_processing.logging_config - INFO - [2] Computing LMAX alarm columns
+2026-11-24 16:09:49,808 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LAmax_alarm' with threshold 95 dB
+2026-11-24 16:09:49,808 - processing.py - 06_alarms_processing.logging_config - INFO - [3] Computing LC-LA alarm columns
+2026-11-24 16:09:49,811 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LC_LA_alarm'
+2026-11-24 16:09:49,811 - processing.py - 06_alarms_processing.logging_config - INFO - [4] Computing dynamic L90 alarm columns
+2026-11-24 16:09:49,814 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'l90_alarm' with dynamic threshold +5 dB
+2026-11-24 16:09:49,814 - processing.py - 06_alarms_processing.logging_config - INFO - [5] Computing frequency composition alarms
+2026-11-24 16:09:49,821 - visualization.py - 06_alarms_processing.logging_config - INFO - frequency_composition: computing low/high frequency jump alarms
+2026-11-24 16:09:49,823 - processing.py - 06_alarms_processing.logging_config - INFO - [6] Computing tonal frequency alarms
+2026-11-24 16:09:49,823 - visualization.py - 06_alarms_processing.logging_config - INFO - Detecting tonal frequencies (compute-only, no plots)...
+2026-11-24 16:09:49,833 - visualization.py - 06_alarms_processing.logging_config - INFO - tonal_frequency: no tonal events detected.
+2026-11-24 16:09:49,834 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:49,834 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PEAKS!!!
+2026-11-24 16:09:49,834 - processing.py - 06_alarms_processing.logging_config - INFO - [8] Plotting peak heatmap for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:49,915 - visualization.py - 06_alarms_processing.logging_config - INFO - folder_output_dir: /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261124/GRAPHICS_ALARMS
+2026-11-24 16:09:50,083 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261124/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap.png
+2026-11-24 16:09:50,323 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261124/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap_4h.png
+2026-11-24 16:09:50,323 - processing.py - 06_alarms_processing.logging_config - INFO - [9] Plotting peak distribution for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:50,582 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261124/GRAPHICS_ALARMS/peak_peak_distribution.png
+2026-11-24 16:09:50,864 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261124/GRAPHICS_ALARMS/peak_peak_distribution_night.png
+2026-11-24 16:09:50,864 - processing.py - 06_alarms_processing.logging_config - INFO - [10] Plotting density distribution for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:51,045 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261124/GRAPHICS_ALARMS/density_peak_distribution_hourly.png
+2026-11-24 16:09:51,288 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261124/GRAPHICS_ALARMS/density_peak_density_distribution_hourly.png
+2026-11-24 16:09:51,289 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:51,289 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PREDICTION !!!
+2026-11-24 16:09:51,289 - processing.py - 06_alarms_processing.logging_config - INFO - [11] Plotting PLOT_PREDIC_LAEQ for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:51,289 - visualization.py - 06_alarms_processing.logging_config - INFO - Using 'NoisePort_Level_1' class for plotting
+2026-11-24 16:09:51,291 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_predic_laeq_15_min: "Column(s) ['LA_corrected', 'class'] do not exist"
+2026-11-24 16:09:51,291 - processing.py - 06_alarms_processing.logging_config - INFO - [12] Plotting box plot prediction for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:51,291 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_box_plot_prediction: 'Peak'
+2026-11-24 16:09:51,291 - processing.py - 06_alarms_processing.logging_config - INFO - [13] Plotting heatmap prediction for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:51,291 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_heat_map_prediction: 'Peak'
+2026-11-24 16:09:51,291 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:51,291 - processing.py - 06_alarms_processing.logging_config - INFO - SAVING THE ALARMS CSV FILE
+2026-11-24 16:09:51,293 - processing.py - 06_alarms_processing.logging_config - INFO - Saved or update alarms dataframe to /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261124/raspberry1_alarms.csv
+2026-11-24 16:09:51,293 - processing.py - 06_alarms_processing.logging_config - INFO - Processing CSV: /srv/services/inbox/raspberry1/merged_csv_query/merged_raspberry1_20261123.csv
+2026-11-24 16:09:52,305 - processing.py - 06_alarms_processing.logging_config - INFO - Saved corrected CSV to: /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261123_postpo.csv
+2026-11-24 16:09:52,306 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:52,306 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:52,306 - processing.py - 06_alarms_processing.logging_config - INFO - Adding datetime columns, sorting by datetime and setting datetime as index
+2026-11-24 16:09:52,371 - processing.py - 06_alarms_processing.logging_config - INFO - Start date 2026-11-23 11:08:00 and end date 2026-11-23 23:59:36
+2026-11-24 16:09:52,372 - processing.py - 06_alarms_processing.logging_config - INFO - df was sorted by datetime and datetime was set as index
+2026-11-24 16:09:52,372 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:52,372 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators column
+2026-11-24 16:09:52,653 - processing.py - 06_alarms_processing.logging_config - INFO - Adding nights column
+2026-11-24 16:09:52,979 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:09:52,980 - processing.py - 06_alarms_processing.logging_config - INFO - OCA Limits --> {'ld_limit': 65, 'le_limit': 65, 'ln_limit': 55}
+2026-11-24 16:09:52,994 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:52,994 - processing.py - 06_alarms_processing.logging_config - INFO - FILTERING PREDICTIONS
+2026-11-24 16:09:52,996 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:52,996 - processing.py - 06_alarms_processing.logging_config - INFO - MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA
+2026-11-24 16:09:52,996 - processing.py - 06_alarms_processing.logging_config - INFO - folder_output_dir_1h: /srv/services/inbox/raspberry1
+2026-11-24 16:09:52,997 - processing.py - 06_alarms_processing.logging_config - INFO - ia_visualization_folder: /srv/services/inbox/raspberry1/AI_ALARMS
+2026-11-24 16:09:52,997 - processing.py - 06_alarms_processing.logging_config - INFO - Point name detected: raspberry1
+2026-11-24 16:09:52,997 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:52,997 - processing.py - 06_alarms_processing.logging_config - INFO - Transforming 1 second data to 1 hour data
+2026-11-24 16:09:53,106 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:53,106 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:09:53,106 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators / night / oca to 2H dataframe
+2026-11-24 16:09:53,107 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:53,107 - processing.py - 06_alarms_processing.logging_config - INFO - CREATING THE CSV ALARMS!!!
+2026-11-24 16:09:53,108 - processing.py - 06_alarms_processing.logging_config - INFO - [1] Computing OCA alarm columns
+2026-11-24 16:09:53,108 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'oca_alarm'
+2026-11-24 16:09:53,108 - processing.py - 06_alarms_processing.logging_config - INFO - [2] Computing LMAX alarm columns
+2026-11-24 16:09:53,108 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LAmax_alarm' with threshold 95 dB
+2026-11-24 16:09:53,108 - processing.py - 06_alarms_processing.logging_config - INFO - [3] Computing LC-LA alarm columns
+2026-11-24 16:09:53,110 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LC_LA_alarm'
+2026-11-24 16:09:53,110 - processing.py - 06_alarms_processing.logging_config - INFO - [4] Computing dynamic L90 alarm columns
+2026-11-24 16:09:53,112 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'l90_alarm' with dynamic threshold +5 dB
+2026-11-24 16:09:53,112 - processing.py - 06_alarms_processing.logging_config - INFO - [5] Computing frequency composition alarms
+2026-11-24 16:09:53,117 - visualization.py - 06_alarms_processing.logging_config - INFO - frequency_composition: computing low/high frequency jump alarms
+2026-11-24 16:09:53,119 - processing.py - 06_alarms_processing.logging_config - INFO - [6] Computing tonal frequency alarms
+2026-11-24 16:09:53,120 - visualization.py - 06_alarms_processing.logging_config - INFO - Detecting tonal frequencies (compute-only, no plots)...
+2026-11-24 16:09:53,129 - visualization.py - 06_alarms_processing.logging_config - INFO - tonal_frequency: no tonal events detected.
+2026-11-24 16:09:53,130 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:53,130 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PEAKS!!!
+2026-11-24 16:09:53,130 - processing.py - 06_alarms_processing.logging_config - INFO - [8] Plotting peak heatmap for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:53,222 - visualization.py - 06_alarms_processing.logging_config - INFO - folder_output_dir: /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261123/GRAPHICS_ALARMS
+2026-11-24 16:09:53,476 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261123/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap.png
+2026-11-24 16:09:53,742 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261123/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap_4h.png
+2026-11-24 16:09:53,742 - processing.py - 06_alarms_processing.logging_config - INFO - [9] Plotting peak distribution for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:54,013 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261123/GRAPHICS_ALARMS/peak_peak_distribution.png
+2026-11-24 16:09:54,329 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261123/GRAPHICS_ALARMS/peak_peak_distribution_night.png
+2026-11-24 16:09:54,329 - processing.py - 06_alarms_processing.logging_config - INFO - [10] Plotting density distribution for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:54,525 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261123/GRAPHICS_ALARMS/density_peak_distribution_hourly.png
+2026-11-24 16:09:54,719 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261123/GRAPHICS_ALARMS/density_peak_density_distribution_hourly.png
+2026-11-24 16:09:54,719 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:54,720 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PREDICTION !!!
+2026-11-24 16:09:54,720 - processing.py - 06_alarms_processing.logging_config - INFO - [11] Plotting PLOT_PREDIC_LAEQ for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:54,721 - visualization.py - 06_alarms_processing.logging_config - INFO - Using 'NoisePort_Level_1' class for plotting
+2026-11-24 16:09:54,726 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_predic_laeq_15_min: "Column(s) ['LA_corrected', 'class'] do not exist"
+2026-11-24 16:09:54,726 - processing.py - 06_alarms_processing.logging_config - INFO - [12] Plotting box plot prediction for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:54,727 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_box_plot_prediction: 'Peak'
+2026-11-24 16:09:54,727 - processing.py - 06_alarms_processing.logging_config - INFO - [13] Plotting heatmap prediction for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:54,727 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_heat_map_prediction: 'Peak'
+2026-11-24 16:09:54,727 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:54,727 - processing.py - 06_alarms_processing.logging_config - INFO - SAVING THE ALARMS CSV FILE
+2026-11-24 16:09:54,728 - processing.py - 06_alarms_processing.logging_config - INFO - Saved or update alarms dataframe to /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261123/raspberry1_alarms.csv
+2026-11-24 16:09:54,729 - processing.py - 06_alarms_processing.logging_config - INFO - Processing CSV: /srv/services/inbox/raspberry1/merged_csv_query/merged_raspberry1_20261121.csv
+2026-11-24 16:09:57,005 - processing.py - 06_alarms_processing.logging_config - INFO - Saved corrected CSV to: /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261121_postpo.csv
+2026-11-24 16:09:57,006 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:57,006 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:57,006 - processing.py - 06_alarms_processing.logging_config - INFO - Adding datetime columns, sorting by datetime and setting datetime as index
+2026-11-24 16:09:57,101 - processing.py - 06_alarms_processing.logging_config - INFO - Start date 2026-11-21 00:00:00 and end date 2026-11-21 23:59:45
+2026-11-24 16:09:57,102 - processing.py - 06_alarms_processing.logging_config - INFO - df was sorted by datetime and datetime was set as index
+2026-11-24 16:09:57,102 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:57,102 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators column
+2026-11-24 16:09:57,573 - processing.py - 06_alarms_processing.logging_config - INFO - Adding nights column
+2026-11-24 16:09:58,178 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:09:58,178 - processing.py - 06_alarms_processing.logging_config - INFO - OCA Limits --> {'ld_limit': 65, 'le_limit': 65, 'ln_limit': 55}
+2026-11-24 16:09:58,205 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:58,205 - processing.py - 06_alarms_processing.logging_config - INFO - FILTERING PREDICTIONS
+2026-11-24 16:09:58,210 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:58,210 - processing.py - 06_alarms_processing.logging_config - INFO - MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA
+2026-11-24 16:09:58,210 - processing.py - 06_alarms_processing.logging_config - INFO - folder_output_dir_1h: /srv/services/inbox/raspberry1
+2026-11-24 16:09:58,210 - processing.py - 06_alarms_processing.logging_config - INFO - ia_visualization_folder: /srv/services/inbox/raspberry1/AI_ALARMS
+2026-11-24 16:09:58,210 - processing.py - 06_alarms_processing.logging_config - INFO - Point name detected: raspberry1
+2026-11-24 16:09:58,210 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:58,210 - processing.py - 06_alarms_processing.logging_config - INFO - Transforming 1 second data to 1 hour data
+2026-11-24 16:09:58,423 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:58,423 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:09:58,424 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators / night / oca to 2H dataframe
+2026-11-24 16:09:58,425 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:58,425 - processing.py - 06_alarms_processing.logging_config - INFO - CREATING THE CSV ALARMS!!!
+2026-11-24 16:09:58,426 - processing.py - 06_alarms_processing.logging_config - INFO - [1] Computing OCA alarm columns
+2026-11-24 16:09:58,426 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'oca_alarm'
+2026-11-24 16:09:58,426 - processing.py - 06_alarms_processing.logging_config - INFO - [2] Computing LMAX alarm columns
+2026-11-24 16:09:58,426 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LAmax_alarm' with threshold 95 dB
+2026-11-24 16:09:58,426 - processing.py - 06_alarms_processing.logging_config - INFO - [3] Computing LC-LA alarm columns
+2026-11-24 16:09:58,428 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LC_LA_alarm'
+2026-11-24 16:09:58,428 - processing.py - 06_alarms_processing.logging_config - INFO - [4] Computing dynamic L90 alarm columns
+2026-11-24 16:09:58,430 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'l90_alarm' with dynamic threshold +5 dB
+2026-11-24 16:09:58,430 - processing.py - 06_alarms_processing.logging_config - INFO - [5] Computing frequency composition alarms
+2026-11-24 16:09:58,436 - visualization.py - 06_alarms_processing.logging_config - INFO - frequency_composition: computing low/high frequency jump alarms
+2026-11-24 16:09:58,438 - processing.py - 06_alarms_processing.logging_config - INFO - [6] Computing tonal frequency alarms
+2026-11-24 16:09:58,438 - visualization.py - 06_alarms_processing.logging_config - INFO - Detecting tonal frequencies (compute-only, no plots)...
+2026-11-24 16:09:58,455 - visualization.py - 06_alarms_processing.logging_config - INFO - tonal_frequency: no tonal events detected.
+2026-11-24 16:09:58,455 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:09:58,455 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PEAKS!!!
+2026-11-24 16:09:58,455 - processing.py - 06_alarms_processing.logging_config - INFO - [8] Plotting peak heatmap for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:58,575 - visualization.py - 06_alarms_processing.logging_config - INFO - folder_output_dir: /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261121/GRAPHICS_ALARMS
+2026-11-24 16:09:58,782 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261121/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap.png
+2026-11-24 16:09:59,021 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261121/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap_4h.png
+2026-11-24 16:09:59,021 - processing.py - 06_alarms_processing.logging_config - INFO - [9] Plotting peak distribution for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:09:59,262 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261121/GRAPHICS_ALARMS/peak_peak_distribution.png
+2026-11-24 16:09:59,516 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261121/GRAPHICS_ALARMS/peak_peak_distribution_night.png
+2026-11-24 16:09:59,516 - processing.py - 06_alarms_processing.logging_config - INFO - [10] Plotting density distribution for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:10:00,649 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261121/GRAPHICS_ALARMS/density_peak_distribution_hourly.png
+2026-11-24 16:10:00,873 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261121/GRAPHICS_ALARMS/density_peak_density_distribution_hourly.png
+2026-11-24 16:10:00,873 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:00,873 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PREDICTION !!!
+2026-11-24 16:10:00,873 - processing.py - 06_alarms_processing.logging_config - INFO - [11] Plotting PLOT_PREDIC_LAEQ for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:10:00,873 - visualization.py - 06_alarms_processing.logging_config - INFO - Using 'NoisePort_Level_1' class for plotting
+2026-11-24 16:10:00,874 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_predic_laeq_15_min: "Column(s) ['LA_corrected', 'class'] do not exist"
+2026-11-24 16:10:00,875 - processing.py - 06_alarms_processing.logging_config - INFO - [12] Plotting box plot prediction for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:10:00,875 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_box_plot_prediction: 'Peak'
+2026-11-24 16:10:00,875 - processing.py - 06_alarms_processing.logging_config - INFO - [13] Plotting heatmap prediction for folder /srv/services/inbox/raspberry1/merged_csv_query
+2026-11-24 16:10:00,875 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_heat_map_prediction: 'Peak'
+2026-11-24 16:10:00,875 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:00,875 - processing.py - 06_alarms_processing.logging_config - INFO - SAVING THE ALARMS CSV FILE
+2026-11-24 16:10:00,876 - processing.py - 06_alarms_processing.logging_config - INFO - Saved or update alarms dataframe to /srv/services/inbox/raspberry1/merged_csv_query/postprocessing/20261121/raspberry1_alarms.csv
+2026-11-24 16:10:00,876 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:00,876 - processing.py - 06_alarms_processing.logging_config - INFO - Suffix string: raspberrypi2
+2026-11-24 16:10:00,876 - processing.py - 06_alarms_processing.logging_config - INFO - Processed list file path: /srv/services/inbox/raspberrypi2/merged_csv_query/processed_csv_raspberrypi2_v0_0.txt
+2026-11-24 16:10:00,876 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:00,876 - processing.py - 06_alarms_processing.logging_config - INFO - Processing folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:00,876 - processing.py - 06_alarms_processing.logging_config - INFO - Getting the data from the dataframes
+2026-11-24 16:10:00,876 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:00,876 - processing.py - 06_alarms_processing.logging_config - INFO - Processing RASPBERRY data
+2026-11-24 16:10:00,876 - processing.py - 06_alarms_processing.logging_config - INFO - Found 8 CSV files in /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:00,876 - processing.py - 06_alarms_processing.logging_config - INFO - Processing CSV: /srv/services/inbox/raspberrypi2/merged_csv_query/merged_raspberrypi2_20261118.csv
+2026-11-24 16:10:01,753 - processing.py - 06_alarms_processing.logging_config - INFO - Saved corrected CSV to: /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261118_postpo.csv
+2026-11-24 16:10:01,753 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:01,754 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:01,754 - processing.py - 06_alarms_processing.logging_config - INFO - Adding datetime columns, sorting by datetime and setting datetime as index
+2026-11-24 16:10:01,801 - processing.py - 06_alarms_processing.logging_config - INFO - Start date 2026-11-18 10:23:00 and end date 2026-11-18 23:59:41
+2026-11-24 16:10:01,801 - processing.py - 06_alarms_processing.logging_config - INFO - df was sorted by datetime and datetime was set as index
+2026-11-24 16:10:01,801 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:01,801 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators column
+2026-11-24 16:10:02,063 - processing.py - 06_alarms_processing.logging_config - INFO - Adding nights column
+2026-11-24 16:10:02,356 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:10:02,356 - processing.py - 06_alarms_processing.logging_config - INFO - OCA Limits --> {'ld_limit': 65, 'le_limit': 65, 'ln_limit': 55}
+2026-11-24 16:10:02,372 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:02,372 - processing.py - 06_alarms_processing.logging_config - INFO - FILTERING PREDICTIONS
+2026-11-24 16:10:02,377 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:02,377 - processing.py - 06_alarms_processing.logging_config - INFO - MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA
+2026-11-24 16:10:02,378 - processing.py - 06_alarms_processing.logging_config - INFO - folder_output_dir_1h: /srv/services/inbox/raspberrypi2
+2026-11-24 16:10:02,378 - processing.py - 06_alarms_processing.logging_config - INFO - ia_visualization_folder: /srv/services/inbox/raspberrypi2/AI_ALARMS
+2026-11-24 16:10:02,378 - processing.py - 06_alarms_processing.logging_config - INFO - Point name detected: raspberrypi2
+2026-11-24 16:10:02,378 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:02,378 - processing.py - 06_alarms_processing.logging_config - INFO - Transforming 1 second data to 1 hour data
+2026-11-24 16:10:02,484 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:02,484 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:10:02,486 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators / night / oca to 2H dataframe
+2026-11-24 16:10:02,487 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:02,487 - processing.py - 06_alarms_processing.logging_config - INFO - CREATING THE CSV ALARMS!!!
+2026-11-24 16:10:02,487 - processing.py - 06_alarms_processing.logging_config - INFO - [1] Computing OCA alarm columns
+2026-11-24 16:10:02,487 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'oca_alarm'
+2026-11-24 16:10:02,487 - processing.py - 06_alarms_processing.logging_config - INFO - [2] Computing LMAX alarm columns
+2026-11-24 16:10:02,487 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LAmax_alarm' with threshold 95 dB
+2026-11-24 16:10:02,487 - processing.py - 06_alarms_processing.logging_config - INFO - [3] Computing LC-LA alarm columns
+2026-11-24 16:10:02,489 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LC_LA_alarm'
+2026-11-24 16:10:02,489 - processing.py - 06_alarms_processing.logging_config - INFO - [4] Computing dynamic L90 alarm columns
+2026-11-24 16:10:02,491 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'l90_alarm' with dynamic threshold +5 dB
+2026-11-24 16:10:02,491 - processing.py - 06_alarms_processing.logging_config - INFO - [5] Computing frequency composition alarms
+2026-11-24 16:10:02,496 - visualization.py - 06_alarms_processing.logging_config - INFO - frequency_composition: computing low/high frequency jump alarms
+2026-11-24 16:10:02,497 - processing.py - 06_alarms_processing.logging_config - INFO - [6] Computing tonal frequency alarms
+2026-11-24 16:10:02,498 - visualization.py - 06_alarms_processing.logging_config - INFO - Detecting tonal frequencies (compute-only, no plots)...
+2026-11-24 16:10:02,507 - visualization.py - 06_alarms_processing.logging_config - INFO - tonal_frequency: no tonal events detected.
+2026-11-24 16:10:02,508 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:02,508 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PEAKS!!!
+2026-11-24 16:10:02,508 - processing.py - 06_alarms_processing.logging_config - INFO - [8] Plotting peak heatmap for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:02,587 - visualization.py - 06_alarms_processing.logging_config - INFO - folder_output_dir: /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261118/GRAPHICS_ALARMS
+2026-11-24 16:10:02,752 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261118/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap.png
+2026-11-24 16:10:02,951 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261118/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap_4h.png
+2026-11-24 16:10:02,951 - processing.py - 06_alarms_processing.logging_config - INFO - [9] Plotting peak distribution for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:03,188 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261118/GRAPHICS_ALARMS/peak_peak_distribution.png
+2026-11-24 16:10:03,472 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261118/GRAPHICS_ALARMS/peak_peak_distribution_night.png
+2026-11-24 16:10:03,473 - processing.py - 06_alarms_processing.logging_config - INFO - [10] Plotting density distribution for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:03,646 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261118/GRAPHICS_ALARMS/density_peak_distribution_hourly.png
+2026-11-24 16:10:03,834 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261118/GRAPHICS_ALARMS/density_peak_density_distribution_hourly.png
+2026-11-24 16:10:03,834 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:03,834 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PREDICTION !!!
+2026-11-24 16:10:03,834 - processing.py - 06_alarms_processing.logging_config - INFO - [11] Plotting PLOT_PREDIC_LAEQ for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:03,835 - visualization.py - 06_alarms_processing.logging_config - INFO - Using 'NoisePort_Level_1' class for plotting
+2026-11-24 16:10:03,836 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_predic_laeq_15_min: "Column(s) ['LA_corrected', 'class'] do not exist"
+2026-11-24 16:10:03,836 - processing.py - 06_alarms_processing.logging_config - INFO - [12] Plotting box plot prediction for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:03,836 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_box_plot_prediction: 'Peak'
+2026-11-24 16:10:03,836 - processing.py - 06_alarms_processing.logging_config - INFO - [13] Plotting heatmap prediction for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:03,836 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_heat_map_prediction: 'Peak'
+2026-11-24 16:10:03,836 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:03,836 - processing.py - 06_alarms_processing.logging_config - INFO - SAVING THE ALARMS CSV FILE
+2026-11-24 16:10:03,837 - processing.py - 06_alarms_processing.logging_config - INFO - Saved or update alarms dataframe to /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261118/raspberrypi2_alarms.csv
+2026-11-24 16:10:03,837 - processing.py - 06_alarms_processing.logging_config - INFO - Processing CSV: /srv/services/inbox/raspberrypi2/merged_csv_query/merged_raspberrypi2_20261121.csv
+2026-11-24 16:10:05,725 - processing.py - 06_alarms_processing.logging_config - INFO - Saved corrected CSV to: /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261121_postpo.csv
+2026-11-24 16:10:05,726 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:05,726 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:05,726 - processing.py - 06_alarms_processing.logging_config - INFO - Adding datetime columns, sorting by datetime and setting datetime as index
+2026-11-24 16:10:05,780 - processing.py - 06_alarms_processing.logging_config - INFO - Start date 2026-11-21 00:01:00 and end date 2026-11-21 23:59:38
+2026-11-24 16:10:05,780 - processing.py - 06_alarms_processing.logging_config - INFO - df was sorted by datetime and datetime was set as index
+2026-11-24 16:10:05,780 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:05,780 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators column
+2026-11-24 16:10:06,192 - processing.py - 06_alarms_processing.logging_config - INFO - Adding nights column
+2026-11-24 16:10:06,736 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:10:06,737 - processing.py - 06_alarms_processing.logging_config - INFO - OCA Limits --> {'ld_limit': 65, 'le_limit': 65, 'ln_limit': 55}
+2026-11-24 16:10:06,761 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:06,761 - processing.py - 06_alarms_processing.logging_config - INFO - FILTERING PREDICTIONS
+2026-11-24 16:10:06,765 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:06,765 - processing.py - 06_alarms_processing.logging_config - INFO - MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA
+2026-11-24 16:10:06,765 - processing.py - 06_alarms_processing.logging_config - INFO - folder_output_dir_1h: /srv/services/inbox/raspberrypi2
+2026-11-24 16:10:06,765 - processing.py - 06_alarms_processing.logging_config - INFO - ia_visualization_folder: /srv/services/inbox/raspberrypi2/AI_ALARMS
+2026-11-24 16:10:06,765 - processing.py - 06_alarms_processing.logging_config - INFO - Point name detected: raspberrypi2
+2026-11-24 16:10:06,765 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:06,765 - processing.py - 06_alarms_processing.logging_config - INFO - Transforming 1 second data to 1 hour data
+2026-11-24 16:10:06,946 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:06,946 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:10:06,947 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators / night / oca to 2H dataframe
+2026-11-24 16:10:06,948 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:06,948 - processing.py - 06_alarms_processing.logging_config - INFO - CREATING THE CSV ALARMS!!!
+2026-11-24 16:10:06,948 - processing.py - 06_alarms_processing.logging_config - INFO - [1] Computing OCA alarm columns
+2026-11-24 16:10:06,948 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'oca_alarm'
+2026-11-24 16:10:06,948 - processing.py - 06_alarms_processing.logging_config - INFO - [2] Computing LMAX alarm columns
+2026-11-24 16:10:06,949 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LAmax_alarm' with threshold 95 dB
+2026-11-24 16:10:06,949 - processing.py - 06_alarms_processing.logging_config - INFO - [3] Computing LC-LA alarm columns
+2026-11-24 16:10:06,951 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LC_LA_alarm'
+2026-11-24 16:10:06,951 - processing.py - 06_alarms_processing.logging_config - INFO - [4] Computing dynamic L90 alarm columns
+2026-11-24 16:10:06,952 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'l90_alarm' with dynamic threshold +5 dB
+2026-11-24 16:10:06,952 - processing.py - 06_alarms_processing.logging_config - INFO - [5] Computing frequency composition alarms
+2026-11-24 16:10:06,958 - visualization.py - 06_alarms_processing.logging_config - INFO - frequency_composition: computing low/high frequency jump alarms
+2026-11-24 16:10:06,960 - processing.py - 06_alarms_processing.logging_config - INFO - [6] Computing tonal frequency alarms
+2026-11-24 16:10:06,960 - visualization.py - 06_alarms_processing.logging_config - INFO - Detecting tonal frequencies (compute-only, no plots)...
+2026-11-24 16:10:06,977 - visualization.py - 06_alarms_processing.logging_config - INFO - tonal_frequency: no tonal events detected.
+2026-11-24 16:10:06,977 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:06,977 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PEAKS!!!
+2026-11-24 16:10:06,977 - processing.py - 06_alarms_processing.logging_config - INFO - [8] Plotting peak heatmap for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:07,079 - visualization.py - 06_alarms_processing.logging_config - INFO - folder_output_dir: /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261121/GRAPHICS_ALARMS
+2026-11-24 16:10:07,288 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261121/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap.png
+2026-11-24 16:10:07,502 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261121/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap_4h.png
+2026-11-24 16:10:07,502 - processing.py - 06_alarms_processing.logging_config - INFO - [9] Plotting peak distribution for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:07,765 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261121/GRAPHICS_ALARMS/peak_peak_distribution.png
+2026-11-24 16:10:08,049 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261121/GRAPHICS_ALARMS/peak_peak_distribution_night.png
+2026-11-24 16:10:08,049 - processing.py - 06_alarms_processing.logging_config - INFO - [10] Plotting density distribution for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:08,271 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261121/GRAPHICS_ALARMS/density_peak_distribution_hourly.png
+2026-11-24 16:10:08,559 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261121/GRAPHICS_ALARMS/density_peak_density_distribution_hourly.png
+2026-11-24 16:10:08,559 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:08,559 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PREDICTION !!!
+2026-11-24 16:10:08,559 - processing.py - 06_alarms_processing.logging_config - INFO - [11] Plotting PLOT_PREDIC_LAEQ for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:08,560 - visualization.py - 06_alarms_processing.logging_config - INFO - Using 'NoisePort_Level_1' class for plotting
+2026-11-24 16:10:08,561 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_predic_laeq_15_min: "Column(s) ['LA_corrected', 'class'] do not exist"
+2026-11-24 16:10:08,561 - processing.py - 06_alarms_processing.logging_config - INFO - [12] Plotting box plot prediction for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:08,561 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_box_plot_prediction: 'Peak'
+2026-11-24 16:10:08,561 - processing.py - 06_alarms_processing.logging_config - INFO - [13] Plotting heatmap prediction for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:08,561 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_heat_map_prediction: 'Peak'
+2026-11-24 16:10:08,561 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:08,561 - processing.py - 06_alarms_processing.logging_config - INFO - SAVING THE ALARMS CSV FILE
+2026-11-24 16:10:08,562 - processing.py - 06_alarms_processing.logging_config - INFO - Saved or update alarms dataframe to /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261121/raspberrypi2_alarms.csv
+2026-11-24 16:10:08,563 - processing.py - 06_alarms_processing.logging_config - INFO - Processing CSV: /srv/services/inbox/raspberrypi2/merged_csv_query/merged_raspberrypi2_20261124.csv
+2026-11-24 16:10:09,722 - processing.py - 06_alarms_processing.logging_config - INFO - Saved corrected CSV to: /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261124_postpo.csv
+2026-11-24 16:10:09,723 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:09,723 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:09,723 - processing.py - 06_alarms_processing.logging_config - INFO - Adding datetime columns, sorting by datetime and setting datetime as index
+2026-11-24 16:10:09,755 - processing.py - 06_alarms_processing.logging_config - INFO - Start date 2026-11-24 00:01:00 and end date 2026-11-24 14:59:34
+2026-11-24 16:10:09,755 - processing.py - 06_alarms_processing.logging_config - INFO - df was sorted by datetime and datetime was set as index
+2026-11-24 16:10:09,755 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:09,755 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators column
+2026-11-24 16:10:10,022 - processing.py - 06_alarms_processing.logging_config - INFO - Adding nights column
+2026-11-24 16:10:10,374 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:10:10,374 - processing.py - 06_alarms_processing.logging_config - INFO - OCA Limits --> {'ld_limit': 65, 'le_limit': 65, 'ln_limit': 55}
+2026-11-24 16:10:10,391 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:10,391 - processing.py - 06_alarms_processing.logging_config - INFO - FILTERING PREDICTIONS
+2026-11-24 16:10:10,394 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:10,394 - processing.py - 06_alarms_processing.logging_config - INFO - MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA
+2026-11-24 16:10:10,394 - processing.py - 06_alarms_processing.logging_config - INFO - folder_output_dir_1h: /srv/services/inbox/raspberrypi2
+2026-11-24 16:10:10,394 - processing.py - 06_alarms_processing.logging_config - INFO - ia_visualization_folder: /srv/services/inbox/raspberrypi2/AI_ALARMS
+2026-11-24 16:10:10,394 - processing.py - 06_alarms_processing.logging_config - INFO - Point name detected: raspberrypi2
+2026-11-24 16:10:10,394 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:10,394 - processing.py - 06_alarms_processing.logging_config - INFO - Transforming 1 second data to 1 hour data
+2026-11-24 16:10:10,503 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:10,503 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:10:10,503 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators / night / oca to 2H dataframe
+2026-11-24 16:10:10,504 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:10,504 - processing.py - 06_alarms_processing.logging_config - INFO - CREATING THE CSV ALARMS!!!
+2026-11-24 16:10:10,504 - processing.py - 06_alarms_processing.logging_config - INFO - [1] Computing OCA alarm columns
+2026-11-24 16:10:10,505 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'oca_alarm'
+2026-11-24 16:10:10,505 - processing.py - 06_alarms_processing.logging_config - INFO - [2] Computing LMAX alarm columns
+2026-11-24 16:10:10,505 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LAmax_alarm' with threshold 95 dB
+2026-11-24 16:10:10,505 - processing.py - 06_alarms_processing.logging_config - INFO - [3] Computing LC-LA alarm columns
+2026-11-24 16:10:10,507 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LC_LA_alarm'
+2026-11-24 16:10:10,507 - processing.py - 06_alarms_processing.logging_config - INFO - [4] Computing dynamic L90 alarm columns
+2026-11-24 16:10:10,508 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'l90_alarm' with dynamic threshold +5 dB
+2026-11-24 16:10:10,509 - processing.py - 06_alarms_processing.logging_config - INFO - [5] Computing frequency composition alarms
+2026-11-24 16:10:10,514 - visualization.py - 06_alarms_processing.logging_config - INFO - frequency_composition: computing low/high frequency jump alarms
+2026-11-24 16:10:10,516 - processing.py - 06_alarms_processing.logging_config - INFO - [6] Computing tonal frequency alarms
+2026-11-24 16:10:10,516 - visualization.py - 06_alarms_processing.logging_config - INFO - Detecting tonal frequencies (compute-only, no plots)...
+2026-11-24 16:10:10,527 - visualization.py - 06_alarms_processing.logging_config - INFO - tonal_frequency: no tonal events detected.
+2026-11-24 16:10:10,527 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:10,527 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PEAKS!!!
+2026-11-24 16:10:10,527 - processing.py - 06_alarms_processing.logging_config - INFO - [8] Plotting peak heatmap for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:10,608 - visualization.py - 06_alarms_processing.logging_config - INFO - folder_output_dir: /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261124/GRAPHICS_ALARMS
+2026-11-24 16:10:10,781 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261124/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap.png
+2026-11-24 16:10:10,992 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261124/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap_4h.png
+2026-11-24 16:10:10,992 - processing.py - 06_alarms_processing.logging_config - INFO - [9] Plotting peak distribution for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:11,316 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261124/GRAPHICS_ALARMS/peak_peak_distribution.png
+2026-11-24 16:10:11,571 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261124/GRAPHICS_ALARMS/peak_peak_distribution_night.png
+2026-11-24 16:10:11,571 - processing.py - 06_alarms_processing.logging_config - INFO - [10] Plotting density distribution for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:11,734 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261124/GRAPHICS_ALARMS/density_peak_distribution_hourly.png
+2026-11-24 16:10:11,909 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261124/GRAPHICS_ALARMS/density_peak_density_distribution_hourly.png
+2026-11-24 16:10:11,909 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:11,909 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PREDICTION !!!
+2026-11-24 16:10:11,909 - processing.py - 06_alarms_processing.logging_config - INFO - [11] Plotting PLOT_PREDIC_LAEQ for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:11,909 - visualization.py - 06_alarms_processing.logging_config - INFO - Using 'NoisePort_Level_1' class for plotting
+2026-11-24 16:10:11,911 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_predic_laeq_15_min: "Column(s) ['LA_corrected', 'class'] do not exist"
+2026-11-24 16:10:11,911 - processing.py - 06_alarms_processing.logging_config - INFO - [12] Plotting box plot prediction for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:11,911 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_box_plot_prediction: 'Peak'
+2026-11-24 16:10:11,911 - processing.py - 06_alarms_processing.logging_config - INFO - [13] Plotting heatmap prediction for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:11,911 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_heat_map_prediction: 'Peak'
+2026-11-24 16:10:11,911 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:11,911 - processing.py - 06_alarms_processing.logging_config - INFO - SAVING THE ALARMS CSV FILE
+2026-11-24 16:10:11,912 - processing.py - 06_alarms_processing.logging_config - INFO - Saved or update alarms dataframe to /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261124/raspberrypi2_alarms.csv
+2026-11-24 16:10:11,913 - processing.py - 06_alarms_processing.logging_config - INFO - Processing CSV: /srv/services/inbox/raspberrypi2/merged_csv_query/merged_raspberrypi2_20261120.csv
+2026-11-24 16:10:13,698 - processing.py - 06_alarms_processing.logging_config - INFO - Saved corrected CSV to: /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261120_postpo.csv
+2026-11-24 16:10:13,698 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:13,698 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:13,698 - processing.py - 06_alarms_processing.logging_config - INFO - Adding datetime columns, sorting by datetime and setting datetime as index
+2026-11-24 16:10:13,754 - processing.py - 06_alarms_processing.logging_config - INFO - Start date 2026-11-20 00:01:00 and end date 2026-11-20 23:59:31
+2026-11-24 16:10:13,755 - processing.py - 06_alarms_processing.logging_config - INFO - df was sorted by datetime and datetime was set as index
+2026-11-24 16:10:13,755 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:13,755 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators column
+2026-11-24 16:10:15,687 - processing.py - 06_alarms_processing.logging_config - INFO - Adding nights column
+2026-11-24 16:10:16,329 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:10:16,329 - processing.py - 06_alarms_processing.logging_config - INFO - OCA Limits --> {'ld_limit': 65, 'le_limit': 65, 'ln_limit': 55}
+2026-11-24 16:10:16,355 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:16,355 - processing.py - 06_alarms_processing.logging_config - INFO - FILTERING PREDICTIONS
+2026-11-24 16:10:16,361 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:16,361 - processing.py - 06_alarms_processing.logging_config - INFO - MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA
+2026-11-24 16:10:16,361 - processing.py - 06_alarms_processing.logging_config - INFO - folder_output_dir_1h: /srv/services/inbox/raspberrypi2
+2026-11-24 16:10:16,361 - processing.py - 06_alarms_processing.logging_config - INFO - ia_visualization_folder: /srv/services/inbox/raspberrypi2/AI_ALARMS
+2026-11-24 16:10:16,361 - processing.py - 06_alarms_processing.logging_config - INFO - Point name detected: raspberrypi2
+2026-11-24 16:10:16,361 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:16,361 - processing.py - 06_alarms_processing.logging_config - INFO - Transforming 1 second data to 1 hour data
+2026-11-24 16:10:16,567 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:16,567 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:10:16,568 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators / night / oca to 2H dataframe
+2026-11-24 16:10:16,569 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:16,569 - processing.py - 06_alarms_processing.logging_config - INFO - CREATING THE CSV ALARMS!!!
+2026-11-24 16:10:16,569 - processing.py - 06_alarms_processing.logging_config - INFO - [1] Computing OCA alarm columns
+2026-11-24 16:10:16,570 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'oca_alarm'
+2026-11-24 16:10:16,570 - processing.py - 06_alarms_processing.logging_config - INFO - [2] Computing LMAX alarm columns
+2026-11-24 16:10:16,570 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LAmax_alarm' with threshold 95 dB
+2026-11-24 16:10:16,570 - processing.py - 06_alarms_processing.logging_config - INFO - [3] Computing LC-LA alarm columns
+2026-11-24 16:10:16,573 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LC_LA_alarm'
+2026-11-24 16:10:16,573 - processing.py - 06_alarms_processing.logging_config - INFO - [4] Computing dynamic L90 alarm columns
+2026-11-24 16:10:16,574 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'l90_alarm' with dynamic threshold +5 dB
+2026-11-24 16:10:16,574 - processing.py - 06_alarms_processing.logging_config - INFO - [5] Computing frequency composition alarms
+2026-11-24 16:10:16,581 - visualization.py - 06_alarms_processing.logging_config - INFO - frequency_composition: computing low/high frequency jump alarms
+2026-11-24 16:10:16,583 - processing.py - 06_alarms_processing.logging_config - INFO - [6] Computing tonal frequency alarms
+2026-11-24 16:10:16,583 - visualization.py - 06_alarms_processing.logging_config - INFO - Detecting tonal frequencies (compute-only, no plots)...
+2026-11-24 16:10:16,600 - visualization.py - 06_alarms_processing.logging_config - INFO - tonal_frequency: no tonal events detected.
+2026-11-24 16:10:16,601 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:16,601 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PEAKS!!!
+2026-11-24 16:10:16,601 - processing.py - 06_alarms_processing.logging_config - INFO - [8] Plotting peak heatmap for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:16,719 - visualization.py - 06_alarms_processing.logging_config - INFO - folder_output_dir: /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261120/GRAPHICS_ALARMS
+2026-11-24 16:10:16,954 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261120/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap.png
+2026-11-24 16:10:17,237 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261120/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap_4h.png
+2026-11-24 16:10:17,238 - processing.py - 06_alarms_processing.logging_config - INFO - [9] Plotting peak distribution for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:17,506 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261120/GRAPHICS_ALARMS/peak_peak_distribution.png
+2026-11-24 16:10:17,806 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261120/GRAPHICS_ALARMS/peak_peak_distribution_night.png
+2026-11-24 16:10:17,806 - processing.py - 06_alarms_processing.logging_config - INFO - [10] Plotting density distribution for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:18,083 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261120/GRAPHICS_ALARMS/density_peak_distribution_hourly.png
+2026-11-24 16:10:18,283 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261120/GRAPHICS_ALARMS/density_peak_density_distribution_hourly.png
+2026-11-24 16:10:18,283 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:18,283 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PREDICTION !!!
+2026-11-24 16:10:18,283 - processing.py - 06_alarms_processing.logging_config - INFO - [11] Plotting PLOT_PREDIC_LAEQ for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:18,283 - visualization.py - 06_alarms_processing.logging_config - INFO - Using 'NoisePort_Level_1' class for plotting
+2026-11-24 16:10:18,285 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_predic_laeq_15_min: "Column(s) ['LA_corrected', 'class'] do not exist"
+2026-11-24 16:10:18,285 - processing.py - 06_alarms_processing.logging_config - INFO - [12] Plotting box plot prediction for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:18,285 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_box_plot_prediction: 'Peak'
+2026-11-24 16:10:18,285 - processing.py - 06_alarms_processing.logging_config - INFO - [13] Plotting heatmap prediction for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:18,285 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_heat_map_prediction: 'Peak'
+2026-11-24 16:10:18,285 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:18,285 - processing.py - 06_alarms_processing.logging_config - INFO - SAVING THE ALARMS CSV FILE
+2026-11-24 16:10:18,286 - processing.py - 06_alarms_processing.logging_config - INFO - Saved or update alarms dataframe to /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261120/raspberrypi2_alarms.csv
+2026-11-24 16:10:18,286 - processing.py - 06_alarms_processing.logging_config - INFO - Processing CSV: /srv/services/inbox/raspberrypi2/merged_csv_query/merged_raspberrypi2_20261123.csv
+2026-11-24 16:10:20,042 - processing.py - 06_alarms_processing.logging_config - INFO - Saved corrected CSV to: /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261123_postpo.csv
+2026-11-24 16:10:20,043 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:20,043 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:20,043 - processing.py - 06_alarms_processing.logging_config - INFO - Adding datetime columns, sorting by datetime and setting datetime as index
+2026-11-24 16:10:20,098 - processing.py - 06_alarms_processing.logging_config - INFO - Start date 2026-11-23 00:01:00 and end date 2026-11-23 23:59:49
+2026-11-24 16:10:20,099 - processing.py - 06_alarms_processing.logging_config - INFO - df was sorted by datetime and datetime was set as index
+2026-11-24 16:10:20,099 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:20,099 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators column
+2026-11-24 16:10:20,529 - processing.py - 06_alarms_processing.logging_config - INFO - Adding nights column
+2026-11-24 16:10:21,061 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:10:21,061 - processing.py - 06_alarms_processing.logging_config - INFO - OCA Limits --> {'ld_limit': 65, 'le_limit': 65, 'ln_limit': 55}
+2026-11-24 16:10:21,085 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:21,085 - processing.py - 06_alarms_processing.logging_config - INFO - FILTERING PREDICTIONS
+2026-11-24 16:10:21,090 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:21,090 - processing.py - 06_alarms_processing.logging_config - INFO - MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA
+2026-11-24 16:10:21,090 - processing.py - 06_alarms_processing.logging_config - INFO - folder_output_dir_1h: /srv/services/inbox/raspberrypi2
+2026-11-24 16:10:21,090 - processing.py - 06_alarms_processing.logging_config - INFO - ia_visualization_folder: /srv/services/inbox/raspberrypi2/AI_ALARMS
+2026-11-24 16:10:21,090 - processing.py - 06_alarms_processing.logging_config - INFO - Point name detected: raspberrypi2
+2026-11-24 16:10:21,090 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:21,090 - processing.py - 06_alarms_processing.logging_config - INFO - Transforming 1 second data to 1 hour data
+2026-11-24 16:10:21,274 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:21,274 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:10:21,274 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators / night / oca to 2H dataframe
+2026-11-24 16:10:21,275 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:21,275 - processing.py - 06_alarms_processing.logging_config - INFO - CREATING THE CSV ALARMS!!!
+2026-11-24 16:10:21,275 - processing.py - 06_alarms_processing.logging_config - INFO - [1] Computing OCA alarm columns
+2026-11-24 16:10:21,276 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'oca_alarm'
+2026-11-24 16:10:21,276 - processing.py - 06_alarms_processing.logging_config - INFO - [2] Computing LMAX alarm columns
+2026-11-24 16:10:21,276 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LAmax_alarm' with threshold 95 dB
+2026-11-24 16:10:21,276 - processing.py - 06_alarms_processing.logging_config - INFO - [3] Computing LC-LA alarm columns
+2026-11-24 16:10:21,278 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LC_LA_alarm'
+2026-11-24 16:10:21,278 - processing.py - 06_alarms_processing.logging_config - INFO - [4] Computing dynamic L90 alarm columns
+2026-11-24 16:10:21,279 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'l90_alarm' with dynamic threshold +5 dB
+2026-11-24 16:10:21,279 - processing.py - 06_alarms_processing.logging_config - INFO - [5] Computing frequency composition alarms
+2026-11-24 16:10:21,285 - visualization.py - 06_alarms_processing.logging_config - INFO - frequency_composition: computing low/high frequency jump alarms
+2026-11-24 16:10:21,287 - processing.py - 06_alarms_processing.logging_config - INFO - [6] Computing tonal frequency alarms
+2026-11-24 16:10:21,287 - visualization.py - 06_alarms_processing.logging_config - INFO - Detecting tonal frequencies (compute-only, no plots)...
+2026-11-24 16:10:21,302 - visualization.py - 06_alarms_processing.logging_config - INFO - tonal_frequency: no tonal events detected.
+2026-11-24 16:10:21,303 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:21,303 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PEAKS!!!
+2026-11-24 16:10:21,303 - processing.py - 06_alarms_processing.logging_config - INFO - [8] Plotting peak heatmap for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:21,408 - visualization.py - 06_alarms_processing.logging_config - INFO - folder_output_dir: /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261123/GRAPHICS_ALARMS
+2026-11-24 16:10:21,604 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261123/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap.png
+2026-11-24 16:10:21,810 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261123/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap_4h.png
+2026-11-24 16:10:21,810 - processing.py - 06_alarms_processing.logging_config - INFO - [9] Plotting peak distribution for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:22,066 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261123/GRAPHICS_ALARMS/peak_peak_distribution.png
+2026-11-24 16:10:22,335 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261123/GRAPHICS_ALARMS/peak_peak_distribution_night.png
+2026-11-24 16:10:22,335 - processing.py - 06_alarms_processing.logging_config - INFO - [10] Plotting density distribution for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:22,552 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261123/GRAPHICS_ALARMS/density_peak_distribution_hourly.png
+2026-11-24 16:10:22,786 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261123/GRAPHICS_ALARMS/density_peak_density_distribution_hourly.png
+2026-11-24 16:10:22,786 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:22,786 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PREDICTION !!!
+2026-11-24 16:10:22,786 - processing.py - 06_alarms_processing.logging_config - INFO - [11] Plotting PLOT_PREDIC_LAEQ for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:22,786 - visualization.py - 06_alarms_processing.logging_config - INFO - Using 'NoisePort_Level_1' class for plotting
+2026-11-24 16:10:22,788 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_predic_laeq_15_min: "Column(s) ['LA_corrected', 'class'] do not exist"
+2026-11-24 16:10:22,788 - processing.py - 06_alarms_processing.logging_config - INFO - [12] Plotting box plot prediction for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:22,788 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_box_plot_prediction: 'Peak'
+2026-11-24 16:10:22,788 - processing.py - 06_alarms_processing.logging_config - INFO - [13] Plotting heatmap prediction for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:22,788 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_heat_map_prediction: 'Peak'
+2026-11-24 16:10:22,788 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:22,788 - processing.py - 06_alarms_processing.logging_config - INFO - SAVING THE ALARMS CSV FILE
+2026-11-24 16:10:22,789 - processing.py - 06_alarms_processing.logging_config - INFO - Saved or update alarms dataframe to /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261123/raspberrypi2_alarms.csv
+2026-11-24 16:10:22,789 - processing.py - 06_alarms_processing.logging_config - INFO - Processing CSV: /srv/services/inbox/raspberrypi2/merged_csv_query/merged_raspberrypi2_20261122.csv
+2026-11-24 16:10:24,435 - processing.py - 06_alarms_processing.logging_config - INFO - Saved corrected CSV to: /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261122_postpo.csv
+2026-11-24 16:10:24,436 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:24,436 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:24,436 - processing.py - 06_alarms_processing.logging_config - INFO - Adding datetime columns, sorting by datetime and setting datetime as index
+2026-11-24 16:10:24,488 - processing.py - 06_alarms_processing.logging_config - INFO - Start date 2026-11-22 00:01:00 and end date 2026-11-22 23:59:43
+2026-11-24 16:10:24,489 - processing.py - 06_alarms_processing.logging_config - INFO - df was sorted by datetime and datetime was set as index
+2026-11-24 16:10:24,489 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:24,489 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators column
+2026-11-24 16:10:24,903 - processing.py - 06_alarms_processing.logging_config - INFO - Adding nights column
+2026-11-24 16:10:25,430 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:10:25,430 - processing.py - 06_alarms_processing.logging_config - INFO - OCA Limits --> {'ld_limit': 65, 'le_limit': 65, 'ln_limit': 55}
+2026-11-24 16:10:25,455 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:25,456 - processing.py - 06_alarms_processing.logging_config - INFO - FILTERING PREDICTIONS
+2026-11-24 16:10:25,460 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:25,460 - processing.py - 06_alarms_processing.logging_config - INFO - MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA
+2026-11-24 16:10:25,460 - processing.py - 06_alarms_processing.logging_config - INFO - folder_output_dir_1h: /srv/services/inbox/raspberrypi2
+2026-11-24 16:10:25,460 - processing.py - 06_alarms_processing.logging_config - INFO - ia_visualization_folder: /srv/services/inbox/raspberrypi2/AI_ALARMS
+2026-11-24 16:10:25,460 - processing.py - 06_alarms_processing.logging_config - INFO - Point name detected: raspberrypi2
+2026-11-24 16:10:25,460 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:25,460 - processing.py - 06_alarms_processing.logging_config - INFO - Transforming 1 second data to 1 hour data
+2026-11-24 16:10:25,637 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:25,637 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:10:25,638 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators / night / oca to 2H dataframe
+2026-11-24 16:10:25,639 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:25,639 - processing.py - 06_alarms_processing.logging_config - INFO - CREATING THE CSV ALARMS!!!
+2026-11-24 16:10:25,639 - processing.py - 06_alarms_processing.logging_config - INFO - [1] Computing OCA alarm columns
+2026-11-24 16:10:25,639 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'oca_alarm'
+2026-11-24 16:10:25,639 - processing.py - 06_alarms_processing.logging_config - INFO - [2] Computing LMAX alarm columns
+2026-11-24 16:10:25,640 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LAmax_alarm' with threshold 95 dB
+2026-11-24 16:10:25,640 - processing.py - 06_alarms_processing.logging_config - INFO - [3] Computing LC-LA alarm columns
+2026-11-24 16:10:25,642 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LC_LA_alarm'
+2026-11-24 16:10:25,642 - processing.py - 06_alarms_processing.logging_config - INFO - [4] Computing dynamic L90 alarm columns
+2026-11-24 16:10:25,643 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'l90_alarm' with dynamic threshold +5 dB
+2026-11-24 16:10:25,643 - processing.py - 06_alarms_processing.logging_config - INFO - [5] Computing frequency composition alarms
+2026-11-24 16:10:25,649 - visualization.py - 06_alarms_processing.logging_config - INFO - frequency_composition: computing low/high frequency jump alarms
+2026-11-24 16:10:25,651 - processing.py - 06_alarms_processing.logging_config - INFO - [6] Computing tonal frequency alarms
+2026-11-24 16:10:25,651 - visualization.py - 06_alarms_processing.logging_config - INFO - Detecting tonal frequencies (compute-only, no plots)...
+2026-11-24 16:10:25,667 - visualization.py - 06_alarms_processing.logging_config - INFO - tonal_frequency: no tonal events detected.
+2026-11-24 16:10:25,667 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:25,667 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PEAKS!!!
+2026-11-24 16:10:25,667 - processing.py - 06_alarms_processing.logging_config - INFO - [8] Plotting peak heatmap for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:25,772 - visualization.py - 06_alarms_processing.logging_config - INFO - folder_output_dir: /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261122/GRAPHICS_ALARMS
+2026-11-24 16:10:25,965 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261122/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap.png
+2026-11-24 16:10:26,227 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261122/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap_4h.png
+2026-11-24 16:10:26,227 - processing.py - 06_alarms_processing.logging_config - INFO - [9] Plotting peak distribution for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:27,875 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261122/GRAPHICS_ALARMS/peak_peak_distribution.png
+2026-11-24 16:10:28,133 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261122/GRAPHICS_ALARMS/peak_peak_distribution_night.png
+2026-11-24 16:10:28,133 - processing.py - 06_alarms_processing.logging_config - INFO - [10] Plotting density distribution for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:28,352 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261122/GRAPHICS_ALARMS/density_peak_distribution_hourly.png
+2026-11-24 16:10:28,617 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261122/GRAPHICS_ALARMS/density_peak_density_distribution_hourly.png
+2026-11-24 16:10:28,617 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:28,617 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PREDICTION !!!
+2026-11-24 16:10:28,617 - processing.py - 06_alarms_processing.logging_config - INFO - [11] Plotting PLOT_PREDIC_LAEQ for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:28,617 - visualization.py - 06_alarms_processing.logging_config - INFO - Using 'NoisePort_Level_1' class for plotting
+2026-11-24 16:10:28,619 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_predic_laeq_15_min: "Column(s) ['LA_corrected', 'class'] do not exist"
+2026-11-24 16:10:28,619 - processing.py - 06_alarms_processing.logging_config - INFO - [12] Plotting box plot prediction for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:28,619 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_box_plot_prediction: 'Peak'
+2026-11-24 16:10:28,619 - processing.py - 06_alarms_processing.logging_config - INFO - [13] Plotting heatmap prediction for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:28,619 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_heat_map_prediction: 'Peak'
+2026-11-24 16:10:28,619 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:28,619 - processing.py - 06_alarms_processing.logging_config - INFO - SAVING THE ALARMS CSV FILE
+2026-11-24 16:10:28,620 - processing.py - 06_alarms_processing.logging_config - INFO - Saved or update alarms dataframe to /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261122/raspberrypi2_alarms.csv
+2026-11-24 16:10:28,620 - processing.py - 06_alarms_processing.logging_config - INFO - Processing CSV: /srv/services/inbox/raspberrypi2/merged_csv_query/merged_raspberrypi2_20261116.csv
+2026-11-24 16:10:28,679 - processing.py - 06_alarms_processing.logging_config - INFO - Saved corrected CSV to: /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261116_postpo.csv
+2026-11-24 16:10:28,679 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:28,679 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:28,679 - processing.py - 06_alarms_processing.logging_config - INFO - Adding datetime columns, sorting by datetime and setting datetime as index
+2026-11-24 16:10:28,683 - processing.py - 06_alarms_processing.logging_config - INFO - Start date 2026-11-16 08:00:00 and end date 2026-11-16 08:40:55
+2026-11-24 16:10:28,683 - processing.py - 06_alarms_processing.logging_config - INFO - df was sorted by datetime and datetime was set as index
+2026-11-24 16:10:28,683 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:28,683 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators column
+2026-11-24 16:10:28,693 - processing.py - 06_alarms_processing.logging_config - INFO - Adding nights column
+2026-11-24 16:10:28,705 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:10:28,705 - processing.py - 06_alarms_processing.logging_config - INFO - OCA Limits --> {'ld_limit': 65, 'le_limit': 65, 'ln_limit': 55}
+2026-11-24 16:10:28,706 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:28,706 - processing.py - 06_alarms_processing.logging_config - INFO - FILTERING PREDICTIONS
+2026-11-24 16:10:28,707 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:28,707 - processing.py - 06_alarms_processing.logging_config - INFO - MAKING FOLDER FOR 1H ANALYSIS TO SAVE THE DATA
+2026-11-24 16:10:28,707 - processing.py - 06_alarms_processing.logging_config - INFO - folder_output_dir_1h: /srv/services/inbox/raspberrypi2
+2026-11-24 16:10:28,707 - processing.py - 06_alarms_processing.logging_config - INFO - ia_visualization_folder: /srv/services/inbox/raspberrypi2/AI_ALARMS
+2026-11-24 16:10:28,707 - processing.py - 06_alarms_processing.logging_config - INFO - Point name detected: raspberrypi2
+2026-11-24 16:10:28,707 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:28,707 - processing.py - 06_alarms_processing.logging_config - INFO - Transforming 1 second data to 1 hour data
+2026-11-24 16:10:28,714 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:28,714 - processing.py - 06_alarms_processing.logging_config - INFO - Adding oca column
+2026-11-24 16:10:28,715 - processing.py - 06_alarms_processing.logging_config - INFO - Adding indicators / night / oca to 2H dataframe
+2026-11-24 16:10:28,715 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:28,716 - processing.py - 06_alarms_processing.logging_config - INFO - CREATING THE CSV ALARMS!!!
+2026-11-24 16:10:28,716 - processing.py - 06_alarms_processing.logging_config - INFO - [1] Computing OCA alarm columns
+2026-11-24 16:10:28,716 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'oca_alarm'
+2026-11-24 16:10:28,716 - processing.py - 06_alarms_processing.logging_config - INFO - [2] Computing LMAX alarm columns
+2026-11-24 16:10:28,716 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LAmax_alarm' with threshold 95 dB
+2026-11-24 16:10:28,716 - processing.py - 06_alarms_processing.logging_config - INFO - [3] Computing LC-LA alarm columns
+2026-11-24 16:10:28,718 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'LC_LA_alarm'
+2026-11-24 16:10:28,718 - processing.py - 06_alarms_processing.logging_config - INFO - [4] Computing dynamic L90 alarm columns
+2026-11-24 16:10:28,719 - visualization.py - 06_alarms_processing.logging_config - INFO - Added column 'l90_alarm' with dynamic threshold +5 dB
+2026-11-24 16:10:28,719 - processing.py - 06_alarms_processing.logging_config - INFO - [5] Computing frequency composition alarms
+2026-11-24 16:10:28,723 - visualization.py - 06_alarms_processing.logging_config - INFO - frequency_composition: computing low/high frequency jump alarms
+2026-11-24 16:10:28,725 - processing.py - 06_alarms_processing.logging_config - INFO - [6] Computing tonal frequency alarms
+2026-11-24 16:10:28,725 - visualization.py - 06_alarms_processing.logging_config - INFO - Detecting tonal frequencies (compute-only, no plots)...
+2026-11-24 16:10:28,726 - visualization.py - 06_alarms_processing.logging_config - INFO - tonal_frequency: no tonal events detected.
+2026-11-24 16:10:28,726 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:10:28,726 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PEAKS!!!
+2026-11-24 16:10:28,726 - processing.py - 06_alarms_processing.logging_config - INFO - [8] Plotting peak heatmap for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:10:28,781 - visualization.py - 06_alarms_processing.logging_config - INFO - folder_output_dir: /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261116/GRAPHICS_ALARMS
+2026-11-24 16:10:28,905 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261116/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap.png
+2026-11-24 16:10:29,079 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261116/GRAPHICS_ALARMS/heatmap_peak_distribution_heatmap_4h.png
+2026-11-24 16:10:29,079 - processing.py - 06_alarms_processing.logging_config - INFO - [9] Plotting peak distribution for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:12:08,273 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261116/GRAPHICS_ALARMS/peak_peak_distribution.png
+2026-11-24 16:13:42,754 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261116/GRAPHICS_ALARMS/peak_peak_distribution_night.png
+2026-11-24 16:13:42,754 - processing.py - 06_alarms_processing.logging_config - INFO - [10] Plotting density distribution for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:13:42,868 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261116/GRAPHICS_ALARMS/density_peak_distribution_hourly.png
+2026-11-24 16:13:43,090 - visualization.py - 06_alarms_processing.logging_config - INFO - Saved plot at /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261116/GRAPHICS_ALARMS/density_peak_density_distribution_hourly.png
+2026-11-24 16:13:43,090 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:13:43,090 - processing.py - 06_alarms_processing.logging_config - INFO - PLOTTING PREDICTION !!!
+2026-11-24 16:13:43,090 - processing.py - 06_alarms_processing.logging_config - INFO - [11] Plotting PLOT_PREDIC_LAEQ for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:13:43,091 - visualization.py - 06_alarms_processing.logging_config - INFO - Using 'NoisePort_Level_1' class for plotting
+2026-11-24 16:13:43,092 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_predic_laeq_15_min: "Column(s) ['LA_corrected', 'class'] do not exist"
+2026-11-24 16:13:43,092 - processing.py - 06_alarms_processing.logging_config - INFO - [12] Plotting box plot prediction for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:13:43,092 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_box_plot_prediction: 'Peak'
+2026-11-24 16:13:43,092 - processing.py - 06_alarms_processing.logging_config - INFO - [13] Plotting heatmap prediction for folder /srv/services/inbox/raspberrypi2/merged_csv_query
+2026-11-24 16:13:43,092 - visualization.py - 06_alarms_processing.logging_config - ERROR - Error in plot_heat_map_prediction: 'Peak'
+2026-11-24 16:13:43,092 - processing.py - 06_alarms_processing.logging_config - INFO - 
+2026-11-24 16:13:43,092 - processing.py - 06_alarms_processing.logging_config - INFO - SAVING THE ALARMS CSV FILE
+2026-11-24 16:13:43,093 - processing.py - 06_alarms_processing.logging_config - INFO - Saved or update alarms dataframe to /srv/services/inbox/raspberrypi2/merged_csv_query/postprocessing/20261116/raspberrypi2_alarms.csv
+2026-11-24 16:13:43,093 - processing.py - 06_alarms_processing.logging_config - INFO - Processing CSV: /srv/services/inbox/raspberrypi2/merged_csv_query/merged_raspberrypi2_20261119.csv

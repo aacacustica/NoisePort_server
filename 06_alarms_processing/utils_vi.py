@@ -489,7 +489,7 @@ def transform_1h_pred(df, logger, agg_period):
 
 
         agg_funcs = {
-            "LA_corrected": [leq, lambda x: x.quantile(0.9)],
+            "LA_corrected": [leq,lambda x: x.quantile(0.1)],
             "LAmax_corrected": "max",
             "LAmin_corrected": "min",
             "LCeq-LAeq_corrected": leq,
@@ -574,7 +574,13 @@ def transformation(df, logger, oca_limits):
     )
 
     # removing nan values
-    df = df.dropna()
+    logger.info(f"Hourly rows before filtering: {len(df)}")
+
+    df = df.dropna(
+        subset=["date_time", "LA_corrected_leq"]
+    )
+
+    logger.info(f"Hourly rows after filtering: {len(df)}")
     
     
     # oca column
@@ -664,7 +670,7 @@ def agg_hour(group):
     if "LA" in group:
         vals = group["LA"].dropna().values
         if len(vals) > 0:
-            result["90percentile"] = np.percentile(vals, 90)
+            result["90percentile"] = np.percentile(vals, 10)
         else:
             result["90percentile"] = pd.NA
 
@@ -675,7 +681,18 @@ def agg_hour(group):
 
     # n peaks per hour
     if "is_peak" in group:
-        result["n_peaks"] = group["is_peak"].fillna(0).astype(bool).sum()
+        if "peak_start_time" in group.columns:
+            starts = pd.to_datetime(
+                group["peak_start_time"],
+                errors="coerce"
+            ).dropna().drop_duplicates()
+
+            hour_start = group.name
+
+            result["n_peaks"] = (
+                (starts >= hour_start) &
+                (starts < hour_start + pd.Timedelta(hours=1))
+            ).sum()
 
 
     # clase mas repetida

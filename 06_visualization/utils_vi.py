@@ -120,35 +120,32 @@ def evaluation_period_str_valencia(hour_column):
 
 
 def add_night_column(hour_column, day_col):
-    
-    night_list={
 
-        'Lunes'     : "Lunes-Martes",
-        'Martes'    : "Martes-Miércoles",
-        'Miércoles' : "Miércoles-Jueves",
-        'Jueves'    : "Jueves-Viernes",
-        'Viernes'   : "Viernes-Sábado",
-        'Sábado'    : "Sábado-Domingo",
-        'Domingo'   : "Domingo-Lunes"
-        
-        }
+    weekdays = [
+        "Lunes", "Martes", "Miércoles",
+        "Jueves", "Viernes", "Sábado", "Domingo"
+    ]
 
-    
-    night = ''
+    day_col = str(day_col).strip()
+
+    if day_col not in weekdays or pd.isna(hour_column):
+        return ""
+
+    pos = weekdays.index(day_col)
 
     if hour_column >= 23:
-
-        night=night_list[str(day_col).replace(" ","")]
+        return (
+            f"{weekdays[pos]}-"
+            f"{weekdays[(pos + 1) % 7]}"
+        )
 
     elif hour_column < 7:
+        return (
+            f"{weekdays[(pos - 1) % 7]}-"
+            f"{weekdays[pos]}"
+        )
 
-        pos=0
-        for i in night_list:
-            pos+=1
-            if i == day_col.replace(" ",""):
-                listForm = list(night_list.values())
-                night = listForm[pos+1]
-    return night
+    return ""
 
 
 def add_datetime_columns(df, logging, date_col):
@@ -161,13 +158,13 @@ def add_datetime_columns(df, logging, date_col):
     )
 
     weekday_translation = {
-        "Monday": " Lunes",
-        "Tuesday": " Martes",
-        "Wednesday": " Miércoles",
-        "Thursday": " Jueves",
-        "Friday": " Viernes",
-        "Saturday": " Sábado",
-        "Sunday": " Domingo"
+        "Monday": "Lunes",
+        "Tuesday": "Martes",
+        "Wednesday": "Miércoles",
+        "Thursday": "Jueves",
+        "Friday": "Viernes",
+        "Saturday": "Sábado",
+        "Sunday": "Domingo"
     }
 
     if pd.api.types.is_datetime64_any_dtype(df["Timestamp"]):
@@ -183,6 +180,7 @@ def add_datetime_columns(df, logging, date_col):
             df["Timestamp"]
             .dt.day_name()
             .map(weekday_translation)
+            .str.strip()
         )
 
     else:
@@ -702,7 +700,13 @@ def transformation(df, logger, oca_limits):
     )
 
     # removing nan values
-    df = df.dropna()
+    logger.info(f"Hourly rows before filtering: {len(df)}")
+
+    df = df.dropna(
+        subset=["date_time", "LA_corrected_leq"]
+    )
+
+    logger.info(f"Hourly rows after filtering: {len(df)}")
     
     
     # oca column
@@ -742,3 +746,35 @@ def get_stable_version(logger):
     tag_selected = tag_selected.replace(".", "_")
     logger.info(f"Latest stable version string: {tag_selected}")
     return tag_selected
+
+
+def load_campaign_csvs(paths, logger):
+
+    frames = []
+
+    for path in sorted(paths):
+
+        try:
+            frame = pd.read_csv(path, low_memory=False)
+
+            if frame.empty:
+                logger.warning(f"Empty CSV: {path}")
+                continue
+
+            frames.append(frame)
+
+            logger.info(
+                f"Loaded {path}: {len(frame)} rows"
+            )
+
+        except Exception:
+            logger.exception(f"Error reading {path}")
+
+    if not frames:
+        return pd.DataFrame()
+
+    return pd.concat(
+        frames,
+        ignore_index=True,
+        sort=False
+    )

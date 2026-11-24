@@ -50,7 +50,7 @@ for container in "${containers[@]}"; do
      pushd "${SCRIPT_DIR}" > /dev/null
     
      echo "Executing module ${MODULE_PATH}"
-     python -m "${MODULE_PATH}" -f "/srv/contenedores/CONTENEDORES/CONTENEDORES/5-Resultados" --raspbery 
+     python -m "${MODULE_PATH}" -f "/srv/contenedores/CONTENEDORES/CONTENEDORES/5-Resultados" --raspbery --port
      echo "Finished executing module ${MODULE_PATH} at ${container}"
 
      popd > /dev/null

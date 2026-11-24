@@ -1715,7 +1715,24 @@ def make_time_plot_week(df: pd.DataFrame, folder_output_dir: str, logger, column
     try:
         logger.info(f"Using the columns_dict: {columns_dict}")
         df = df.dropna(subset=[columns_dict['LAEQ_COLUMN_COEFF']])
-        df.index = pd.to_datetime(df.index)
+        df = df.copy()
+
+        df["Timestamp"] = pd.to_datetime(
+            df["Timestamp"],
+            errors="coerce"
+        )
+
+        df = (
+            df.dropna(subset=["Timestamp"])
+            .set_index("Timestamp", drop=False)
+            .sort_index()
+        )
+
+        if df.empty:
+            logger.warning("No data for weekly time plot")
+            return
+
+        df["week"] = df.index.to_period("W").start_time
 
         df['week'] = df.index.to_period('W').start_time
         weeks = df['week'].unique()
@@ -1854,10 +1871,20 @@ def plot_heatmap_evolution_hour(df, folder_output_dir: str, logger, values_colum
 def plot_heatmap_evolution_hour_week(df, folder_output_dir: str, logger, values_column: str, agg_func: str, plotname: str):
     try:
         df = df.dropna(subset=[values_column])
-        df['date'] = pd.to_datetime(df['date'])
-        df['day_name'] = df['date'].dt.day_name()
-        df['hour'] = df['date'].dt.hour
-        df.index = pd.to_datetime(df['date'])
+        df = df.copy()
+
+        df["Timestamp"] = pd.to_datetime(
+            df["Timestamp"],
+            errors="coerce"
+        )
+
+        df = df.dropna(subset=["Timestamp"])
+
+        df["date"] = df["Timestamp"].dt.normalize()
+        df["day_name"] = df["Timestamp"].dt.day_name()
+        df["hour"] = df["Timestamp"].dt.hour
+
+        df = df.set_index("Timestamp", drop=False)
 
         # df['week'] = df['date'].dt.to_period('W').start_time
         df['week'] = df['date'].dt.to_period('W').dt.start_time
@@ -2374,6 +2401,7 @@ def plot_day_evolution(df, folder_output_dir: str, logger, laeq_column: str, plo
         )
         
         weekdays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        df["Día"] = df["Día"].str.strip()
         df['Día'] = pd.Categorical(df['Día'], categories=weekdays, ordered=True)
         
         fig = sns.relplot(
@@ -2447,6 +2475,7 @@ def plot_day_evolution_week(df, folder_output_dir: str, logger, laeq_column: str
             ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
         )
         weekdays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        df["Día"] = df["Día"].str.strip()
         df['Día'] = pd.Categorical(df['Día'], categories=weekdays, ordered=True)
 
         # df['week'] = df['date'].dt.to_period('W').dt.start_time
@@ -2533,6 +2562,7 @@ def plot_period_evolution(df,  folder_output_dir: str, logger, laeq_column:str, 
         df['Día'] = df['day_name'].replace(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'])
         
         weekdays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        df["Día"] = df["Día"].str.strip()
         df['Día'] = pd.Categorical(df['Día'], categories=weekdays, ordered=True)
         
         for ind in df["indicador_str"].unique():
@@ -2605,6 +2635,7 @@ def plot_period_evolution_week(df,  folder_output_dir: str, logger, laeq_column:
         df['Día'] = df['day_name'].replace(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'])
         
         weekdays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        df["Día"] = df["Día"].str.strip()
         df['Día'] = pd.Categorical(df['Día'], categories=weekdays, ordered=True)
 
         df['week'] = pd.to_datetime(df['date']).dt.to_period('W').dt.start_time
@@ -2746,6 +2777,11 @@ def plt_spectrogram(df, folder_output_dir, sufix_string, logger, plotname):
 ########## OCA ALARM ##########
 def oca_alarm(df_1h_leq, folder_output_dir: str, logger, plotname: str):
     # remove grey color background
+
+    if df_1h_leq is None or df_1h_leq.empty: 
+        logger.warning(f"OCA alarm: empty hourly dataframe")
+        return df_1h_leq
+
     sns.set_style("whitegrid")
     
     # filter the data based on the thresholds
