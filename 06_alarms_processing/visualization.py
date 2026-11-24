@@ -3021,6 +3021,17 @@ def l90_alarm_dynamic(df_1h: pd.DataFrame, logger, threshold_dB: int):
         return df_1h
 
     df_1h = df_1h.copy()
+
+    df_1h = df_1h.copy()
+    df_1h.rename(columns={"90percentile": "L90"}, inplace=True)
+
+    # NUEVA LINEA
+    df_1h["L90"] = pd.to_numeric(df_1h["L90"], errors="coerce")
+
+    df_1h["L90_rolling_median"] = (
+        df_1h["L90"].rolling(window=3, min_periods=1).median()
+    )
+
     df_1h.rename(columns={"90percentile": "L90"}, inplace=True)
 
     df_1h["L90_rolling_median"] = df_1h["L90"].rolling(window=3, min_periods=1).median()

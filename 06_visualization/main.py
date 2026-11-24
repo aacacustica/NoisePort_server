@@ -33,7 +33,7 @@ def arg_parser():
                         help='Percentiles to plot [1 5 10 50 90] (L90 and L10 as default)')
     parser.add_argument('-l', '--limit_oca', type=str, required=False, default='OCA_RESIDENTIAL',
                         help='Limit OCA to plot [OCA_RESIDENTIAL, OCA_LEISURE, OCA_OFFICE, OCA_INDUSTRIAL, OCA_CULTURE]')
-    parser.add_argument('--filterpoint', type=str, required=True,default='P5_TEST',
+    parser.add_argument('--filterpoint', type=str, required=False,default='P5_TEST',
                         help='Sets the point to process')
     parser.add_argument('--audiomoth', action='store_true', 
                         help='Process audiomoth data')
@@ -266,9 +266,22 @@ def main():
 
         for device in devices:
 
-            folders, _, date_map, thresh_map = collect_folders(input_folder, args.change_date, device,logger,point_to_process)
-            
+            device_name = os.path.basename(device)
+            merged_folder = os.path.join(device,'merged_csv_query')
+
+            if not os.path.isdir(merged_folder):
+                logger.warning(f"Folder not found: {merged_folder}")
+                continue
+
+            folders = [merged_folder]
+            date_map = {merged_folder: (None,None)}
+            thresh_map = {merged_folder: (None,None)}
+
             device_coeff = collect_coeff(coeffs,device) 
+
+            logger.info(f"Device: {device_name}")
+            logger.info(f"Folders: {folders}")
+            logger.info(f"Coefficient: {device_coeff}")
             
             process_all_folders(
                 input_folder,

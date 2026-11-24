@@ -157,7 +157,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
 
             # 5-Resultados directory
-            resultados_dir = os.path.join("/",Path(*reg_folder.split("/")[:-2]),sufix_string)
+            resultados_dir = device
             #resultados_dir = os.path.join(*resultados_dir,sufix_string,result_dir_name)
             logger.info(f"Resultados directory: {resultados_dir}")
             #if not os.path.exists(resultados_dir):
