@@ -288,10 +288,10 @@ def yamnet_class_map_csv():
 
 
 def taxonomy_json():
+
     home_dir = os.path.expanduser('~')
     urban_taxonomy_map_path = os.path.join(home_dir, RELATIVE_PATH_TAXONOMY_URBAN.lstrip('/'))
     urban_taxonomy_map = pd.read_json(urban_taxonomy_map_path, typ='series').to_dict()
-    
     
     port_taxonomy_map_path = os.path.join(home_dir, RELATIVE_PATH_TAXONOMY_PORT.lstrip('/'))
     port_taxonomy_map = pd.read_json(port_taxonomy_map_path, typ='series').to_dict()

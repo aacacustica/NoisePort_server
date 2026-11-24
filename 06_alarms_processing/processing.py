@@ -12,10 +12,10 @@ import ast
 import re
 
 
-from visualization import *
-from reading import *
-from utils_vi import *
-from config_vi import *
+from .visualization import *
+from .reading import *
+from .utils_vi import *
+from .config_vi import *
 
 
 

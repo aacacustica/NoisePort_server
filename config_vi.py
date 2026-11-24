@@ -1,18 +1,18 @@
 ##########################
 # }INITIAL CONDITIONS
 # relative path to the yamnet class map, urban taxonomy and port taxonomy
-RELATIVE_PATH_YAMNET_MAP = "/Modelos_IA/AAC_IA_Puerto/yamnet_class_AAC_v3_0.csv"
-RELATIVE_PATH_TAXONOMY_URBAN = "/Modelos_IA/taxonomies_json/urban_taxonomy_map_v1_0.json"
-RELATIVE_PATH_TAXONOMY_PORT = "/Modelos_IA/taxonomies_json/port_1_taxonomy_mapping_v2.0.json"
+RELATIVE_PATH_YAMNET_MAP = "/home/aac/I+D/Modelos_IA/AAC_IA_Puerto/yamnet_class_AAC_v3_0.csv"
+RELATIVE_PATH_TAXONOMY_URBAN = "/home/aac/I+D/Modelos_IA/taxonomies_json/urban_taxonomy_map_v1_0.json"
+RELATIVE_PATH_TAXONOMY_PORT = "/home/aac/I+D/Modelos_IA/taxonomies_json/port_1_taxonomy_mapping_v2.0.json"
 
 # PATH TO THE CSV FOR SHIP AT THE DOCK
 # RELATIVE_PATH_SHIPS_1H = r"AAC - CENTRO DE ACUSTICA APLICADA, S.L\I + D + i - Documentos\NOISEPORT4.0\EMBARQUES\TCT\CONTENEDORES_TCT_embarques_1h.csv"
 # RELATIVE_PATH_SHIPS_15MIN = r"AAC - CENTRO DE ACUSTICA APLICADA, S.L\I + D + i - Documentos\NOISEPORT4.0\EMBARQUES\TCT\CONTENEDORES_TCT_embarques_15min.csv"
 # RELATIVE_PATH_SHIPS_1S = r"AAC - CENTRO DE ACUSTICA APLICADA, S.L\I + D + i - Documentos\NOISEPORT4.0\EMBARQUES\TCT\CONTENEDORES_TCT_embarques_1s.csv"
 ##
-RELATIVE_PATH_SHIPS_1H = r"/home/aac/EMBARQUES/TCT/CONTENEDORES_TCT_embarques_1h.csv"
-RELATIVE_PATH_SHIPS_15MIN = r"/home/aac/EMBARQUES/TCT/CONTENEDORES_TCT_embarques_15min.csv"
-RELATIVE_PATH_SHIPS_1S = r"/home/aac/EMBARQUES/TCT/CONTENEDORES_TCT_embarques_1s.csv"
+RELATIVE_PATH_SHIPS_1H = r"/home/aac/I+D/EMBARQUES/TCT/CONTENEDORES_TCT_embarques_1h.csv"
+RELATIVE_PATH_SHIPS_15MIN = r"/home/aac/I+D/EMBARQUES/TCT/CONTENEDORES_TCT_embarques_15min.csv"
+RELATIVE_PATH_SHIPS_1S = r"/home/aac/I+D/EMBARQUES/TCT/CONTENEDORES_TCT_embarques_1s.csv"
 
 
 ###

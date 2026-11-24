@@ -12,8 +12,8 @@ from scipy.stats import gaussian_kde
 import ast
 import sys
 
-from utils_vi import *
-from config_vi import *
+from .utils_vi import *
+from .config_vi import *
 #from config_vi import (
 #    LOW_FREQ_BANDS_NEW,
 #    MEDIUM_FREQ_BANDS_NEW,

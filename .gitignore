@@ -184,3 +184,5 @@ test/
 config.pyconfig.py
 credentials_aws.txt
 credentials_aws
+config.py
+config.yaml

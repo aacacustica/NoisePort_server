@@ -1,14 +1,14 @@
 
 import sys
 sys.path.insert(0, "/home/aac/I+D/CODIGOS/NoisePort_server/")
+
 import argparse
 import os
-import re
-from logging_config import setup_logging
-from config_vi import *
- 
-from processing import *
-from utils_vi import *
+
+from .logging_config import setup_logging
+from .config_vi import *
+from .processing import *
+from .utils_vi import *
 from utils import *
 
 
@@ -78,8 +78,8 @@ def collect_folders(input_folder,label_source_type, logger,point_filter=None):
                 if point_filter not in root:
                     continue
 
-            if config_vi.MERGED_FOLDER in dirs:
-                path = os.path.join(root, config_vi.MERGED_FOLDER)
+            if MERGED_FOLDER in dirs:
+                path = os.path.join(root, MERGED_FOLDER)
                 folders.append(path)
                 logger.info(f"Found raspberry merged folder: {path}")
 

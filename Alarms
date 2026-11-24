@@ -1,0 +1,2 @@
+2026-11-24 12:05:58,305 - main.py - 06_alarms_processing.logging_config - INFO - Starting alarm processing!!
+2026-11-24 12:05:58,305 - main.py - 06_alarms_processing.logging_config - ERROR - Error during executing the main program: [Errno 2] No such file or directory: '/home/aac/home/aac/I+D/Modelos_IA/AAC_IA_Puerto/yamnet_class_AAC_v3_0.csv'

@@ -2,3 +2,5 @@ raspberry1
 raspberrypi2
 raspberry3
 raspberrypi4
+ccmp13-dvk-2
+ccmp13-dvk
