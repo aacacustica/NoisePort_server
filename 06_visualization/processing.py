@@ -128,7 +128,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
     print()
     stable_version = get_stable_version(logger)
     home_dir = os.path.expanduser('~')
-    temporal_bool = True
+    temporal_bool = False
 
 
     for folder in tqdm(folders, desc="Processing folders"): # \\192.168.205.117\AAC_Server\OCIO\24052_ZARAUTZ\CAMPAÑA_1\3-Medidas\ZARAUTZ_C1_P1\AUDIOMOTH
