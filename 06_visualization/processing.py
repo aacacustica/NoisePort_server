@@ -128,7 +128,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
     print()
     stable_version = get_stable_version(logger)
     home_dir = os.path.expanduser('~')
-    temporal_bool = False
+    temporal_bool = True
 
 
     for folder in tqdm(folders, desc="Processing folders"): # \\192.168.205.117\AAC_Server\OCIO\24052_ZARAUTZ\CAMPAÑA_1\3-Medidas\ZARAUTZ_C1_P1\AUDIOMOTH
@@ -254,20 +254,16 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             """
             for df_path,df_prediction_path,df_peaks_path,df_all_path in zip(dfs_acoustics,dfs_predictions,dfs_peaks,dfs_merged):
                 
-                df = pd.read_csv(df_path)
-                df_prediction = pd.read_csv(df_prediction_path)
-                df_peaks = pd.read_csv(df_peaks_path)
-                df_all = pd.read_csv(df_all_path)
+                df = pd.read_csv(df_path,low_memory=False)
+                df_prediction = pd.read_csv(df_prediction_path,low_memory=False)
+                df_peaks = pd.read_csv(df_peaks_path,low_memory=False)
+                df_all = pd.read_csv(df_all_path,low_memory=False)
 
                 csv_acoustics_basename = os.path.basename(df_path)
                 csv_predictions_basename = os.path.basename(df_prediction_path)
                 csv_peaks_basename = os.path.basename(df_peaks_path)
                 csv_merged_basename = os.path.basename(df_all_path)
-
-                if temporal_bool:
-                    if csv_predictions_basename not in ["fixed_20260609.csv","fixed_20260610.csv","fixed_20260611.csv","fixed_202606012.csv"]: continue
-                    
-                    logger.info(f"Predictions with info")
+                logger.info(f"Processing prediction file: {csv_predictions_basename}")
 
                 logger.info(f"Processing visualizations using the following csvs: ")
 
@@ -334,20 +330,47 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                         logger.info(f"Prediction df was trimmed, {REMOVE_START_TIME} secs from the beggining and {REMOVE_END_TIME} secs from the end")
 
 
-                    # add indicators column
-                    if df is not None:
-                        logger.info(f"Adding indicators column")
-                        df['indicador_str'] = df.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
-                    if df_prediction is not None:
-                        df_prediction['indicador_str'] = df_prediction.apply(lambda x: evaluation_period_str(x['hour']), axis=1)
+                    if df is not None and not df.empty:
 
-                    
-                    # add nights column
-                    if df is not None:
-                        logger.info(f"Adding nights column")
-                        df['night_str'] = df.apply(lambda x: add_night_column(x['hour'], x['day_name']), axis=1)
-                    if df_prediction is not None:
-                        df_prediction['night_str'] = df_prediction.apply(lambda x: add_night_column(x['hour'], x['day_name']), axis=1)
+                        df["indicador_str"] = df["hour"].apply(
+                            evaluation_period_str
+                        )
+
+                        df["night_str"] = df.apply(
+                            lambda x: add_night_column(
+                                x["hour"], x["day_name"]
+                            ),
+                            axis=1
+                        )
+
+                    else:
+                        logger.warning("Empty acoustic dataframe")
+                        continue
+
+
+                    if df_prediction is not None and not df_prediction.empty:
+
+                        df_prediction["indicador_str"] = (
+                            df_prediction["hour"].apply(evaluation_period_str)
+                        )
+
+                        df_prediction["night_str"] = df_prediction.apply(
+                            lambda x: add_night_column(
+                                x["hour"], x["day_name"]
+                            ),
+                            axis=1
+                        )
+
+                    else:
+                        logger.warning("Empty prediction dataframe")
+
+                        if df_prediction is not None:
+                            df_prediction["indicador_str"] = pd.Series(
+                                index=df_prediction.index, dtype="object"
+                            )
+                            df_prediction["night_str"] = pd.Series(
+                                index=df_prediction.index, dtype="object"
+                            )
 
                 except Exception as e:
                     logger.error(f"An error occurred while adding indicators and nights columns: {e}")
@@ -553,23 +576,55 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     )
 
 
-                    if df is not None: df['Timestamp'] = pd.to_datetime(df['Timestamp'])
-                    else: continue
-                    df_prediction_alarms_mapped['Timestamp'] = pd.to_datetime(df_prediction_alarms_mapped['Timestamp'])
-                    if df is not None:
-                        if temporal_bool:
-                            if df_prediction_alarms.index.name == "Timestamp":
-                                df_prediction_alarms_mapped = df_prediction_alarms_mapped.reset_index(drop=True)
-                                df_prediction_alarms_mapped["Timestamp"] = pd.to_datetime(df_prediction_alarms_mapped["Timestamp"],utc=True)
+                    if df is None or df.empty:
+                        continue
 
-                                df = df.reset_index(drop=True)
-                                df["Timestamp"] = pd.to_datetime(df["Timestamp"],utc=True)
-                        df = df.merge(
-                            df_prediction_alarms_mapped[['Timestamp', 'class', 'probability', 'NoisePort_Level_1']],
-                            left_on='Timestamp',
-                            right_on='Timestamp',
-                            how='left'
-                        )
+                    # Eliminar la ambigüedad entre índice y columna
+                    df = df.reset_index(drop=True)
+
+                    df_prediction_alarms_mapped = (
+                        df_prediction_alarms_mapped.reset_index(drop=True)
+                    )
+
+                    # Homogeneizar las fechas
+                    df["Timestamp"] = pd.to_datetime(
+                        df["Timestamp"],
+                        errors="coerce",
+                        utc=True
+                    )
+
+                    df_prediction_alarms_mapped["Timestamp"] = pd.to_datetime(
+                        df_prediction_alarms_mapped["Timestamp"],
+                        errors="coerce",
+                        utc=True
+                    )
+
+                    # Eliminar timestamps inválidos
+                    df = df.dropna(subset=["Timestamp"])
+
+                    df_prediction_alarms_mapped = (
+                        df_prediction_alarms_mapped.dropna(subset=["Timestamp"])
+                    )
+
+                    # Merge
+                    df = df.merge(
+                        df_prediction_alarms_mapped[
+                            [
+                                "Timestamp",
+                                "class",
+                                "probability",
+                                "NoisePort_Level_1"
+                            ]
+                        ],
+                        on="Timestamp",
+                        how="left"
+                    )
+
+                    logger.info("Added the prediction data to the main dataframe")
+
+                    logger.info(
+                        f"Rows with predictions: {df['class'].notna().sum()}"
+                    )
                     df.drop(columns=['Timestamp_y'], inplace=True, errors='ignore')
                     df.rename(columns={'Timestamp_x': 'Timestamp'}, inplace=True, errors='ignore')
                     logger.info("Added the prediction data to the main dataframe")
@@ -603,27 +658,27 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
                     #peaks, properties=find_peaks(df['LA_corrected'], prominence=PROMINENCE, width=WIDTH)
                     #df_peaks = df.iloc[peaks].copy()
-                    if not temporal_bool:
-                        logger.info("")
-                        logger.info(f"Rolling the data with a window of {WINDOW_SIZE} seconds")
-                        # rolling median for the LA values with a window of 30 seconds
-                        df_peaks['LA_cor_median'] = df_peaks['LA_corrected'].rolling(window=WINDOW_SIZE, min_periods=1).quantile(0.5) + ADDING_THRESHOLD
-                        df_peaks['Peak'] = 1
+                    try:
+                        logger.info("Using previously calculated peaks")
 
-                        #above threshold
-                        logger.info(f"Calculating peaks above threshold")
-                        df_peaks = df_peaks[df_peaks['LA_corrected'] > df_peaks['LA_cor_median']]
-                        logger.info(f"There are {len(df_peaks)} peaks in the dataframe after filtering")
-                        # 
+                        if "start_time" in df_peaks.columns:
+                            df_peaks["Timestamp"] = df_peaks["start_time"]
 
-                        df_peaks.to_csv(df_peaks_csv_path, index=False)
-                        logger.info(f"Saved peaks filtered dataframe to {df_peaks_csv_path}, with a lenght of {len(df_peaks)}")
+                        df_peaks["Timestamp"] = pd.to_datetime(
+                            df_peaks["Timestamp"],
+                            errors="coerce",
+                            utc=True
+                        )
 
-                    #Timestamp to datetime
-                    if temporal_bool : df_peaks['Timestamp'] = df_peaks['start_time']
-                    df_peaks['Peak'] = 1
-                    df_peaks['Timestamp'] = pd.to_datetime(df_peaks['Timestamp'])
-                    df_peaks["Timestamp"] = pd.to_datetime(df_peaks["Timestamp"],utc=True)
+                        df_peaks = df_peaks.dropna(subset=["Timestamp"])
+
+                        df_peaks["Peak"] = 1
+
+                        logger.info(f"Number of peaks: {len(df_peaks)}")
+
+                    except Exception as e:
+                        logger.error(f"Error processing peaks: {e}")
+                        continue
                 except Exception as e:
                     logger.error(f"An error occurred while trimming the dataframe {e}")
                     continue
@@ -637,11 +692,20 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
 
                     #merging
                     logger.info("Merging the peaks dataframe with the acoustic dataframe")
-                    df_all = df.merge(
-                        df_peaks[['Peak']],
-                        left_index=True,
-                        right_index=True,
-                        how='left'
+                    df_all = df.reset_index(drop=True).merge(
+                        df_peaks[["Timestamp", "Peak"]].drop_duplicates(
+                            subset=["Timestamp"]
+                        ),
+                        on="Timestamp",
+                        how="left"
+                    )
+
+                    df_all["Peak"] = df_all["Peak"].fillna(0).astype(int)
+
+                    logger.info("Merge successful for the peaks and acoustic dataframes")
+
+                    logger.info(
+                        f"Number of matched peak starts: {df_all['Peak'].sum()}"
                     )
                     logger.info("Merge successful for the peaks and acoustic dataframes")
                     print(df_all)
@@ -743,12 +807,31 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     # else:
                     logger.info("")
                     logger.info("[2] Merging the peaks dataframe with the acoustic dataframe")
-                    df_all = df_1h.merge(
-                        df_peaks[['Peak']],
-                        left_index=True,
-                        right_index=True,
-                        how='left'
+                    df_peaks_1h = df_peaks.copy()
+
+                    df_peaks_1h["date_time"] = (
+                        df_peaks_1h["Timestamp"].dt.floor("h")
                     )
+
+                    df_peaks_1h = (
+                        df_peaks_1h.groupby("date_time")["Peak"]
+                        .max()
+                        .reset_index()
+                    )
+
+                    df_1h["date_time"] = pd.to_datetime(
+                        df_1h["date_time"],
+                        errors="coerce",
+                        utc=True
+                    )
+
+                    df_all = df_1h.reset_index(drop=True).merge(
+                        df_peaks_1h,
+                        on="date_time",
+                        how="left"
+                    )
+
+                    df_all["Peak"] = df_all["Peak"].fillna(0).astype(int)
                     logger.info("Merge successful for the peaks and acoustic dataframes")
 
                     logger.info(f"Saving the merged dataframe to the prediction folder")
@@ -1094,6 +1177,8 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 ################################
                 ################################
                 # # ADDING THE NEW ALARMS CALCULATED
+
+                """
                 logger.info("")
                 logger.info(f"Adding the yamnet taxonomy to the alarms dataframe")
                 columns_to_merge = ["Timestamp", "mid", "iso_taxonomy", "Brown_Level_2", "Brown_Level_3", "NoisePort_Level_1", "NoisePort_Level_2"]
@@ -1125,6 +1210,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 except Exception as e:
                     logger.error(f"An error occurred while saving the alarms dataframe: {e}")
                     continue
+                """
                 ################################
                 ################################
                 ################################

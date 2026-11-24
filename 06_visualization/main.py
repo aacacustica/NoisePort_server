@@ -277,7 +277,7 @@ def main():
             date_map = {merged_folder: (None,None)}
             thresh_map = {merged_folder: (None,None)}
 
-            device_coeff = collect_coeff(coeffs,device) 
+            device_coeff = collect_coeff(coeffs, device_name) 
 
             logger.info(f"Device: {device_name}")
             logger.info(f"Folders: {folders}")

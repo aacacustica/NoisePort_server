@@ -151,10 +151,15 @@ def add_night_column(hour_column, day_col):
     return night
 
 
-def add_datetime_columns(df,logging, date_col):
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'], errors='coerce')
+def add_datetime_columns(df, logging, date_col):
 
-    #df['day_hour'] = df.apply(lambda x: str(x[date_col].day) + '-' + str(x[date_col].hour),axis=1)
+    df = df.copy()
+
+    df["Timestamp"] = pd.to_datetime(
+        df["Timestamp"],
+        errors="coerce"
+    )
+
     weekday_translation = {
         "Monday": " Lunes",
         "Tuesday": " Martes",
@@ -164,29 +169,27 @@ def add_datetime_columns(df,logging, date_col):
         "Saturday": " Sábado",
         "Sunday": " Domingo"
     }
-    if df['Timestamp'].dtype == 'datetime64[ns]' or df['Timestamp'].dtype == 'datetime64[ns, UTC+02:00]':
-        df["year"] = df['Timestamp'].dt.year
-        df["month"] = df['Timestamp'].dt.month
-        df['date'] = df['Timestamp'].dt.date
-        df['day'] = df['Timestamp'].dt.day
-        df['hour'] = df['Timestamp'].dt.hour
-        df['weekday'] = df['Timestamp'].dt.weekday
-        df['day_name'] = df['Timestamp'].dt.day_name()
 
-        df['day_name'] = df['day_name'].map(weekday_translation) 
+    if pd.api.types.is_datetime64_any_dtype(df["Timestamp"]):
 
-        # df["weekday"] = df["weekday"].replace(WEEKDAY_TRANSLATION)
-        # df["weekday"] = df["weekday"].astype(str)
-        # df["day"] = df["day"].astype(str).str.zfill(2)
-        # df["fullday"] = df["day"] + df["weekday"]
+        df["year"] = df["Timestamp"].dt.year
+        df["month"] = df["Timestamp"].dt.month
+        df["date"] = df["Timestamp"].dt.date
+        df["day"] = df["Timestamp"].dt.day
+        df["hour"] = df["Timestamp"].dt.hour
+        df["weekday"] = df["Timestamp"].dt.weekday
 
-        # print(df)
-        # exit()
+        df["day_name"] = (
+            df["Timestamp"]
+            .dt.day_name()
+            .map(weekday_translation)
+        )
 
     else:
-        logging.error(f"Failed to convert {date_col} to datetime in some rows.")
-    #df['min_sec_str'] = df.apply(lambda x: datetime.datetime.strftime(x[date_col],'%M:%S'),axis=1)
-    #df['min_sec_15_str'] = df.apply(lambda x: str(x[date_col].minute % 15) + '-'+str(x[date_col].second),axis=1)
+        raise ValueError(
+            f"Failed to convert {date_col} to datetime."
+        )
+
     return df
 
 
