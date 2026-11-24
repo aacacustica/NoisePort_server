@@ -230,6 +230,7 @@ def main():
 
     except Exception as e:
         logger.error(f"Error during executing the main program: {e}")
+        raise
 
 
 if __name__ == "__main__":

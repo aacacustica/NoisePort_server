@@ -1,20 +1,37 @@
 import logging
 
-def setup_logging(log_file='data_analysis.log', level=logging.DEBUG):
+import logging
+import sys
+
+
+def setup_logging(
+    log_file="data_analysis.log",
+    level=logging.DEBUG
+):
     logger = logging.getLogger(__name__)
     logger.setLevel(level)
+    logger.propagate = False
 
-    # create a file handler that overwrites the log file each time
-    file_handler = logging.FileHandler(log_file, mode='w')  # 'w' mode overwrites the file
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+        handler.close()
 
-    file_formatter = logging.Formatter('%(asctime)s - %(filename)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter(
+        "%(asctime)s - %(filename)s - "
+        "%(name)s - %(levelname)s - %(message)s"
+    )
 
-    file_handler.setFormatter(file_formatter)
-
-    # check if the logger already has handlers, and if so, clear them
-    if logger.hasHandlers():
-        logger.handlers.clear()
-
+    # Log en archivo
+    file_handler = logging.FileHandler(
+        log_file,
+        mode="a"
+    )
+    file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
+
+    # Log en consola
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
 
     return logger
