@@ -614,7 +614,7 @@ def transform_1h_pred(df, logger, agg_period):
 
 
         agg_funcs = {
-            "LA_corrected": [leq, lambda x: x.quantile(0.9)],
+            "LA_corrected": [leq, lambda x: x.quantile(0.1)],
             "LAmax_corrected": "max",
             "LAmin_corrected": "min",
             "LCeq-LAeq_corrected": leq,

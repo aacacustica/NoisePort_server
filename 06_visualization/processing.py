@@ -230,6 +230,10 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             logger.info(f"Total prediction rows: {len(df_prediction)}")
             logger.info(f"Total peaks: {len(df_peaks)}")
             logger.info(f"Total merged rows: {len(df_all)}")
+
+            df['Timestamp'] = pd.to_datetime(df['Timestamp'],errors='coerce').dt.tz_localize(None)
+            df_prediction['Timestamp'] = pd.to_datetime(df_prediction['Timestamp'],errors='coerce').dt.tz_localize(None)
+            df_peaks['Timestamp'] = pd.to_datetime(df_peaks['start_time'],errors='coerce').dt.tz_localize(None)
                     
             logger.info("")
             if TENERIFE_TIMEZONE:
@@ -277,9 +281,7 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             except Exception as e:
                 logger.error(f"An error occurred while adding datetime columns: {e}")
 
-            df['Timestamp'] = pd.to_datetime(df['Timestamp'],errors='coerce')
-            df_prediction['Timestamp'] = pd.to_datetime(df_prediction['Timestamp'],errors='coerce').dt.tz_localize(None)
-            df_peaks['Timestamp'] = pd.to_datetime(df_peaks['start_time'],errors='coerce')
+
 
             try:
                 logger.info("")
@@ -349,12 +351,17 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     df['oca'] = df['hour'].apply(
                             lambda h: db_limit(h, **oca_limits)
                     )
-                if df.isnull().values.any():
-                # check if there is nan values
-                    logger.warning(f"There are nan values in the dataframe")
-                    # removing nan values
-                    df = df.dropna()
-                    logger.info(f"Removing nan values from the dataframe")
+                logger.info(f"Acoustic rows before filtering: {len(df)}")
+
+                df["LA"] = pd.to_numeric(df["LA"], errors="coerce")
+
+                df = df.dropna(subset=["Timestamp", "LA"])
+
+                logger.info(f"Acoustic rows after filtering: {len(df)}")
+
+                if df.empty:
+                    logger.warning(f"No valid acoustic data for {device}")
+                    continue
 
                 # removing nan values
                 
@@ -622,9 +629,6 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                 try:
                     logger.info("Using previously calculated peaks")
 
-                    if "start_time" in df_peaks.columns:
-                        df_peaks["Timestamp"] = df_peaks["start_time"]
-
                     df_peaks["Timestamp"] = pd.to_datetime(
                         df_peaks["Timestamp"],
                         errors="coerce",
@@ -633,6 +637,8 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     df_peaks = df_peaks.dropna(subset=["Timestamp"])
 
                     df_peaks["Peak"] = 1
+                    df_peaks.add_datetime_columns(df_peaks,logger,date_col='Timestamp')
+                    logger.info(f"Peak columns:" {df_peaks.columns.tolist()})
 
                     logger.info(f"Number of peaks: {len(df_peaks)}")
 
@@ -1175,7 +1181,10 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
             ################################
             ################################
         except Exception:
-            logger.exception(f"Error processing daily CSV: {df_path}")
+            logger.exception(
+                f"Error processing campaign for device: {device}"
+            )
+            continue
             
 
 

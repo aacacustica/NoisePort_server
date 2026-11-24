@@ -3822,8 +3822,19 @@ def plot_peak_distribution_heatmap(df_peaks: pd.DataFrame,df_alarms_1h: pd.DataF
         #creating the LAeq_peak column in df_alarms_1h. 
         # group the peaks by hour and make the leq fucntion average with the LA_corrected column
 
-        df_la_eq_peak = df_peaks.groupby("datetime_hour")["LA_corrected"].apply(leq).reset_index()
-        df_la_eq_peak.rename(columns={"datetime_hour": "date_time", "LA_corrected": "LAeq_peak"}, inplace=True)
+        df_la_eq_peak = (
+            df_peaks.groupby("datetime_hour")["peak_leq"]
+            .apply(leq)
+            .reset_index()
+        )
+
+        df_la_eq_peak.rename(
+            columns={
+                "datetime_hour": "date_time",
+                "peak_leq": "LAeq_peak"
+            },
+            inplace=True
+        )
         df_alarms_1h = df_alarms_1h.merge(df_la_eq_peak, on="date_time", how="left")
         # exit()
 
@@ -3858,6 +3869,7 @@ def plot_peak_distribution_heatmap(df_peaks: pd.DataFrame,df_alarms_1h: pd.DataF
         pivot_table.replace(0, np.nan, inplace=True)
 
         plt.figure(figsize=(20, 10))
+        pivot_table = pivot_table.reindex(columns=range(24))
         sns.heatmap(pivot_table, annot=True, fmt=".0f", cmap=cmap_dict)
 
         plt.xlabel('Hora', fontsize=BIGGEST_SIZE)
