@@ -680,19 +680,33 @@ def agg_hour(group):
 
 
     # n peaks per hour
-    if "is_peak" in group:
-        if "peak_start_time" in group.columns:
-            starts = pd.to_datetime(
-                group["peak_start_time"],
-                errors="coerce"
-            ).dropna().drop_duplicates()
+    # Number of unique peak events per hour
 
-            hour_start = group.name
+    result["n_peaks"] = pd.NA
 
-            result["n_peaks"] = (
-                (starts >= hour_start) &
-                (starts < hour_start + pd.Timedelta(hours=1))
-            ).sum()
+    if "peak_start_time" in group.columns:
+
+        starts = pd.to_datetime(
+            group["peak_start_time"],
+            errors="coerce"
+        ).dropna().drop_duplicates()
+
+        starts = starts.dt.tz_localize(None)
+
+        if not group.empty:
+
+            hour_start = group.index.min().floor("h")
+            hour_start = hour_start.tz_localize(None)
+
+            result["n_peaks"] = int(
+                (
+                    (starts >= hour_start) &
+                    (
+                        starts <
+                        hour_start + pd.Timedelta(hours=1)
+                    )
+                ).sum()
+            )
 
 
     # clase mas repetida

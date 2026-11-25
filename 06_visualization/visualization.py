@@ -227,10 +227,10 @@ def plot_night_evolution_15_min(df, folder_output_dir: str, logger, name_extensi
         # data for each night
         for current_date in unique_dates:
             #  time, which is the last 15-minute interval of the previous day
-            start_time = pd.Timestamp(current_date - pd.Timedelta(days=1),tzinfo=pytz.UTC).replace(hour=23, minute=0)
+            start_time = pd.Timestamp(current_date - pd.Timedelta(days=1)).replace(hour=23, minute=0)
             
             # end time, which is the first 6 hours and 45 minutes of the current day
-            end_time = pd.Timestamp(current_date,tzinfo = pytz.UTC).replace(hour=6, minute=45)
+            end_time = pd.Timestamp(current_date).replace(hour=6, minute=45)
             
             # slice the data, which is the last 15-minute interval of the previous day and the first 6 hours and 45 minutes of the current day
             data_slice = df_resampled[start_time:end_time]
@@ -239,7 +239,9 @@ def plot_night_evolution_15_min(df, folder_output_dir: str, logger, name_extensi
             if not data_slice.empty and data_slice.index.min().hour == 23:
                 # so we add it to the night data
                 night_data = pd.concat([night_data, data_slice])
-        
+        if night_data.empty:
+            logger.warning("No valid nighttime data to plot")
+            return
         #save to csv
         os.makedirs(folder_output_dir, exist_ok=True)
         
@@ -326,16 +328,18 @@ def plot_night_evolution_15_min_week(df, folder_output_dir: str, logger, name_ex
 
         for current_date in unique_dates:
             
-            start_time = pd.Timestamp(current_date - pd.Timedelta(days=1),tzinfo=pytz.UTC).replace(hour=23, minute=0)
+            start_time = pd.Timestamp(current_date - pd.Timedelta(days=1)).replace(hour=23, minute=0)
             
-            end_time = pd.Timestamp(current_date,tzinfo=pytz.UTC).replace(hour=6, minute=45)
+            end_time = pd.Timestamp(current_date).replace(hour=6, minute=45)
             
             data_slice = df_resampled[start_time:end_time]
 
             if not data_slice.empty and data_slice.index.min().hour == 23:
                 night_data = pd.concat([night_data, data_slice])
 
-
+        if night_data.empty:
+            logger.warning("No valid nighttime data to plot")
+            return
         ################################
         ################################
         # weeks
@@ -3816,7 +3820,43 @@ def plot_peak_distribution_heatmap(df_peaks: pd.DataFrame,df_alarms_1h: pd.DataF
         df_peaks["Timestamp"] = pd.to_datetime(df_peaks["Timestamp"], errors="coerce")
         df_peaks["datetime_hour"] = df_peaks["Timestamp"].dt.floor("h")
         df_peak_counts = df_peaks.groupby("datetime_hour").size().reset_index(name="peak_count")
-        df_alarms_1h["date_time"] = pd.to_datetime(df_alarms_1h["date_time"]).dt.floor("h")
+        df_alarms_1h = df_alarms_1h.copy()
+
+        logger.info(
+            f"Alarm columns before peak heatmap: "
+            f"{df_alarms_1h.columns.tolist()}"
+        )
+
+        if "date_time" not in df_alarms_1h.columns:
+
+            if "Timestamp" in df_alarms_1h.columns:
+                df_alarms_1h["date_time"] = (
+                    df_alarms_1h["Timestamp"]
+                )
+
+            elif "datetime" in df_alarms_1h.columns:
+                df_alarms_1h["date_time"] = (
+                    df_alarms_1h["datetime"]
+                )
+
+            elif isinstance(
+                df_alarms_1h.index, pd.DatetimeIndex
+            ):
+                df_alarms_1h["date_time"] = (
+                    df_alarms_1h.index
+                )
+
+            else:
+                raise ValueError(
+                    "No valid datetime column in alarms dataframe"
+                )
+
+        df_alarms_1h["date_time"] = pd.to_datetime(
+            df_alarms_1h["date_time"],
+            errors="coerce"
+        ).dt.floor("h")
+
+        df_alarms_1h = df_alarms_1h.reset_index(drop=True)
 
         #creating the LAeq_peak column in df_alarms_1h. 
         # group the peaks by hour and make the leq fucntion average with the LA_corrected column
