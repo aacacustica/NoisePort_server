@@ -637,8 +637,8 @@ def process_all_folders(input_folder, folders, PERIODO_AGREGACION, PERCENTILES, 
                     df_peaks = df_peaks.dropna(subset=["Timestamp"])
 
                     df_peaks["Peak"] = 1
-                    df_peaks.add_datetime_columns(df_peaks,logger,date_col='Timestamp')
-                    logger.info(f"Peak columns:" {df_peaks.columns.tolist()})
+                    df_peaks = add_datetime_columns(df_peaks,logger,date_col='Timestamp')
+                    logger.info(f"Peak columns: {df_peaks.columns.tolist()}")
 
                     logger.info(f"Number of peaks: {len(df_peaks)}")
 

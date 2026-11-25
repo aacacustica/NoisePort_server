@@ -568,7 +568,7 @@ def transform_1h(df, columns_dict, logger, agg_period):
         # if there is just LAEQ_COLUMN_COEFF, then we use it for all the columns, otherwise use the max and min
         if columns_dict["LAEQ_COLUMN"] == "Value":
             agg_funcs = {
-                columns_dict["LAEQ_COLUMN_COEFF"]: [leq, lambda x: x.quantile(0.9)]
+                columns_dict["LAEQ_COLUMN_COEFF"]: [leq, lambda x: x.quantile(0.1)]
             }
             logger.info(
                 f"Using the columns_dict: df_LAeq[{columns_dict['LAEQ_COLUMN_COEFF']}]"
@@ -576,7 +576,7 @@ def transform_1h(df, columns_dict, logger, agg_period):
 
         else:
             agg_funcs = {
-                columns_dict["LAEQ_COLUMN_COEFF"]: [leq, lambda x: x.quantile(0.9)],
+                columns_dict["LAEQ_COLUMN_COEFF"]: [leq, lambda x: x.quantile(0.1)],
                 columns_dict["LAMAX_COLUMN_COEFF"]: "max",
                 columns_dict["LAMIN_COLUMN_COEFF"]: "min",
                 columns_dict["LC-LA_COLUMN_COEFF"]: leq,

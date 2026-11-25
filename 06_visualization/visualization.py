@@ -3322,10 +3322,9 @@ def frequency_composition(df_oct: pd.DataFrame, df_alarms_1h: pd.DataFrame, fold
     #  for hour
     #set index
     
-    df_oct_cp['Timestamp'] = pd.to_datetime(
-        df_oct_cp['Timestamp'],
-        errors='coerce',
-        utc=True
+    df_oct_cp["Timestamp"] = pd.to_datetime(
+        df_oct_cp["Timestamp"],
+        errors="coerce"
     )
 
     df_oct_cp = (
