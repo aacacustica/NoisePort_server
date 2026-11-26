@@ -65,12 +65,14 @@ def _extract_key_from_filename(path: str):
 
 def _to_datetime_no_tz(series: pd.Series):
     """
-    Convierte a datetime y elimina timezone si existe.
+    Convierte a datetime conservando la hora nominal
+    y elimina la información de zona horaria.
     """
     series = pd.to_datetime(series, errors='coerce')
-    # si es tz-aware, convertir a naive
-    if pd.api.types.is_datetime64tz_dtype(series.dtype):
-        series = series.dt.tz_convert(None)
+
+    if isinstance(series.dtype, pd.DatetimeTZDtype):
+        series = series.dt.tz_localize(None)
+
     return series
 
 def leq(levels):
@@ -268,12 +270,165 @@ def merge_acoustics_predictions_and_peaks(point,
             logger.warning(f"{key}: Dropping {n_ac_nat} NaT rows from acoustics and {n_pr_nat} from predictions.")
             df_ac = df_ac.dropna(subset=['Timestamp'])
             df_pr = df_pr.dropna(subset=['Timestamp'])
+        # Remove completely identical prediction rows
+        n_predictions_original = len(df_pr)
 
+        df_pr = df_pr.drop_duplicates().copy()
+
+        n_identical = n_predictions_original - len(df_pr)
+
+        # Detect conflicting timestamps
+        conflicts = df_pr[
+            df_pr.duplicated(subset=["Timestamp"], keep=False)
+        ]
+
+        n_conflicts = conflicts["Timestamp"].nunique()
+
+        if n_conflicts > 0:
+            logger.warning(
+                f"{key}: {n_conflicts} timestamps with "
+                f"conflicting predictions."
+            )
+
+            logger.debug(
+                conflicts.to_string(index=False)
+            )
+
+        # Prioritize valid predictions
+        df_pr["_valid_prediction"] = (
+            df_pr["Prediction_1"].notna()
+        )
+
+        df_pr["_prediction_score"] = pd.to_numeric(
+            df_pr["Prob_1"],
+            errors="coerce"
+        )
+
+        # Keep the most confident valid prediction
+        df_pr = (
+            df_pr.sort_values(
+                by=[
+                    "_valid_prediction",
+                    "_prediction_score"
+                ],
+                ascending=[False, False],
+                na_position="last",
+                kind="stable"
+            )
+            .drop_duplicates(
+                subset=["Timestamp"],
+                keep="first"
+            )
+            .drop(
+                columns=[
+                    "_valid_prediction",
+                    "_prediction_score"
+                ]
+            )
+            .sort_values("Timestamp")
+        )
+
+        logger.info(
+            f"{key}: predictions before="
+            f"{n_predictions_original}, "
+            f"identical duplicates={n_identical}, "
+            f"conflicting timestamps={n_conflicts}, "
+            f"predictions after={len(df_pr)}"
+        )
+        # Remove completely identical prediction rows
+        n_predictions_original = len(df_pr)
+
+        df_pr = df_pr.drop_duplicates().copy()
+
+        n_identical = n_predictions_original - len(df_pr)
+
+        # Detect conflicting timestamps
+        conflicts = df_pr[
+            df_pr.duplicated(subset=["Timestamp"], keep=False)
+        ]
+
+        n_conflicts = conflicts["Timestamp"].nunique()
+
+        if n_conflicts > 0:
+            logger.warning(
+                f"{key}: {n_conflicts} timestamps with "
+                f"conflicting predictions."
+            )
+
+            logger.debug(
+                conflicts.to_string(index=False)
+            )
+
+        # Prioritize valid predictions
+        df_pr["_valid_prediction"] = (
+            df_pr["Prediction_1"].notna()
+        )
+
+        df_pr["_prediction_score"] = pd.to_numeric(
+            df_pr["Prob_1"],
+            errors="coerce"
+        )
+
+        # Keep the most confident valid prediction
+        df_pr = (
+            df_pr.sort_values(
+                by=[
+                    "_valid_prediction",
+                    "_prediction_score"
+                ],
+                ascending=[False, False],
+                na_position="last",
+                kind="stable"
+            )
+            .drop_duplicates(
+                subset=["Timestamp"],
+                keep="first"
+            )
+            .drop(
+                columns=[
+                    "_valid_prediction",
+                    "_prediction_score"
+                ]
+            )
+            .sort_values("Timestamp")
+        )
+
+        logger.info(
+            f"{key}: predictions before="
+            f"{n_predictions_original}, "
+            f"identical duplicates={n_identical}, "
+            f"conflicting timestamps={n_conflicts}, "
+            f"predictions after={len(df_pr)}"
+        )
         # Merge acústica + predicción por Timestamp (inner)
+        # Merge acoustics and predictions by Timestamp
         try:
-            df_merged = pd.merge(df_ac, df_pr, on='Timestamp', how='left', suffixes=('_acoustic', '_prediction'))
+            df_merged = pd.merge(
+                df_ac,
+                df_pr,
+                on="Timestamp",
+                how="left",
+                suffixes=("_acoustic", "_prediction"),
+                validate="one_to_one"
+            )
+
+            if len(df_merged) != len(df_ac):
+                raise ValueError(
+                    f"{key}: unexpected number of merged rows. "
+                    f"Acoustics={len(df_ac)}, "
+                    f"Merged={len(df_merged)}"
+                )
+
+            logger.info(
+                f"{key}: merge validated. "
+                f"Acoustics={len(df_ac)}, "
+                f"Merged={len(df_merged)}"
+            )
+
         except Exception as e:
-            logger.exception(f"Merge failed for key {key}: {e}")
+            logger.exception(
+                f"Merge failed for key {key}: {e}"
+            )
             continue
 
         if df_merged.empty:

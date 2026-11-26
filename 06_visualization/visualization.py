@@ -307,7 +307,7 @@ def plot_night_evolution_15_min_week(df, folder_output_dir: str, logger, name_ex
             raise ValueError("The 'datetime' column is missing.")
 
         df_resampled = df.resample('15min')[laeq_column].agg(leq)
-        df_night_str = df.resample('15min')['Día'].agg(lambda x: x.value_counts().index[0] if len(x) > 0 else None)
+        df_night_str = (df.resample("15min")['Día'].agg(lambda x: (x.mode().iloc[0] if not x.mode().empty else None)))
         df_resampled = pd.DataFrame(df_resampled).join([df_night_str])
 
         df_resampled['date'] = df_resampled.index.date
@@ -338,7 +338,19 @@ def plot_night_evolution_15_min_week(df, folder_output_dir: str, logger, name_ex
                 night_data = pd.concat([night_data, data_slice])
 
         if night_data.empty:
-            logger.warning("No valid nighttime data to plot")
+            logger.warning(
+                "No nighttime intervals available"
+            )
+            return
+
+        night_data = night_data.dropna(
+            subset=[laeq_column, "Día"]
+        ).copy()
+
+        if night_data.empty:
+            logger.warning(
+                "No valid nighttime data to plot"
+            )
             return
         ################################
         ################################
@@ -349,7 +361,12 @@ def plot_night_evolution_15_min_week(df, folder_output_dir: str, logger, name_ex
 
 
         for week_start in weeks:
-            week_data = night_data[night_data['week'] == week_start]
+            week_data = night_data[night_data['week'] == week_start].copy()
+            week_data = week_data.dropna(subset=[laeq_column,'Día','plot_time'])
+
+            if week_data.empty: 
+                logger.warning(f"No valid nighttime data for week {week_start}")
+                continue
 
             fig = sns.relplot(
                 data=week_data,
@@ -2150,8 +2167,25 @@ def plot_indicadores_heatmap(df, folder_output_dir: str, logger, plotname:str, i
             logger.info(f"Using the datetime index as Fecha")
 
 
-        df_indicadores = (df.groupby(['date','indicador_str'])['Fecha'].agg(['first','last']))
-        df_indicadores['duration'] = df_indicadores.apply(lambda row: calculate_duration(row['first'], row['last']), axis=1)
+        # Effective measurement duration
+        # Acoustic temporal resolution: 1 second
+        # Effective measurement duration
+        # Acoustic temporal resolution: 1 second
+        df_indicadores = (
+            df.groupby(
+                ["date", "indicador_str"]
+            )["Fecha"]
+            .nunique()
+            .to_frame(name="duration")
+        )# Effective measurement duration
+        # Acoustic temporal resolution: 1 second
+        df_indicadores = (
+            df.groupby(
+                ["date", "indicador_str"]
+            )["Fecha"]
+            .nunique()
+            .to_frame(name="duration")
+        )
         
         # set weekday in the plot
         df['date_weekday'] = df['Fecha'].dt.strftime('%Y-%m-%d') + ' ' + df['Fecha'].dt.day_name().replace(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'])
@@ -2241,9 +2275,14 @@ def plot_indicadores_heatmap(df, folder_output_dir: str, logger, plotname:str, i
         plt.close()
         
         
-        # indicador power average
-        general_power_averages = indicadores_table.apply(leq).round(1)
-        general_power_averages_df = general_power_averages.to_frame().transpose()
+        general_power_averages = (
+            df.groupby("indicador_str")[ind_column]
+            .apply(leq)
+            .reindex(["Ln", "Ld", "Le"])
+            .round(1)
+            .to_frame()
+            .transpose()
+        )
         
         os.makedirs(f'{folder_output_dir}', exist_ok=True)
 
@@ -2291,8 +2330,19 @@ def plot_indicadores_heatmap_week(df, folder_output_dir: str, logger, plotname: 
             df_week = df[df['week'] == week_start].copy()
 
             # Calculate duration of indicators
-            df_indicadores = df_week.groupby(['date', 'indicador_str'])['Fecha'].agg(['first', 'last'])
-            df_indicadores['duration'] = df_indicadores.apply(lambda row: calculate_duration(row['first'], row['last']), axis=1)
+            # Effective measurement duration
+            # Acoustic temporal resolution: 1 second
+            # Effective measurement duration
+            # Acoustic temporal resolution: 1 second
+            # Effective measurement duration
+            # Acoustic temporal resolution: 1 second
+            df_indicadores = (
+                df_week.groupby(
+                    ["date", "indicador_str"]
+                )["Fecha"]
+                .nunique()
+                .to_frame(name="duration")
+            )
 
             df_week['date_weekday'] = df_week['Fecha'].dt.strftime('%Y-%m-%d') + ' ' + df_week['Fecha'].dt.day_name().replace(
                 ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
@@ -2377,7 +2427,15 @@ def plot_indicadores_heatmap_week(df, folder_output_dir: str, logger, plotname: 
             indicadores_table.to_csv(csv_path, index=True)
             logger.info(f"Saved table to {csv_path}")
 
-            general_power_averages = indicadores_table.apply(leq).round(1).to_frame().transpose()
+            general_power_averages = (
+                df_week.groupby("indicador_str")[ind_column]
+                .apply(leq)
+                .reindex(["Ln", "Ld", "Le"])
+                .round(1)
+                .to_frame()
+                .transpose()
+            )     
+
             general_power_averages.to_csv(summary_path, index=False)
             logger.info(f"Saved general averages to {summary_path}")
 
@@ -3827,55 +3885,113 @@ def plot_peak_distribution_heatmap(df_peaks: pd.DataFrame,df_alarms_1h: pd.DataF
             f"{df_alarms_1h.columns.tolist()}"
         )
 
-        if "date_time" not in df_alarms_1h.columns:
+        # Recover the hourly timestamp
+        timestamp_candidates = [
+            "date_time",
+            "Timestamp_x",
+            "Timestamp",
+            "datetime",
+            "Timestamp_y"
+        ]
 
-            if "Timestamp" in df_alarms_1h.columns:
-                df_alarms_1h["date_time"] = (
-                    df_alarms_1h["Timestamp"]
-                )
+        valid_datetime = None
 
-            elif "datetime" in df_alarms_1h.columns:
-                df_alarms_1h["date_time"] = (
-                    df_alarms_1h["datetime"]
-                )
+        for col in timestamp_candidates:
 
-            elif isinstance(
-                df_alarms_1h.index, pd.DatetimeIndex
+            if col not in df_alarms_1h.columns:
+                continue
+
+            timestamps = pd.to_datetime(
+                df_alarms_1h[col],
+                errors="coerce"
+            )
+
+            if isinstance(
+                timestamps.dtype,
+                pd.DatetimeTZDtype
             ):
-                df_alarms_1h["date_time"] = (
-                    df_alarms_1h.index
+                timestamps = timestamps.dt.tz_localize(None)
+
+            if timestamps.notna().any():
+
+                valid_datetime = timestamps
+
+                logger.info(
+                    f"Using {col} as hourly timestamp "
+                    f"for peak distribution heatmap"
+                )
+
+                break
+
+        if valid_datetime is None:
+
+            if isinstance(
+                df_alarms_1h.index,
+                pd.DatetimeIndex
+            ):
+                valid_datetime = pd.Series(
+                    df_alarms_1h.index.tz_localize(None),
+                    index=df_alarms_1h.index
                 )
 
             else:
                 raise ValueError(
-                    "No valid datetime column in alarms dataframe"
+                    "No valid datetime column "
+                    "in alarms dataframe"
                 )
 
-        df_alarms_1h["date_time"] = pd.to_datetime(
-            df_alarms_1h["date_time"],
-            errors="coerce"
-        ).dt.floor("h")
+        df_alarms_1h["date_time"] = (
+            valid_datetime.dt.floor("h")
+        )
 
-        df_alarms_1h = df_alarms_1h.reset_index(drop=True)
+        df_alarms_1h = (
+            df_alarms_1h
+            .dropna(subset=["date_time"])
+            .reset_index(drop=True)
+        )
 
         #creating the LAeq_peak column in df_alarms_1h. 
         # group the peaks by hour and make the leq fucntion average with the LA_corrected column
 
-        df_la_eq_peak = (
-            df_peaks.groupby("datetime_hour")["peak_leq"]
-            .apply(leq)
-            .reset_index()
+        # Identify the peak LAeq column
+        if "leq" in df_peaks.columns:
+            peak_level_column = "leq"
+
+        elif "peak_leq" in df_peaks.columns:
+            peak_level_column = "peak_leq"
+
+        else:
+            raise ValueError(
+                "No peak LAeq column found. "
+                f"Available columns: "
+                f"{df_peaks.columns.tolist()}"
+            )
+
+        df_peaks[peak_level_column] = pd.to_numeric(
+            df_peaks[peak_level_column],
+            errors="coerce"
         )
 
-        df_la_eq_peak.rename(
-            columns={
-                "datetime_hour": "date_time",
-                "peak_leq": "LAeq_peak"
-            },
-            inplace=True
+        # Energy average of peak events by starting hour
+        df_la_eq_peak = (
+            df_peaks
+            .groupby("datetime_hour")[peak_level_column]
+            .apply(leq)
+            .reset_index()
+            .rename(
+                columns={
+                    "datetime_hour": "date_time",
+                    peak_level_column: "LAeq_peak"
+                }
+            )
         )
-        df_alarms_1h = df_alarms_1h.merge(df_la_eq_peak, on="date_time", how="left")
-        # exit()
+
+        df_alarms_1h = df_alarms_1h.merge(
+            df_la_eq_peak,
+            on="date_time",
+            how="left",
+            validate="many_to_one"
+        )
 
 
         df_alarms_1h = df_alarms_1h.merge(

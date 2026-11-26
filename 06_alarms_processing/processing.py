@@ -369,7 +369,7 @@ def process_all_folders(folders, PERIODO_AGREGACION, PERCENTILES, taxonomy, yamn
                         #####################################################
                         logger.info("")
                         logger.info(f"PLOTTING PREDICTION !!!")
-
+                        """
                         logger.info(f"[11] Plotting PLOT_PREDIC_LAEQ for folder {folder}")
                         plot_predic_peak_laeq_mean(df_alarms_1h,yamnet_csv, output_path_ai_alarms, logger, plotname="predic")
 
@@ -380,6 +380,7 @@ def process_all_folders(folders, PERIODO_AGREGACION, PERCENTILES, taxonomy, yamn
 
                         logger.info(f"[13] Plotting heatmap prediction for folder {folder}")
                         plot_heat_map_prediction(df_alarms_1h,yamnet_csv, output_path_ai_alarms, logger, plotname="heat map predic")
+                        """
                     else:
                         logger.info("Not plotting alarms.")
 

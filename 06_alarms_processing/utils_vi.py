@@ -621,7 +621,7 @@ def agg_hour(group):
     ]
     """
     leq_cols_V2 = [
-    "LA", "LC", "LZ", "LAmax", "LAmin",
+    "LA", "LC", "LZ",
 
     "12.59Hz",
     "15.85Hz",
@@ -665,7 +665,19 @@ def agg_hour(group):
     for col in leq_cols_V2:
         if col in group:
             result[col] = leq_safe(group[col])
+    # Hourly maximum sound pressure level
+    if "LAmax" in group.columns:
+        result["LAmax"] = pd.to_numeric(
+            group["LAmax"],
+            errors="coerce"
+        ).max()
 
+    # Hourly minimum sound pressure level
+    if "LAmin" in group.columns:
+        result["LAmin"] = pd.to_numeric(
+            group["LAmin"],
+            errors="coerce"
+        ).min()
 
     if "LA" in group:
         vals = group["LA"].dropna().values
